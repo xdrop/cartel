@@ -1,0 +1,37 @@
+[package]
+name = "cartel"
+version = "0.1.0"
+authors = ["xdrop <xdrop.me@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "cartel"
+path = "src/lib.rs"
+
+[[bin]]
+name = "daemon"
+path = "src/daemon/bin/main.rs"
+
+[[bin]]
+name = "client"
+path = "src/client/bin/main.rs"
+
+[dependencies]
+log = "0.4"
+env_logger = "0.8.2"
+chrono = "0.4.19"
+timeago = "0.2.1"
+signal-hook = "0.2.2"
+rocket = "0.4.6"
+rocket_contrib = "0.4.6"
+serde = { version = "1.0.118", features = ["derive"]}
+serde_yaml = { git = "https://github.com/semtexzv/serde-yaml", branch = "multidoc" }
+clap = "2.33.3"
+colored = "2"
+reqwest = { version = "0.10", features = ["blocking", "json"] }
+simple-error = "0.2.2"
+anyhow = "1.0"
+thiserror = "1.0"
+indicatif = "0.15.0"
+console = "0.13.0"
+dirs = "3.0.1"

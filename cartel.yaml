@@ -1,0 +1,28 @@
+kind: Service
+name: backend
+command: ["bash", "-c", "echo ItWorks"]
+environment:
+  MY_ENV: true
+dependencies: ["nginx", "postgres", "appraisals"]
+---
+kind: Service
+name: nginx
+command: ["bash", "-c", "echo nginx"]
+environment:
+  MY_ENV: true
+dependencies: []
+---
+kind: Service
+name: postgres
+command: ["bash", "-c", "while true; do sleep 10; echo $MY_VAR; done"]
+environment:
+  MY_VAR: "isset"
+dependencies: []
+---
+kind: Task
+name: appraisals
+command: ["bash", "-c", "while true; do sleep 10; echo $MY_VAR; done"]
+environment:
+  MY_VAR: "isset"
+log_file_path: /tmp/mylog-x
+dependencies: []
