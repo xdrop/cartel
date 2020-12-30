@@ -1,7 +1,7 @@
 use super::cli::CliOptions;
 use super::config::read_module_definitions;
 use super::module::module_names_set;
-use super::progress::WaitSpin;
+use super::progress::WaitUntil;
 use super::request::*;
 use super::validation::validate_modules_selected;
 use crate::daemon::api::ApiModuleRunStatus;
@@ -37,13 +37,12 @@ pub fn deploy_cmd(
     let ordered = dependency_graph.dependency_sort()?;
     tprintstep!("Deploying...", 3, 4, HOUR_GLASS);
 
-    &ordered.iter().for_each(|m| {
-        let mut ws = WaitSpin::new();
-        ws.start(3, 4, format!("  Deploying: {}", m.name));
-        // TODO: handle error
-        deploy_modules(&vec![&m.name], &module_defs, &cli_config.daemon_url);
-        ws.stop();
-    });
+    for m in ordered {
+        let mut wu = WaitUntil::new(3, 4, format!("  Deploying: {}", m.name));
+        wu.spin_until(|| {
+            deploy_modules(&vec![&m.name], &module_defs, &cli_config.daemon_url)
+        })?;
+    }
 
     let deploy_txt = format!(
         "{}: {:?}",

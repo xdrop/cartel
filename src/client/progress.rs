@@ -5,7 +5,8 @@ use indicatif::{ProgressBar, ProgressStyle};
 ///
 /// To be used for CLI interactions while waiting for an operation to finish.
 ///
-/// # Examples:
+/// # Examples
+///
 /// ```ignore
 /// let ws = WaitSpin::new();
 /// ws.start(1,3,"Waiting for x...");
@@ -34,8 +35,9 @@ impl WaitSpin {
     /// This method spins up a new thread to render the spinner on the screen.
     /// The spinner will keep spinning until `stop` is called.
     ///
-    /// # Arguments:
-    /// * `step` - The current step we are onu32
+    /// # Arguments
+    ///
+    /// * `step` - The current step we are on
     /// * `of` - The total number of steps
     /// * `message` - The message to print while waiting (and after)
     pub fn start(&mut self, step: u64, of: u64, message: String) -> () {
@@ -64,5 +66,54 @@ impl WaitSpin {
                 handle.join().expect("CLI thread failed");
             }
         }
+    }
+}
+
+/// A utility to render CLI spinners until some operation is complete.
+pub struct WaitUntil {
+    step: u64,
+    of: u64,
+    message: String,
+}
+
+impl WaitUntil {
+    /// Creates a new `WaitUntil` that can be used to render a wait spinner
+    /// until an operation is complete.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let wu = WaitUnti::new(1, 3, "Deploying...");
+    /// wu.spin_until(|| {
+    ///     std::thread::sleep(5000);
+    /// });
+    /// ```
+    pub fn new(step: u64, of: u64, message: String) -> WaitUntil {
+        WaitUntil { step, of, message }
+    }
+
+    /// Renders a spinner until the closure completes.
+    ///
+    /// Note that the closure must be free of CLI side effects. Things like
+    /// calls to `println!` during the closure's operation may lead to undefined
+    /// behaviour.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let wu = WaitUnti::new(1, 3, "Deploying...");
+    /// wu.spin_until(|| {
+    ///     std::thread::sleep(5000);
+    /// });
+    /// ```
+    pub fn spin_until<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        let mut ws = WaitSpin::new();
+        ws.start(self.step, self.of, self.message.clone());
+        let fn_res = f();
+        ws.stop();
+        fn_res
     }
 }
