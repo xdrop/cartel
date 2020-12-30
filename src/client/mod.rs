@@ -6,3 +6,4 @@ pub mod config;
 pub mod module;
 pub mod progress;
 pub mod request;
+pub mod validation;

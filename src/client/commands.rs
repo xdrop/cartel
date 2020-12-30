@@ -3,9 +3,10 @@ use super::config::read_module_definitions;
 use super::module::module_names_set;
 use super::progress::WaitSpin;
 use super::request::*;
+use super::validation::non_existant_modules;
 use crate::daemon::api::ApiModuleRunStatus;
 use crate::dependency::DependencyGraph;
-use anyhow::Result;
+use anyhow::{bail, Result};
 use chrono::Local;
 use console::{style, Emoji};
 use std::collections::HashSet;
@@ -27,11 +28,11 @@ pub fn deploy_cmd(
     let module_defs = read_module_definitions()?;
     let module_names = module_names_set(&module_defs);
 
-    println!(
-        "{} {} Resolving dependencies...",
-        style("[2/4]").bold().dim(),
-        UP_ARROW
-    );
+    tprintstep!("Resolving dependencies...", 2, 4, UP_ARROW);
+    let non_existant = non_existant_modules(&module_names, &modules_to_deploy);
+    if non_existant.len() > 0 {
+        bail!("The following modules do not exist: {:?}", non_existant)
+    }
     let dependency_graph =
         DependencyGraph::from(&module_defs, &modules_to_deploy);
     let ordered = dependency_graph.dependency_sort()?;
