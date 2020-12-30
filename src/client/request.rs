@@ -1,13 +1,14 @@
 use super::super::daemon::api::*;
 use super::cli::CliOptions;
 use super::module::ModuleDefinitionV1;
+use anyhow::Result;
 use reqwest;
 
 pub fn deploy_modules(
     services_to_deploy: &Vec<&str>,
     module_definitions: &Vec<ModuleDefinitionV1>,
     daemon_url: &String,
-) -> Result<ApiDeploymentResponse, reqwest::Error> {
+) -> Result<ApiDeploymentResponse> {
     let client = reqwest::blocking::Client::new();
     let command = ApiDeploymentCommand {
         to_deploy: services_to_deploy.iter().map(|s| s.to_string()).collect(),
@@ -35,7 +36,7 @@ pub fn deploy_modules(
 pub fn stop_module(
     module_name: &str,
     daemon_url: &String,
-) -> Result<ApiOperationResponse, reqwest::Error> {
+) -> Result<ApiOperationResponse> {
     let client = reqwest::blocking::Client::new();
     let command = ApiOperationCommand {
         operation: ApiModuleOperation::STOP,
@@ -51,9 +52,7 @@ pub fn stop_module(
     Ok(deployment_result)
 }
 
-pub fn list_modules(
-    daemon_url: &String,
-) -> Result<ApiModuleStatusResponse, reqwest::Error> {
+pub fn list_modules(daemon_url: &String) -> Result<ApiModuleStatusResponse> {
     let client = reqwest::blocking::Client::new();
     let status = client
         .get(&(daemon_url.to_owned() + "/status"))
@@ -66,7 +65,7 @@ pub fn list_modules(
 pub fn log_info(
     module_name: &str,
     daemon_url: &String,
-) -> Result<ApiLogResponse, reqwest::Error> {
+) -> Result<ApiLogResponse> {
     let client = reqwest::blocking::Client::new();
     let status = client
         .get(&(daemon_url.to_owned() + "/log/" + module_name))
