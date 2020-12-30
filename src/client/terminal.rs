@@ -10,7 +10,7 @@ macro_rules! tprint {
 #[macro_export]
 macro_rules! teprint {
     ( $x:expr ) => {
-        println!("{} {}", console::style("Error:").bold().red(), $x);
+        println!("{} {:?}", console::style("Error:").bold().red(), $x);
     };
 }
 

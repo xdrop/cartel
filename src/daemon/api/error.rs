@@ -2,16 +2,16 @@ use anyhow::Error;
 use rocket::http::Status;
 use rocket::response::{status, Responder, Response};
 use rocket_contrib::json::Json;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum ApiError {
     DeploymentError(Error),
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
-    pub status: &'static str,
+    pub status: String,
     pub message: String,
     pub code: u64,
 }
@@ -27,7 +27,7 @@ impl<'r> Responder<'r> for ApiError {
             ApiError::DeploymentError(error) => String::from(error.to_string()),
         };
         Json(ErrorResponse {
-            status: "error",
+            status: String::from("error"),
             message: message,
             code: 100,
         })

@@ -61,6 +61,7 @@ impl PartialEq for ModuleStatus {
     fn eq(&self, other: &Self) -> bool {
         self.module_definition == other.module_definition
             && self.status == other.status
+            && self.log_file_path == other.log_file_path
     }
 }
 

@@ -4,9 +4,9 @@ use super::module::module_names_set;
 use super::progress::WaitUntil;
 use super::request::*;
 use super::validation::validate_modules_selected;
-use crate::daemon::api::ApiModuleRunStatus;
+use crate::daemon::api::{ApiDeploymentResponse, ApiModuleRunStatus};
 use crate::dependency::DependencyGraph;
-use anyhow::{bail, Result};
+use anyhow::{bail, Error, Result};
 use chrono::Local;
 use console::{style, Emoji};
 use std::collections::HashSet;
@@ -24,7 +24,6 @@ pub fn deploy_cmd(
     cli_config: &CliOptions,
 ) -> Result<()> {
     tprintstep!("Looking for module definitions...", 1, 4, LOOKING_GLASS);
-    // TODO: Handle expect
     let module_defs = read_module_definitions()?;
     let module_names = module_names_set(&module_defs);
 

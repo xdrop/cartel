@@ -1,8 +1,16 @@
 use super::super::daemon::api::*;
 use super::cli::CliOptions;
 use super::module::ModuleDefinitionV1;
-use anyhow::Result;
+use anyhow::{bail, Result};
 use reqwest;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum DeploymentResponse {
+    Ok(ApiDeploymentResponse),
+    Err(ErrorResponse),
+}
 
 pub fn deploy_modules(
     services_to_deploy: &Vec<&str>,
@@ -24,13 +32,16 @@ pub fn deploy_modules(
             .collect(),
     };
 
-    let deployment_result = client
+    let deployment_result: DeploymentResponse = client
         .post(&(daemon_url.to_owned() + "/deploy"))
         .json(&command)
         .send()?
         .json()?;
 
-    Ok(deployment_result)
+    match deployment_result {
+        DeploymentResponse::Ok(r) => Ok(r),
+        DeploymentResponse::Err(e) => bail!(e.message),
+    }
 }
 
 pub fn stop_module(
