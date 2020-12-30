@@ -4,6 +4,7 @@ use super::progress::WaitSpin;
 use super::request::*;
 use crate::daemon::api::ApiModuleRunStatus;
 use crate::dependency::DependencyGraph;
+use anyhow::Result;
 use chrono::Local;
 use console::{style, Emoji};
 use std::convert::TryFrom;
@@ -15,22 +16,26 @@ static HOUR_GLASS: Emoji<'_, '_> = Emoji("⏳  ", "");
 static UP_ARROW: Emoji<'_, '_> = Emoji("⬆️  ", "");
 static SUCCESS: Emoji<'_, '_> = Emoji("✅  ", "");
 
-pub fn deploy_cmd(modules_to_deploy: Vec<&str>, cli_config: &CliOptions) -> () {
+pub fn deploy_cmd(
+    modules_to_deploy: Vec<&str>,
+    cli_config: &CliOptions,
+) -> Result<()> {
     println!(
         "{} {}Looking for module definitions...",
         style("[1/4]").bold().dim(),
         LOOKING_GLASS
     );
     // TODO: Handle expect
-    let module_defs = read_module_definitions().expect("");
+    let module_defs = read_module_definitions()?;
 
     println!(
         "{} {} Resolving dependencies...",
         style("[2/4]").bold().dim(),
         UP_ARROW
     );
-    let dependency_graph = DependencyGraph::from(&module_defs, &modules_to_deploy);
-    let ordered = dependency_graph.dependency_sort().unwrap();
+    let dependency_graph =
+        DependencyGraph::from(&module_defs, &modules_to_deploy);
+    let ordered = dependency_graph.dependency_sort()?;
 
     println!("{} {}Deploying...", style("[3/4]").bold().dim(), HOUR_GLASS);
 
@@ -52,6 +57,7 @@ pub fn deploy_cmd(modules_to_deploy: Vec<&str>, cli_config: &CliOptions) -> () {
             .map(|m| m.name.clone())
             .collect::<Vec<String>>()
     );
+    Ok(())
 }
 
 pub fn stop_module_cmd(module: &str, cli_config: &CliOptions) -> () {

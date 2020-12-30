@@ -1,8 +1,9 @@
 use super::commands::{
     deploy_cmd, list_modules_cmd, print_logs, stop_module_cmd,
 };
+use anyhow::{anyhow, bail, Result};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use simple_error::SimpleError;
+use console::{style, Emoji};
 use std::env;
 
 pub struct CliOptions {
@@ -11,7 +12,7 @@ pub struct CliOptions {
     pub daemon_url: String,
 }
 
-pub fn cli_app() {
+pub fn cli_app() -> Result<()> {
     let matches = App::new("cartel")
         .version("0.1.0-alpha")
         .about("Panayiotis P. <xdrop.me@gmail.com>")
@@ -68,19 +69,22 @@ pub fn cli_app() {
         )
         .get_matches();
 
-    // TODO: Handle error
-    let cli_config = cli_config(&matches).unwrap();
-    // TODO: Handle error
-    invoke_subcommand(&matches, &cli_config);
+    let cli_config = cli_config(&matches)?;
+    invoke_subcommand(&matches, &cli_config)?;
+    Ok(())
 }
 
-fn cli_config(matches: &ArgMatches) -> Result<CliOptions, SimpleError> {
-    let pager_cmd = env::var("CARTEL_PAGER").unwrap_or("less +F".to_string());
+fn cli_config(matches: &ArgMatches) -> Result<CliOptions> {
+    let pager_cmd_str =
+        env::var("CARTEL_PAGER").unwrap_or("less +F".to_string());
     let pager_cmd: Vec<String> =
-        pager_cmd.split(" ").map(|s| s.to_string()).collect();
+        pager_cmd_str.split(" ").map(|s| s.to_string()).collect();
 
-    if pager_cmd.len() == 0 {
-        bail!("Invalid log pager");
+    if pager_cmd.len() == 0 || pager_cmd_str == "" {
+        bail!(
+            "Invalid log pager specified. \
+            Are you overriding CARTEL_PAGER?"
+        );
     }
 
     Ok(CliOptions {
@@ -91,13 +95,17 @@ fn cli_config(matches: &ArgMatches) -> Result<CliOptions, SimpleError> {
     })
 }
 
-fn invoke_subcommand(matches: &ArgMatches, cli_config: &CliOptions) -> () {
+fn invoke_subcommand(
+    matches: &ArgMatches,
+    cli_config: &CliOptions,
+) -> Result<()> {
     match matches.subcommand() {
         ("deploy", Some(deploy_cli_opts)) => {
-            // TODO: Handle unwrap
-            let modules_to_deploy =
-                deploy_cli_opts.values_of("modules").unwrap().collect();
-            deploy_cmd(modules_to_deploy, cli_config);
+            let modules_to_deploy = deploy_cli_opts
+                .values_of("modules")
+                .ok_or_else(|| anyhow!("Expected at least one module"))?
+                .collect();
+            deploy_cmd(modules_to_deploy, cli_config)?;
         }
         ("ps", Some(_)) => {
             list_modules_cmd(cli_config);
@@ -112,4 +120,5 @@ fn invoke_subcommand(matches: &ArgMatches, cli_config: &CliOptions) -> () {
         }
         _ => {}
     }
+    Ok(())
 }

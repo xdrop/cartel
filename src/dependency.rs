@@ -1,4 +1,4 @@
-use simple_error::{bail, SimpleError};
+use anyhow::{bail, Result};
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
@@ -133,7 +133,7 @@ where
     /// Sorts dependencies so that dependent modules are deployed before the
     /// modules that depend on them. The topological sort is performed using
     /// modified DFS.
-    pub fn dependency_sort(&self) -> Result<Vec<&T>, SimpleError> {
+    pub fn dependency_sort(&self) -> Result<Vec<&T>> {
         let mut sorted = Vec::new();
         let mut stack: Vec<(bool, &DependencyNode<&T>)> = Vec::new();
         let mut marked: HashMap<&DependencyNode<&T>, MarkType> = HashMap::new();

@@ -1,4 +1,5 @@
 use crate::client::module::ModuleDefinitionV1;
+use anyhow::{bail, Context, Result};
 use std::env;
 use std::error::Error;
 use std::fs::File;
@@ -16,9 +17,8 @@ use std::path::Path;
 /// one or more modules separated by '---'
 pub fn parse_from_yaml_str(
     source: &str,
-) -> Result<Vec<ModuleDefinitionV1>, Box<dyn Error>> {
+) -> Result<Vec<ModuleDefinitionV1>, serde_yaml::Error> {
     serde_yaml::from_str_multidoc(source)
-        .or_else(|err| Err(Box::new(err) as Box<dyn std::error::Error>))
 }
 
 /// Attempts to locate the config file in the given directory.
@@ -39,13 +39,15 @@ pub fn locate_config() -> Option<File> {
     None
 }
 
-pub fn read_module_definitions(
-) -> Result<Vec<ModuleDefinitionV1>, Box<dyn Error>> {
+pub fn read_module_definitions() -> Result<Vec<ModuleDefinitionV1>> {
     match locate_config() {
         Some(mut config_file) => {
             let mut buffer = String::new();
-            config_file.read_to_string(&mut buffer)?;
-            let module_defs = parse_from_yaml_str(&buffer)?;
+            config_file
+                .read_to_string(&mut buffer)
+                .with_context(|| "While reading config file")?;
+            let module_defs = parse_from_yaml_str(&buffer)
+                .with_context(|| "Failed to read module definitions")?;
             Ok(module_defs)
         }
         None => bail!("Failed to find config file"),

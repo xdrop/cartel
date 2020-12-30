@@ -29,7 +29,6 @@ serde_yaml = { git = "https://github.com/semtexzv/serde-yaml", branch = "multido
 clap = "2.33.3"
 colored = "2"
 reqwest = { version = "0.10", features = ["blocking", "json"] }
-simple-error = "0.2.2"
 anyhow = "1.0"
 thiserror = "1.0"
 indicatif = "0.15.0"

@@ -1,3 +1,5 @@
+#[macro_use]
+pub mod terminal;
 pub mod cli;
 pub mod commands;
 pub mod config;
