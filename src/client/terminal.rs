@@ -21,3 +21,22 @@ macro_rules! texit {
         std::process::exit(1);
     }};
 }
+
+macro_rules! tprintstep {
+    ($message:expr,$step:expr,$of:expr,$emoji:expr) => {
+        tprint!(
+            "{} {} {}",
+            console::style(concat!(
+                "[",
+                stringify!($step),
+                "/",
+                stringify!($of),
+                "]"
+            ))
+            .bold()
+            .dim(),
+            $emoji,
+            $message
+        )
+    };
+}

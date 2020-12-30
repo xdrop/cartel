@@ -1,5 +1,6 @@
 use super::cli::CliOptions;
 use super::config::read_module_definitions;
+use super::module::module_names_set;
 use super::progress::WaitSpin;
 use super::request::*;
 use crate::daemon::api::ApiModuleRunStatus;
@@ -7,26 +8,24 @@ use crate::dependency::DependencyGraph;
 use anyhow::Result;
 use chrono::Local;
 use console::{style, Emoji};
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::process::Command;
 use std::time::Duration;
 
-static LOOKING_GLASS: Emoji<'_, '_> = Emoji("🔍  ", "");
-static HOUR_GLASS: Emoji<'_, '_> = Emoji("⏳  ", "");
+static LOOKING_GLASS: Emoji<'_, '_> = Emoji("🔍 ", "");
+static HOUR_GLASS: Emoji<'_, '_> = Emoji("⏳ ", "");
 static UP_ARROW: Emoji<'_, '_> = Emoji("⬆️  ", "");
-static SUCCESS: Emoji<'_, '_> = Emoji("✅  ", "");
+static SUCCESS: Emoji<'_, '_> = Emoji("✅ ", "");
 
 pub fn deploy_cmd(
     modules_to_deploy: Vec<&str>,
     cli_config: &CliOptions,
 ) -> Result<()> {
-    println!(
-        "{} {}Looking for module definitions...",
-        style("[1/4]").bold().dim(),
-        LOOKING_GLASS
-    );
+    tprintstep!("Looking for module definitions...", 1, 4, LOOKING_GLASS);
     // TODO: Handle expect
     let module_defs = read_module_definitions()?;
+    let module_names = module_names_set(&module_defs);
 
     println!(
         "{} {} Resolving dependencies...",
@@ -37,7 +36,7 @@ pub fn deploy_cmd(
         DependencyGraph::from(&module_defs, &modules_to_deploy);
     let ordered = dependency_graph.dependency_sort()?;
 
-    println!("{} {}Deploying...", style("[3/4]").bold().dim(), HOUR_GLASS);
+    tprintstep!("Deploying...", 3, 4, HOUR_GLASS);
 
     &ordered.iter().for_each(|m| {
         let mut ws = WaitSpin::new();
@@ -47,34 +46,20 @@ pub fn deploy_cmd(
         ws.stop();
     });
 
-    println!(
-        "{} {}{}: {:?}",
-        style("[4/4]").bold().dim(),
-        SUCCESS,
+    let deploy_txt = format!(
+        "{}: {:?}",
         style("Deployed modules").bold().green(),
-        &ordered
-            .iter()
-            .map(|m| m.name.clone())
-            .collect::<Vec<String>>()
+        module_names
     );
+    tprintstep!(deploy_txt, 4, 4, SUCCESS);
     Ok(())
 }
 
 pub fn stop_module_cmd(module: &str, cli_config: &CliOptions) -> () {
-    println!(
-        "{} {}Stopping module...",
-        style("[1/2]").bold().dim(),
-        HOUR_GLASS
-    );
+    #[rustfmt::skip]
+    tprintstep!(format!("Stopping service '{}'...", module), 1, 2, HOUR_GLASS);
     stop_module(module, &cli_config.daemon_url);
-
-    println!(
-        "{} {}{}: {:?}",
-        style("[2/2]").bold().dim(),
-        SUCCESS,
-        style("Module stopped").bold().green(),
-        &module
-    );
+    tprintstep!(style("Service stopped").bold().green(), 2, 2, SUCCESS);
 }
 
 pub fn list_modules_cmd(cli_config: &CliOptions) -> () {

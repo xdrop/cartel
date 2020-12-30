@@ -1,6 +1,6 @@
 use crate::dependency::WithDependencies;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
 /// The type of the module
@@ -71,4 +71,12 @@ impl WithDependencies for ModuleDefinitionV1 {
     fn dependencies(&self) -> &Vec<String> {
         &self.dependencies
     }
+}
+
+pub fn module_names(modules: &Vec<ModuleDefinitionV1>) -> Vec<&str> {
+    modules.iter().map(|m| m.name.as_str()).collect()
+}
+
+pub fn module_names_set(modules: &Vec<ModuleDefinitionV1>) -> HashSet<&str> {
+    modules.iter().map(|m| m.name.as_str()).collect()
 }
