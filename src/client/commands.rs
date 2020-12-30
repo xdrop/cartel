@@ -48,7 +48,7 @@ pub fn deploy_cmd(
     let deploy_txt = format!(
         "{}: {:?}",
         style("Deployed modules").bold().green(),
-        module_names
+        &modules_to_deploy
     );
     tprintstep!(deploy_txt, 4, 4, SUCCESS);
     Ok(())
