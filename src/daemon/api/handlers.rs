@@ -14,6 +14,7 @@ pub struct ApiModuleDefinition {
     pub environment: HashMap<String, String>,
     pub log_file_path: Option<String>,
     pub dependencies: Vec<String>,
+    pub working_dir: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

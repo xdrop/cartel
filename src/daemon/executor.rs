@@ -179,13 +179,20 @@ impl Executor {
         stdout: File,
         stderr: File,
         env: &HashMap<String, String>,
+        work_dir: Option<&Path>,
     ) -> Result<Child> {
-        Command::new(command)
-            .args(args)
+        let mut cmd = Command::new(command);
+
+        cmd.args(args)
             .stdout(Stdio::from(stdout))
             .stderr(Stdio::from(stderr))
-            .envs(env)
-            .spawn()
+            .envs(env);
+
+        if let Some(path) = work_dir {
+            cmd.current_dir(path);
+        }
+
+        cmd.spawn()
             .with_context(|| format!("Unable to start process '{}'", command))
     }
 
@@ -217,6 +224,7 @@ impl Executor {
             stdout_file,
             stderr_file,
             &module.environment,
+            module.working_dir.as_ref().map(|p| p.as_path()),
         )?;
 
         module_entry.status = RunStatus::RUNNING;

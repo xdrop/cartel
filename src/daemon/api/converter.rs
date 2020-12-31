@@ -1,6 +1,8 @@
 use super::super::executor::RunStatus;
 use super::super::module::ModuleDefinition;
 use super::handlers::{ApiModuleDefinition, ApiModuleRunStatus};
+use anyhow::Result;
+use std::path::PathBuf;
 
 pub fn to_mod_def(src: ApiModuleDefinition) -> ModuleDefinition {
     ModuleDefinition::new(
@@ -9,6 +11,7 @@ pub fn to_mod_def(src: ApiModuleDefinition) -> ModuleDefinition {
         src.environment,
         src.log_file_path,
         src.dependencies,
+        src.working_dir.map(|dir| PathBuf::from(dir)),
     )
 }
 

@@ -28,6 +28,7 @@ pub fn deploy_modules(
                 environment: m.environment.clone(),
                 log_file_path: m.log_file_path.clone(),
                 dependencies: m.dependencies.clone(),
+                working_dir: m.working_dir.clone(),
             })
             .collect(),
     };

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct ModuleDefinition {
@@ -8,6 +9,7 @@ pub struct ModuleDefinition {
     pub environment: HashMap<String, String>,
     pub log_file_path: Option<String>,
     pub dependencies: Vec<String>,
+    pub working_dir: Option<PathBuf>,
 }
 
 impl Hash for ModuleDefinition {
@@ -29,6 +31,7 @@ impl ModuleDefinition {
         environment: HashMap<String, String>,
         log_file_path: Option<String>,
         dependencies: Vec<String>,
+        working_dir: Option<PathBuf>,
     ) -> ModuleDefinition {
         ModuleDefinition {
             name,
@@ -36,6 +39,7 @@ impl ModuleDefinition {
             environment,
             log_file_path,
             dependencies,
+            working_dir,
         }
     }
 }

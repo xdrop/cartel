@@ -23,6 +23,7 @@ pub struct ModuleDefinitionV1 {
     pub environment: HashMap<String, String>,
     pub log_file_path: Option<String>,
     pub dependencies: Vec<String>,
+    pub working_dir: Option<String>,
 }
 
 impl ModuleDefinitionV1 {
@@ -33,6 +34,7 @@ impl ModuleDefinitionV1 {
         environment: HashMap<String, String>,
         log_file_path: Option<String>,
         dependencies: Vec<String>,
+        working_dir: Option<String>,
     ) -> ModuleDefinitionV1 {
         ModuleDefinitionV1 {
             kind,
@@ -41,6 +43,7 @@ impl ModuleDefinitionV1 {
             environment,
             log_file_path,
             dependencies,
+            working_dir,
         }
     }
 }
