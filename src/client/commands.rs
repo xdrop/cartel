@@ -36,8 +36,8 @@ pub fn deploy_cmd(
     let ordered = dependency_graph.dependency_sort()?;
     tprintstep!("Deploying...", 3, 4, HOUR_GLASS);
 
-    for m in ordered {
-        let spin_opt = SpinnerOptions::new(format!("Deploying {}...", m.name))
+    for m in &ordered {
+        let spin_opt = SpinnerOptions::new(format!("Deploying {}", m.name))
             .step(3, 4)
             .clear_on_finish(true);
 
@@ -54,7 +54,7 @@ pub fn deploy_cmd(
 
         tiprint!(
             10, // indent level
-            "Deploying {}... {}",
+            "Deploying {} {}",
             m.name,
             deploy_status
         );
@@ -63,7 +63,7 @@ pub fn deploy_cmd(
     let deploy_txt = format!(
         "{}: {:?}",
         style("Deployed modules").bold().green(),
-        &modules_to_deploy
+        &ordered.iter().map(|m| &m.name).collect::<Vec<_>>()
     );
     tprintstep!(deploy_txt, 4, 4, SUCCESS);
     Ok(())
