@@ -30,13 +30,13 @@ pub struct ApiOperationCommand {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiOperationResponse {
-    success: bool,
+    pub success: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiDeploymentResponse {
-    success: bool,
-    deployed: HashMap<String, bool>,
+    pub success: bool,
+    pub deployed: HashMap<String, bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

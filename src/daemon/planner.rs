@@ -48,7 +48,9 @@ impl Planner {
                     Ok(false)
                 }
             }
-            None => self.executor.run_module(Arc::new(module_def)).map(|_| true),
+            None => {
+                self.executor.run_module(Arc::new(module_def)).map(|_| true)
+            }
         }
     }
 
@@ -67,8 +69,9 @@ impl Planner {
     ) -> Result<HashMap<String, bool>> {
         Self::deployment_set(module_defs, selection)?
             .map(|module_def| {
+                let name = module_def.name.clone();
                 let result = self.deploy(module_def)?;
-                Ok((module_def.name.clone(), result))
+                Ok((name, result))
             })
             .collect()
     }

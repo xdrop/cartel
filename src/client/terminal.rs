@@ -1,9 +1,14 @@
 #[macro_export]
 macro_rules! tprint {
-    ( $( $x:expr ),* ) => {
-            println!($(
-                $x,
-            )*);
+    ( $( $arg:tt)* ) => {
+            println!($($arg)*);
+    };
+}
+
+#[macro_export]
+macro_rules! tiprint {
+    ( $indent:expr, $( $arg:tt)* ) => {
+            println!(concat!("{:>", stringify!($indent),"}{}"), "", format!($($arg)*));
     };
 }
 

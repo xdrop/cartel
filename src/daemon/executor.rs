@@ -149,7 +149,7 @@ impl Executor {
     pub fn redeploy_module(
         &mut self,
         module: Arc<ModuleDefinition>,
-    ) -> Result<bool> {
+    ) -> Result<()> {
         info!("Redeploying module: {}", module.name);
         self.stop_module(&module.name)?;
         self.run_module(module)
@@ -165,9 +165,7 @@ impl Executor {
                 module.status = RunStatus::STOPPED;
                 module.exit_time = epoch_now();
                 // Kill child process
-                child
-                    .kill()
-                    .with_context(|| format!("Failed to kill child"))?;
+                child.kill().ok();
                 // Wait for exit
                 child.wait().ok();
             }

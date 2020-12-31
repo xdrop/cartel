@@ -1,7 +1,7 @@
 use super::cli::CliOptions;
 use super::config::read_module_definitions;
 use super::module::module_names_set;
-use super::progress::WaitUntil;
+use super::progress::{SpinnerOptions, WaitUntil};
 use super::request::*;
 use super::validation::validate_modules_selected;
 use crate::daemon::api::{ApiDeploymentResponse, ApiModuleRunStatus};
@@ -37,10 +37,27 @@ pub fn deploy_cmd(
     tprintstep!("Deploying...", 3, 4, HOUR_GLASS);
 
     for m in ordered {
-        let mut wu = WaitUntil::new(3, 4, format!("  Deploying: {}", m.name));
-        wu.spin_until(|| {
+        let spin_opt = SpinnerOptions::new(format!("Deploying {}...", m.name))
+            .step(3, 4)
+            .clear_on_finish(true);
+
+        let mut wu = WaitUntil::new(&spin_opt);
+        let deploy_result = wu.spin_until(|| {
             deploy_modules(&vec![&m.name], &module_defs, &cli_config.daemon_url)
         })?;
+
+        let deploy_status = if deploy_result.deployed[&m.name] {
+            style("(Deployed)").black().dim().bold()
+        } else {
+            style("(Already deployed)").black().dim().bold()
+        };
+
+        tiprint!(
+            10, // indent level
+            "Deploying {}... {}",
+            m.name,
+            deploy_status
+        );
     }
 
     let deploy_txt = format!(
