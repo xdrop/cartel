@@ -193,15 +193,12 @@ impl Executor {
 
     /// Executes a service module, and registers its state.
     ///
-    /// The service is expected to be a long-running process. This function will
-    /// true if it doesn't error.
+    /// The service is expected to be a long-running process and is run as a
+    /// child of the daemon.
     ///
     /// # Arguments
     /// * `module` - The module definition of the service
-    pub fn run_module(
-        &mut self,
-        module: Arc<ModuleDefinition>,
-    ) -> Result<bool> {
+    pub fn run_module(&mut self, module: Arc<ModuleDefinition>) -> Result<()> {
         info!("Executing module: {}", module.name);
 
         let log_file_pathbuf = Self::get_log_file_path(&module)?;
@@ -234,6 +231,6 @@ impl Executor {
             module_entry.pid, module_entry.module_definition.name
         );
 
-        Ok(true)
+        Ok(())
     }
 }

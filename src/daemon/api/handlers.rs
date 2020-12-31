@@ -36,6 +36,7 @@ pub struct ApiOperationResponse {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiDeploymentResponse {
     success: bool,
+    deployed: HashMap<String, bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -85,12 +86,15 @@ pub fn deploy(
 
     let selection = module_inner.to_deploy;
 
-    core_state
+    let deployed = core_state
         .core
         .planner()
         .deploy_many(module_defs, &selection)?;
 
-    return Ok(Json(ApiDeploymentResponse { success: true }));
+    return Ok(Json(ApiDeploymentResponse {
+        success: true,
+        deployed,
+    }));
 }
 
 #[post("/api/v1/operation", data = "<module>")]

@@ -2,7 +2,7 @@ use super::error::DaemonError;
 use super::executor::{Executor, ModuleStatus, RunStatus};
 use super::module::ModuleDefinition;
 use anyhow::{bail, Context, Result};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::ffi::OsStr;
 use std::iter::FromIterator;
@@ -42,20 +42,21 @@ impl Planner {
         match existing {
             Some(module_status) => {
                 if Self::should_restart(&module_def, module_status) {
-                    self.executor.redeploy_module(Arc::new(module_def))
+                    self.executor.redeploy_module(Arc::new(module_def))?;
+                    Ok(true)
                 } else {
                     Ok(false)
                 }
             }
-            None => self.executor.run_module(Arc::new(module_def)),
+            None => self.executor.run_module(Arc::new(module_def)).map(|_| true),
         }
     }
 
     /// Deploys one or more modules (modules already in the correct state do not
     /// get affected).
     ///
-    /// Returns true if the module was deployed, and false if the module was
-    /// already in the correct state.
+    /// Returns a map containing whether each the module was deployed, and false
+    /// if the module was already in the correct state..
     ///
     /// # Arguments
     /// * `module_def` - The module definition of the module
@@ -63,11 +64,13 @@ impl Planner {
         &mut self,
         module_defs: Vec<ModuleDefinition>,
         selection: &Vec<String>,
-    ) -> Result<()> {
-        for module_def in Self::deployment_set(module_defs, selection)? {
-            self.deploy(module_def)?;
-        }
-        Ok(())
+    ) -> Result<HashMap<String, bool>> {
+        Self::deployment_set(module_defs, selection)?
+            .map(|module_def| {
+                let result = self.deploy(module_def)?;
+                Ok((module_def.name.clone(), result))
+            })
+            .collect()
     }
 
     // TODO: Rewrite executor implementation. Should not currently be used
