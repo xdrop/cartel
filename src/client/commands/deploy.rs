@@ -38,9 +38,9 @@ pub fn deploy_cmd(
         })?;
 
         let deploy_status = if deploy_result.deployed[&m.name] {
-            style("(Deployed)").black().dim().bold()
+            style("(Deployed)").white().dim().bold()
         } else {
-            style("(Already deployed)").black().dim().bold()
+            style("(Already deployed)").white().dim().bold()
         };
 
         tiprint!(
