@@ -3,8 +3,8 @@ use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
-/// The type of the module
-#[derive(Debug, Deserialize)]
+/// The type of the module.
+#[derive(Debug, Deserialize, Clone)]
 pub enum ModuleKindV1 {
     /// A task is a module with a limited lifetime, used to perform some
     /// temporary operation or some setup.

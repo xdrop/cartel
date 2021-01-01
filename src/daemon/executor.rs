@@ -57,14 +57,6 @@ impl ModuleStatus {
     }
 }
 
-impl PartialEq for ModuleStatus {
-    fn eq(&self, other: &Self) -> bool {
-        self.module_definition == other.module_definition
-            && self.status == other.status
-            && self.log_file_path == other.log_file_path
-    }
-}
-
 impl Executor {
     pub fn new() -> Executor {
         Executor {
@@ -72,25 +64,7 @@ impl Executor {
         }
     }
 
-    fn get_log_file_path(
-        module: &ModuleDefinition,
-    ) -> Result<std::path::PathBuf> {
-        match &module.log_file_path {
-            Some(m) => PathBuf::from_str(&m)
-                .with_context(|| format!("Invalid custom log path received")),
-            _ => Ok(log_file_path(&module.name)),
-        }
-    }
-
-    fn prepare_log_files(log_file_path: &Path) -> Result<(File, File)> {
-        let stdout_file = File::create(log_file_path)
-            .with_context(|| "Failed to create log file")?;
-        let stderr_file = stdout_file
-            .try_clone()
-            .with_context(|| "Failed to create log file")?;
-        Ok((stdout_file, stderr_file))
-    }
-
+    /// Returns the status of module by name.
     pub fn module_status_by_name(
         &self,
         name: &String,
@@ -101,21 +75,6 @@ impl Executor {
     /// Returns an iterator to module statuses.
     pub fn modules(&self) -> impl Iterator<Item = &ModuleStatus> {
         self.module_map.values()
-    }
-
-    fn running_modules(&self) -> impl Iterator<Item = &ModuleStatus> {
-        self.module_map
-            .values()
-            .into_iter()
-            .filter(|m| m.status == RunStatus::RUNNING)
-    }
-
-    fn running_modules_mut(
-        &mut self,
-    ) -> impl Iterator<Item = &mut ModuleStatus> {
-        self.module_map
-            .values_mut()
-            .filter(|m| m.status == RunStatus::RUNNING)
     }
 
     /// Attempt to collect any dead processes.
@@ -173,29 +132,6 @@ impl Executor {
         Ok(())
     }
 
-    fn spawn_child(
-        command: &str,
-        args: &[String],
-        stdout: File,
-        stderr: File,
-        env: &HashMap<String, String>,
-        work_dir: Option<&Path>,
-    ) -> Result<Child> {
-        let mut cmd = Command::new(command);
-
-        cmd.args(args)
-            .stdout(Stdio::from(stdout))
-            .stderr(Stdio::from(stderr))
-            .envs(env);
-
-        if let Some(path) = work_dir {
-            cmd.current_dir(path);
-        }
-
-        cmd.spawn()
-            .with_context(|| format!("Unable to start process '{}'", command))
-    }
-
     /// Executes a service module, and registers its state.
     ///
     /// The service is expected to be a long-running process and is run as a
@@ -239,5 +175,112 @@ impl Executor {
         );
 
         Ok(())
+    }
+}
+
+impl Executor {
+    fn running_modules(&self) -> impl Iterator<Item = &ModuleStatus> {
+        self.module_map
+            .values()
+            .into_iter()
+            .filter(|m| m.status == RunStatus::RUNNING)
+    }
+
+    fn running_modules_mut(
+        &mut self,
+    ) -> impl Iterator<Item = &mut ModuleStatus> {
+        self.module_map
+            .values_mut()
+            .filter(|m| m.status == RunStatus::RUNNING)
+    }
+
+    pub(super) fn spawn_child(
+        command: &str,
+        args: &[String],
+        stdout: File,
+        stderr: File,
+        env: &HashMap<String, String>,
+        work_dir: Option<&Path>,
+    ) -> Result<Child> {
+        let mut cmd = Command::new(command);
+
+        cmd.args(args)
+            .stdout(Stdio::from(stdout))
+            .stderr(Stdio::from(stderr))
+            .envs(env);
+
+        if let Some(path) = work_dir {
+            cmd.current_dir(path);
+        }
+
+        cmd.spawn()
+            .with_context(|| format!("Unable to start process '{}'", command))
+    }
+
+    pub(super) fn get_log_file_path(
+        module: &ModuleDefinition,
+    ) -> Result<std::path::PathBuf> {
+        match &module.log_file_path {
+            Some(m) => PathBuf::from_str(&m)
+                .with_context(|| format!("Invalid custom log path received")),
+            _ => Ok(log_file_path(&module.name, &module.kind)),
+        }
+    }
+
+    pub(super) fn prepare_log_files(
+        log_file_path: &Path,
+    ) -> Result<(File, File)> {
+        let stdout_file = File::create(log_file_path)
+            .with_context(|| "Failed to create log file")?;
+        let stderr_file = stdout_file
+            .try_clone()
+            .with_context(|| "Failed to create log file")?;
+        Ok((stdout_file, stderr_file))
+    }
+}
+
+pub mod task_executor {
+    use super::Executor;
+    use crate::daemon::error::DaemonError;
+    use crate::daemon::module::{ModuleDefinition, ModuleKind};
+    use anyhow::{Context, Result};
+    use std::process::ExitStatus;
+
+    /// Executes a task and waits for it until it is finished.
+    ///
+    /// The task will block the current thread, and report its exit status on
+    /// completion. If the task exits with any code other than zero then an
+    /// Error is thrown.
+    pub fn execute_task(
+        task_definition: &ModuleDefinition,
+    ) -> Result<ExitStatus> {
+        assert!(task_definition.kind == ModuleKind::Task);
+        let log_file_pathbuf = Executor::get_log_file_path(&task_definition)?;
+        let log_file_path = log_file_pathbuf.as_path();
+
+        let (stdout_file, stderr_file) =
+            Executor::prepare_log_files(log_file_path)?;
+        let mut child = Executor::spawn_child(
+            &task_definition.command[0],
+            &task_definition.command[1..],
+            stdout_file,
+            stderr_file,
+            &task_definition.environment,
+            task_definition.working_dir.as_ref().map(|p| p.as_path()),
+        )?;
+
+        let exit_status = child.wait().with_context(|| {
+            format!("Task {} failed to execute", task_definition.name)
+        })?;
+
+        if !exit_status.success() {
+            return Err(DaemonError::TaskFailed {
+                task_name: task_definition.name.clone(),
+                code: exit_status.code().unwrap_or(-1),
+                log_file: log_file_path.as_os_str().to_os_string(),
+            }
+            .into());
+        }
+        Ok(exit_status)
     }
 }

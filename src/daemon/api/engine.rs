@@ -16,6 +16,7 @@ pub fn start(core: &Arc<Core>) {
             routes![
                 handlers::index,
                 handlers::deploy,
+                handlers::deploy_task,
                 handlers::status,
                 handlers::module_operation,
                 handlers::log

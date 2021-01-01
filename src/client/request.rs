@@ -1,6 +1,7 @@
-use super::super::daemon::api::*;
-use super::cli::CliOptions;
-use super::module::ModuleDefinitionV1;
+use crate::client::cli::CliOptions;
+use crate::client::conversions;
+use crate::client::module::ModuleDefinitionV1;
+use crate::daemon::api::*;
 use anyhow::{bail, Result};
 use reqwest;
 use serde::{Deserialize, Serialize};

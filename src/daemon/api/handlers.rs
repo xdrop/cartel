@@ -1,6 +1,8 @@
 use crate::daemon::api::converter::*;
 use crate::daemon::api::engine::CoreState;
 use crate::daemon::api::error::*;
+use crate::daemon::module::ModuleKind;
+use crate::daemon::planner::Planner;
 use rocket::State;
 use rocket_contrib::json::Json;
 use serde::{Deserialize, Serialize};
@@ -21,6 +23,16 @@ pub struct ApiModuleDefinition {
 pub struct ApiDeploymentCommand {
     pub to_deploy: Vec<String>,
     pub module_definitions: Vec<ApiModuleDefinition>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ApiTaskDeploymentCommand {
+    pub task_definition: ApiModuleDefinition,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ApiTaskDeploymentResponse {
+    pub success: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -59,6 +71,12 @@ pub enum ApiModuleOperation {
     RESTART,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ApiKind {
+    Task,
+    Service,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiModuleStatus {
     pub name: String,
@@ -82,7 +100,7 @@ pub fn deploy(
     let module_defs = module_inner
         .module_definitions
         .into_iter()
-        .map(to_mod_def)
+        .map(from_service)
         .collect();
 
     let selection = module_inner.to_deploy;
@@ -98,13 +116,24 @@ pub fn deploy(
     }));
 }
 
+#[post("/api/v1/tasks/deploy", data = "<task>")]
+pub fn deploy_task(
+    task: Json<ApiTaskDeploymentCommand>,
+    core_state: State<CoreState>,
+) -> ApiResult<ApiTaskDeploymentResponse> {
+    let cmd = task.into_inner();
+    let task = cmd.task_definition;
+    let result = Planner::deploy_task(&from_task(task))?;
+    Ok(Json(ApiTaskDeploymentResponse { success: true }))
+}
+
 #[post("/api/v1/operation", data = "<module>")]
 pub fn module_operation(
     module: Json<ApiOperationCommand>,
     core_state: State<CoreState>,
 ) -> ApiResult<ApiOperationResponse> {
     let module = module.into_inner();
-    let mut planner = core_state.core.planner();
+    let planner = core_state.core.planner();
 
     match module.operation {
         ApiModuleOperation::STOP => {
@@ -141,11 +170,7 @@ pub fn log(
     module_name: String,
     core_state: State<CoreState>,
 ) -> ApiResult<ApiLogResponse> {
-    let log_file_path = core_state
-        .core
-        .planner()
-        .log_path(&module_name)?
-        .to_os_string();
+    let log_file_path = core_state.core.planner().log_path(&module_name)?;
 
     Ok(Json(ApiLogResponse {
         log_file_path: log_file_path,

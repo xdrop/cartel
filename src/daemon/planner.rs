@@ -1,15 +1,16 @@
 use super::error::DaemonError;
-use super::executor::{Executor, ModuleStatus, RunStatus};
+use super::executor::{Executor, ModuleStatus, RunStatus, task_executor};
 use super::module::ModuleDefinition;
 use anyhow::{bail, Context, Result};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
-use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::iter::FromIterator;
-use std::sync::Arc;
+use std::process::ExitStatus;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 pub struct Planner {
-    executor: Executor,
+    executor: Mutex<Executor>,
 }
 
 pub struct PsStatus {
@@ -23,7 +24,7 @@ pub struct PsStatus {
 impl Planner {
     pub fn new() -> Planner {
         Planner {
-            executor: Executor::new(),
+            executor: Mutex::new(Executor::new()),
         }
     }
 
@@ -35,22 +36,20 @@ impl Planner {
     ///
     /// # Arguments
     /// * `module_def` - The module definition of the module
-    pub fn deploy(&mut self, module_def: ModuleDefinition) -> Result<bool> {
-        self.executor.collect();
-        let existing = self.executor.module_status_by_name(&module_def.name);
+    pub fn deploy(&self, module_def: ModuleDefinition) -> Result<bool> {
+        let mut executor = self.executor();
+        let existing = executor.module_status_by_name(&module_def.name);
 
         match existing {
             Some(module_status) => {
                 if Self::should_restart(&module_def, module_status) {
-                    self.executor.redeploy_module(Arc::new(module_def))?;
+                    executor.redeploy_module(Arc::new(module_def))?;
                     Ok(true)
                 } else {
                     Ok(false)
                 }
             }
-            None => {
-                self.executor.run_module(Arc::new(module_def)).map(|_| true)
-            }
+            None => executor.run_module(Arc::new(module_def)).map(|_| true),
         }
     }
 
@@ -63,7 +62,7 @@ impl Planner {
     /// # Arguments
     /// * `module_def` - The module definition of the module
     pub fn deploy_many(
-        &mut self,
+        &self,
         module_defs: Vec<ModuleDefinition>,
         selection: &Vec<String>,
     ) -> Result<HashMap<String, bool>> {
@@ -76,25 +75,31 @@ impl Planner {
             .collect()
     }
 
+    pub fn deploy_task(task_definition: &ModuleDefinition) -> Result<i32> {
+        task_executor::execute_task(task_definition)
+            .map(|exit_status| exit_status.code().unwrap_or(-1))
+    }
+
     // TODO: Rewrite executor implementation. Should not currently be used
-    pub fn _restart(&mut self, mod_name: &String) -> () {}
+    pub fn _restart(&self, mod_name: &String) -> () {}
 
     /// Stops a running module.
-    pub fn stop_module(&mut self, mod_name: &String) -> Result<()> {
-        self.executor.stop_module(mod_name)
+    pub fn stop_module(&self, mod_name: &String) -> Result<()> {
+        self.executor().stop_module(mod_name)
     }
 
     /// Returns the log path of a running module.
-    pub fn log_path(&self, mod_name: &String) -> Result<&OsStr> {
-        self.executor
+    pub fn log_path(&self, mod_name: &String) -> Result<OsString> {
+        let executor = self.executor();
+        executor
             .module_status_by_name(mod_name)
             .ok_or_else(|| DaemonError::NotFound(mod_name.clone()).into())
-            .map(|m| &m.log_file_path[..])
+            .map(|m| m.log_file_path.clone())
     }
 
     /// Returns a summarized version of each modules status.
     pub fn module_status(&self) -> Vec<PsStatus> {
-        self.executor
+        self.executor()
             .modules()
             .map(|m| PsStatus {
                 name: m.module_definition.name.clone(),
@@ -115,12 +120,16 @@ impl Planner {
     ///
     /// Typically called on SIGCHLD, or via a periodic poll on systems that
     /// don't support it.
-    pub fn collect_dead(&mut self) -> () {
-        self.executor.collect()
+    pub fn collect_dead(&self) -> () {
+        self.executor().collect()
     }
 }
 
 impl Planner {
+    fn executor(&self) -> MutexGuard<Executor> {
+        self.executor.lock().expect("Poisoned lock")
+    }
+
     fn should_restart(
         module_def: &ModuleDefinition,
         module_status: &ModuleStatus,
