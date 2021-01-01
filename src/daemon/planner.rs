@@ -128,7 +128,11 @@ impl Planner {
         if module_status.status != RunStatus::RUNNING {
             return true;
         }
-        return module_status.module_definition.as_ref() != module_def;
+        let current = module_status.module_definition.as_ref();
+        return current.command != module_def.command
+            || current.environment != module_def.environment
+            || current.log_file_path != module_def.log_file_path
+            || current.working_dir != module_def.working_dir;
     }
 
     fn deployment_set(

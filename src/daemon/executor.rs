@@ -231,6 +231,7 @@ impl Executor {
         module_entry.pid = child.id();
         module_entry.child = Option::Some(child);
         module_entry.uptime = epoch_now();
+        module_entry.module_definition = Arc::clone(&module);
 
         info!(
             "Process ({}) started, for module {}",

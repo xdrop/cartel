@@ -20,13 +20,19 @@ pub fn list_modules_cmd(cli_config: &CliOptions) -> () {
             let time_formatter = timeago::Formatter::new();
             let now = u64::try_from(Local::now().timestamp()).unwrap();
             let dur = Duration::new(now - mod_status.time_since_status, 0);
+            let formatted_time =
+                if mod_status.status == ApiModuleRunStatus::WAITING {
+                    String::from("N/A")
+                } else {
+                    time_formatter.convert(dur)
+                };
 
             println!(
                 "{:<8}{:<12}{:<12}{:<8}",
                 mod_status.pid,
                 mod_status.name,
                 formatted_status,
-                time_formatter.convert(dur)
+                formatted_time
             );
         })
     }

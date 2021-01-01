@@ -45,7 +45,7 @@ pub struct ApiModuleStatusResponse {
     pub status: Vec<ApiModuleStatus>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ApiModuleRunStatus {
     RUNNING,
     WAITING,
