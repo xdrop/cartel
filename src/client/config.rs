@@ -31,6 +31,7 @@ pub fn locate_config() -> Option<File> {
         env::current_dir().expect("Failed to get current working directory");
     let path_to_try = cwd.join(Path::new("./cartel.yaml"));
     let config_file = path_to_try.as_path();
+
     if config_file.exists() {
         return Some(
             File::open(config_file)

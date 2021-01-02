@@ -20,13 +20,16 @@ pub fn run_task_cmd(task_name: &str, cli_config: &CliOptions) -> Result<()> {
         .working_dir
         .as_ref()
         .map(|d| PathBuf::from(d));
+
     let mut cmd = Command::new(&task_definition.command[0]);
 
     cmd.args(&task_definition.command[1..])
         .envs(&task_definition.environment);
+
     if let Some(path) = working_dir {
         cmd.current_dir(path);
     }
+
     let mut task = cmd
         .spawn()
         .with_context(|| format!("Unable to run task '{}'", task_name))?

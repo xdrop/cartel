@@ -11,7 +11,6 @@ use std::fs::File;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
-use std::str::FromStr;
 use std::sync::Arc;
 
 pub struct Executor {
@@ -221,8 +220,7 @@ impl Executor {
         module: &ModuleDefinition,
     ) -> Result<std::path::PathBuf> {
         match &module.log_file_path {
-            Some(m) => PathBuf::from_str(&m)
-                .with_context(|| format!("Invalid custom log path received")),
+            Some(m) => Ok(PathBuf::from(&m)),
             _ => Ok(log_file_path(&module.name, &module.kind)),
         }
     }
@@ -260,6 +258,7 @@ pub mod task_executor {
 
         let (stdout_file, stderr_file) =
             Executor::prepare_log_files(log_file_path)?;
+
         let mut child = Executor::spawn_child(
             &task_definition.command[0],
             &task_definition.command[1..],
