@@ -1,4 +1,5 @@
 use crate::thread_control::{make_pair, Control, Flag};
+use console::Term;
 use indicatif::{ProgressBar, ProgressStyle};
 
 #[derive(Clone)]
@@ -161,14 +162,17 @@ impl<'a> WaitUntil<'a> {
     ///     std::thread::sleep(5000);
     /// });
     /// ```
-    pub fn spin_until<F, R>(&mut self, f: F) -> R
+    pub fn spin_until<F, T, E>(&mut self, f: F) -> Result<T, E>
     where
-        F: FnOnce() -> R,
+        F: FnOnce() -> Result<T, E>,
     {
         let mut ws = WaitSpin::new(self.options);
         ws.start();
         let fn_res = f();
         ws.stop();
+        if fn_res.is_ok() {
+            Term::stdout().clear_last_lines(1).unwrap();
+        }
         fn_res
     }
 }

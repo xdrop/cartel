@@ -52,7 +52,7 @@ fn deploy_service(
     cli_config: &CliOptions,
 ) -> Result<()> {
     let spin_opt = SpinnerOptions::new(format!("Deploying {}", module.name))
-        .clear_on_finish(true);
+        .clear_on_finish(false);
 
     let mut wu = WaitUntil::new(&spin_opt);
     let deploy_result = wu.spin_until(|| {
@@ -83,7 +83,7 @@ fn deploy_task(
     cli_config: &CliOptions,
 ) -> Result<()> {
     let spin_opt = SpinnerOptions::new(format!("Running task {}", module.name))
-        .clear_on_finish(true);
+        .clear_on_finish(false);
 
     let mut wu = WaitUntil::new(&spin_opt);
     let deploy_result =
