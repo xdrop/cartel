@@ -33,7 +33,7 @@ pub fn cli_app() -> Result<()> {
         )
         .subcommand(
             SubCommand::with_name("deploy")
-                .about("Deploys a service (and it's dependencies)")
+                .about("Deploys a module (and it's dependencies)")
                 .arg(
                     Arg::with_name("modules")
                         .help("Modules to deploy")
