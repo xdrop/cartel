@@ -84,7 +84,7 @@ pub fn cli_app() -> Result<()> {
 
 fn cli_config(matches: &ArgMatches) -> Result<CliOptions> {
     let pager_cmd_str =
-        env::var("CARTEL_PAGER").unwrap_or("less +F -XRS".to_string());
+        env::var("CARTEL_PAGER").unwrap_or("less +F -XRS -~".to_string());
     let pager_cmd: Vec<String> =
         pager_cmd_str.split(" ").map(|s| s.to_string()).collect();
 
