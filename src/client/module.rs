@@ -1,10 +1,11 @@
 use crate::dependency::WithDependencies;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use std::hash::{Hash, Hasher};
 
 /// The type of the module.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 pub enum ModuleKindV1 {
     /// A task is a module with a limited lifetime, used to perform some
     /// temporary operation or some setup.
@@ -12,6 +13,15 @@ pub enum ModuleKindV1 {
     /// A service is a longer running module. It's lifetime will be managed and
     /// can be started, stopped independently.
     Service,
+}
+
+impl fmt::Display for ModuleKindV1 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Task => write!(f, "Task"),
+            Self::Service => write!(f, "Service"),
+        }
+    }
 }
 
 /// A definition of a module for version 1 (V1) of the daemon.
@@ -82,4 +92,11 @@ pub fn module_names(modules: &Vec<ModuleDefinitionV1>) -> Vec<&str> {
 
 pub fn module_names_set(modules: &Vec<ModuleDefinitionV1>) -> HashSet<&str> {
     modules.iter().map(|m| m.name.as_str()).collect()
+}
+
+pub fn module_by_name<'a>(
+    name: &str,
+    modules: &'a Vec<ModuleDefinitionV1>,
+) -> Option<&'a ModuleDefinitionV1> {
+    modules.iter().find(|m| m.name == name)
 }

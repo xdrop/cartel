@@ -1,6 +1,4 @@
-use super::commands::{
-    deploy_cmd, list_modules_cmd, print_logs, stop_module_cmd,
-};
+use super::commands::*;
 use anyhow::{anyhow, bail, Result};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use console::{style, Emoji};
@@ -42,6 +40,16 @@ pub fn cli_app() -> Result<()> {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("run")
+                .about("Runs a task (but NOT it's dependencies)")
+                .arg(
+                    Arg::with_name("task")
+                        .help("The task ro run")
+                        .multiple(false)
+                        .takes_value(true),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("ps")
                 .about("Print currently running services"),
         )
@@ -53,8 +61,8 @@ pub fn cli_app() -> Result<()> {
                     set the CARTEL_PAGER environment variable.",
                 )
                 .arg(
-                    Arg::with_name("module")
-                        .help("The module to print the logs of")
+                    Arg::with_name("service")
+                        .help("The service to print the logs of")
                         .takes_value(true),
                 ),
         )
@@ -62,8 +70,8 @@ pub fn cli_app() -> Result<()> {
             SubCommand::with_name("stop")
                 .about("Stop a running service")
                 .arg(
-                    Arg::with_name("module")
-                        .help("Module to stop")
+                    Arg::with_name("service")
+                        .help("Service to stop")
                         .takes_value(true),
                 ),
         )
@@ -107,15 +115,25 @@ fn invoke_subcommand(
                 .collect();
             deploy_cmd(modules_to_deploy, cli_config)?;
         }
+        ("run", Some(run_cli_opts)) => {
+            let task_name = run_cli_opts
+                .value_of("task")
+                .ok_or_else(|| anyhow!("Expected task name"))?;
+            run_task_cmd(task_name, cli_config)?;
+        }
         ("ps", Some(_)) => {
             list_modules_cmd(cli_config);
         }
         ("stop", Some(stop_cli_opts)) => {
-            let module_to_stop = stop_cli_opts.value_of("module").unwrap();
+            let module_to_stop = stop_cli_opts
+                .value_of("service")
+                .ok_or_else(|| anyhow!("Expected service name"))?;
             stop_module_cmd(module_to_stop, cli_config);
         }
         ("logs", Some(logs_cli_opts)) => {
-            let module_name = logs_cli_opts.value_of("module").unwrap();
+            let module_name = logs_cli_opts
+                .value_of("service")
+                .ok_or_else(|| anyhow!("Expected service name"))?;
             print_logs(module_name, cli_config);
         }
         _ => {}
