@@ -27,7 +27,7 @@ impl SpinnerOptions {
             style: ProgressStyle::default_spinner()
                 .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
                 .template("{prefix:.bold.dim} {spinner} {wide_msg}"),
-            message,
+            message: format!("  {}", message),
             step: None,
             clear_on_finish: None,
         }
@@ -96,6 +96,8 @@ impl<'a> WaitSpin<'a> {
             pb.set_style(options.style);
             if let Some((step, of)) = options.step {
                 pb.set_prefix(&format!("[{}/{}]  ", step, of));
+            } else {
+                pb.set_prefix("     ");
             };
             pb.set_message(&options.message);
 

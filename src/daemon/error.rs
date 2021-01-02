@@ -15,7 +15,7 @@ pub enum DaemonError {
     #[error("Resource not found")]
     SubsetNotFound,
 
-    #[error("Task {task_name:?} failed with code {code:?}. See {log_file:?} for details")]
+    #[error("Task {task_name:?} failed with exit code {code:?}. See {log_file:?} for details")]
     TaskFailed {
         task_name: String,
         code: i32,

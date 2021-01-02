@@ -13,6 +13,13 @@ pub enum DeploymentResponse {
     Err(ErrorResponse),
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum TaskDeploymentResponse {
+    Ok(ApiTaskDeploymentResponse),
+    Err(ErrorResponse),
+}
+
 pub fn deploy_modules(
     services_to_deploy: &Vec<&str>,
     module_definitions: &Vec<ModuleDefinitionV1>,
@@ -43,6 +50,34 @@ pub fn deploy_modules(
     match deployment_result {
         DeploymentResponse::Ok(r) => Ok(r),
         DeploymentResponse::Err(e) => bail!(e.message),
+    }
+}
+
+pub fn deploy_task(
+    task_definition: &ModuleDefinitionV1,
+    daemon_url: &String,
+) -> Result<ApiTaskDeploymentResponse> {
+    let client = reqwest::blocking::Client::new();
+    let command = ApiTaskDeploymentCommand {
+        task_definition: ApiModuleDefinition {
+            name: task_definition.name.clone(),
+            command: task_definition.command.clone(),
+            environment: task_definition.environment.clone(),
+            log_file_path: task_definition.log_file_path.clone(),
+            dependencies: task_definition.dependencies.clone(),
+            working_dir: task_definition.working_dir.clone(),
+        },
+    };
+
+    let deployment_result: TaskDeploymentResponse = client
+        .post(&(daemon_url.to_owned() + "/tasks/deploy"))
+        .json(&command)
+        .send()?
+        .json()?;
+
+    match deployment_result {
+        TaskDeploymentResponse::Ok(r) => Ok(r),
+        TaskDeploymentResponse::Err(e) => bail!(e.message),
     }
 }
 
