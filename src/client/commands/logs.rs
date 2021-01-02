@@ -1,6 +1,8 @@
 use crate::client::cli::CliOptions;
 use crate::client::request::log_info;
 use anyhow::Result;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 use std::process::Command;
 
 pub fn print_logs(module_name: &str, cli_config: &CliOptions) -> Result<()> {
@@ -15,10 +17,21 @@ pub fn print_logs(module_name: &str, cli_config: &CliOptions) -> Result<()> {
         .to_str()
         .expect("Systems where paths aren't UTF-8 encoded are not supported");
 
-    Command::new(&cli_config.pager_cmd[0])
-        .args(&cli_config.pager_cmd[1..])
-        .arg(unix_path)
-        .spawn()?
-        .wait()?;
+    #[cfg(unix)]
+    {
+        Command::new(&cli_config.pager_cmd[0])
+            .args(&cli_config.pager_cmd[1..])
+            .arg(unix_path)
+            .exec(); // Note: The process ends here; subsequent code won't run.
+    }
+    #[cfg(windows)]
+    {
+        Command::new(&cli_config.pager_cmd[0])
+            .args(&cli_config.pager_cmd[1..])
+            .arg(unix_path)
+            .spawn()?
+            .wait()?;
+    }
+
     Ok(())
 }
