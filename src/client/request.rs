@@ -1,6 +1,6 @@
 use crate::client::cli::CliOptions;
 use crate::client::conversions;
-use crate::client::module::ModuleDefinitionV1;
+use crate::client::module::ServiceOrTaskDefinitionV1;
 use crate::daemon::api::*;
 use anyhow::{bail, Result};
 use reqwest;
@@ -22,7 +22,7 @@ pub enum TaskDeploymentResponse {
 
 pub fn deploy_modules(
     services_to_deploy: &Vec<&str>,
-    module_definitions: &Vec<ModuleDefinitionV1>,
+    module_definitions: &Vec<ServiceOrTaskDefinitionV1>,
     daemon_url: &String,
 ) -> Result<ApiDeploymentResponse> {
     let client = reqwest::blocking::Client::new();
@@ -54,7 +54,7 @@ pub fn deploy_modules(
 }
 
 pub fn deploy_task(
-    task_definition: &ModuleDefinitionV1,
+    task_definition: &ServiceOrTaskDefinitionV1,
     daemon_url: &String,
 ) -> Result<ApiTaskDeploymentResponse> {
     let client = reqwest::blocking::Client::new();

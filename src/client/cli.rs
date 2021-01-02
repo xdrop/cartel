@@ -8,6 +8,7 @@ pub struct CliOptions {
     pub verbose: u64,
     pub pager_cmd: Vec<String>,
     pub daemon_url: String,
+    pub skip_checks: bool,
 }
 
 pub fn cli_app() -> Result<()> {
@@ -28,6 +29,12 @@ pub fn cli_app() -> Result<()> {
                 .short("v")
                 .multiple(true)
                 .help("Sets the level of verbosity"),
+        )
+        .arg(
+            Arg::with_name("skip_checks")
+                .short("nc")
+                .long("skip checks")
+                .help("Disables running checks"),
         )
         .subcommand(
             SubCommand::with_name("deploy")
@@ -97,6 +104,7 @@ fn cli_config(matches: &ArgMatches) -> Result<CliOptions> {
 
     Ok(CliOptions {
         verbose: matches.occurrences_of("v"),
+        skip_checks: matches.is_present("skip_checks"),
         pager_cmd,
         // TODO: Make config
         daemon_url: "http://localhost:8000/api/v1".to_string(),

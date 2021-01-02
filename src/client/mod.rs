@@ -6,6 +6,7 @@ pub mod config;
 pub mod conversions;
 pub mod emoji;
 pub mod module;
+pub mod process;
 pub mod progress;
 pub mod request;
 pub mod validation;

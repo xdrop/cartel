@@ -1,4 +1,4 @@
-use crate::client::module::ModuleDefinitionV1;
+use crate::client::module::{CheckDefinitionV1, ServiceOrTaskDefinitionV1};
 use anyhow::{bail, Result};
 use std::collections::HashSet;
 
@@ -28,10 +28,17 @@ pub fn validate_modules_selected(
 }
 
 pub fn validate_modules_unique(
-    modules: &Vec<ModuleDefinitionV1>,
+    services_and_tasks: &Vec<ServiceOrTaskDefinitionV1>,
+    checks: &Vec<CheckDefinitionV1>,
 ) -> Result<()> {
     let mut seen = HashSet::new();
-    for module in modules {
+    for module in services_and_tasks {
+        if seen.contains(&module.name) {
+            bail!("The following module already exists: '{}'", module.name);
+        }
+        seen.insert(&module.name);
+    }
+    for module in checks {
         if seen.contains(&module.name) {
             bail!("The following module already exists: '{}'", module.name);
         }
