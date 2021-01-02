@@ -1,4 +1,5 @@
 use crate::client::module::ModuleDefinitionV1;
+use crate::client::validation::validate_modules_unique;
 use anyhow::{bail, Context, Result};
 use std::env;
 use std::error::Error;
@@ -48,6 +49,7 @@ pub fn read_module_definitions() -> Result<Vec<ModuleDefinitionV1>> {
                 .with_context(|| "While reading config file")?;
             let module_defs = parse_from_yaml_str(&buffer)
                 .with_context(|| "Failed to read module definitions")?;
+            validate_modules_unique(&module_defs)?;
             Ok(module_defs)
         }
         None => bail!("Failed to find config file"),
