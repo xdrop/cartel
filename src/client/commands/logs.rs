@@ -1,10 +1,10 @@
 use crate::client::cli::CliOptions;
 use crate::client::request::log_info;
+use anyhow::Result;
 use std::process::Command;
 
-pub fn print_logs(module_name: &str, cli_config: &CliOptions) {
-    // TODO: Error handling
-    let log_file = log_info(module_name, &cli_config.daemon_url).unwrap();
+pub fn print_logs(module_name: &str, cli_config: &CliOptions) -> Result<()> {
+    let log_file = log_info(module_name, &cli_config.daemon_url)?;
 
     // This might fail on systems like Windows since paths may not be UTF-8
     // encoded there. Since we are using 'less' to page the logs and we don't
@@ -18,7 +18,7 @@ pub fn print_logs(module_name: &str, cli_config: &CliOptions) {
     Command::new(&cli_config.pager_cmd[0])
         .args(&cli_config.pager_cmd[1..])
         .arg(unix_path)
-        .spawn()
-        .expect("")
-        .wait();
+        .spawn()?
+        .wait()?;
+    Ok(())
 }
