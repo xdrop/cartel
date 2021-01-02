@@ -24,6 +24,8 @@ pub fn print_logs(module_name: &str, cli_config: &CliOptions) -> Result<()> {
             .arg(unix_path)
             .exec(); // Note: The process ends here; subsequent code won't run.
     }
+    // This is entirely untested, need to get someone with a Windows machine to
+    // test it + set an appropriate pager for Windows.
     #[cfg(windows)]
     {
         Command::new(&cli_config.pager_cmd[0])
