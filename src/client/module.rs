@@ -67,6 +67,7 @@ pub struct CheckDefinitionV1 {
 }
 
 impl ServiceOrTaskDefinitionV1 {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         kind: ModuleKindV1,
         name: String,
@@ -118,25 +119,25 @@ impl WithDependencies for ServiceOrTaskDefinitionV1 {
     }
 }
 
-pub fn module_names(modules: &Vec<ServiceOrTaskDefinitionV1>) -> Vec<&str> {
+pub fn module_names(modules: &[ServiceOrTaskDefinitionV1]) -> Vec<&str> {
     modules.iter().map(|m| m.name.as_str()).collect()
 }
 
 pub fn module_names_set(
-    modules: &Vec<ServiceOrTaskDefinitionV1>,
+    modules: &[ServiceOrTaskDefinitionV1],
 ) -> HashSet<&str> {
     modules.iter().map(|m| m.name.as_str()).collect()
 }
 
 pub fn module_by_name<'a>(
     name: &str,
-    modules: &'a Vec<ServiceOrTaskDefinitionV1>,
+    modules: &'a [ServiceOrTaskDefinitionV1],
 ) -> Option<&'a ServiceOrTaskDefinitionV1> {
     modules.iter().find(|m| m.name == name)
 }
 
 pub fn checks_index(
-    checks: &Vec<CheckDefinitionV1>,
+    checks: &[CheckDefinitionV1],
 ) -> HashMap<&str, &CheckDefinitionV1> {
     checks.iter().map(|chk| (chk.name.as_str(), chk)).collect()
 }

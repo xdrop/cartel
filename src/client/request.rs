@@ -26,9 +26,9 @@ pub enum OperationResponse {
 }
 
 pub fn deploy_modules(
-    services_to_deploy: &Vec<&str>,
-    module_definitions: &Vec<ServiceOrTaskDefinitionV1>,
-    daemon_url: &String,
+    services_to_deploy: &[&str],
+    module_definitions: &[ServiceOrTaskDefinitionV1],
+    daemon_url: &str,
 ) -> Result<ApiDeploymentResponse> {
     let client = reqwest::blocking::Client::new();
     let command = ApiDeploymentCommand {
@@ -60,7 +60,7 @@ pub fn deploy_modules(
 
 pub fn deploy_task(
     task_definition: &ServiceOrTaskDefinitionV1,
-    daemon_url: &String,
+    daemon_url: &str,
 ) -> Result<ApiTaskDeploymentResponse> {
     let client = reqwest::blocking::Client::new();
     let command = ApiTaskDeploymentCommand {
@@ -88,7 +88,7 @@ pub fn deploy_task(
 
 pub fn stop_module(
     module_name: &str,
-    daemon_url: &String,
+    daemon_url: &str,
 ) -> Result<ApiOperationResponse> {
     let client = reqwest::blocking::Client::new();
     let command = ApiOperationCommand {
@@ -110,7 +110,7 @@ pub fn stop_module(
 
 pub fn restart_module(
     module_name: &str,
-    daemon_url: &String,
+    daemon_url: &str,
 ) -> Result<ApiOperationResponse> {
     let client = reqwest::blocking::Client::new();
     let command = ApiOperationCommand {
@@ -130,7 +130,7 @@ pub fn restart_module(
     }
 }
 
-pub fn list_modules(daemon_url: &String) -> Result<ApiModuleStatusResponse> {
+pub fn list_modules(daemon_url: &str) -> Result<ApiModuleStatusResponse> {
     let client = reqwest::blocking::Client::new();
     let status = client
         .get(&(daemon_url.to_owned() + "/status"))
@@ -140,10 +140,7 @@ pub fn list_modules(daemon_url: &String) -> Result<ApiModuleStatusResponse> {
     Ok(status)
 }
 
-pub fn log_info(
-    module_name: &str,
-    daemon_url: &String,
-) -> Result<ApiLogResponse> {
+pub fn log_info(module_name: &str, daemon_url: &str) -> Result<ApiLogResponse> {
     let client = reqwest::blocking::Client::new();
     let status = client
         .get(&(daemon_url.to_owned() + "/log/" + module_name))

@@ -62,7 +62,7 @@ impl Planner {
     pub fn deploy_many(
         &self,
         module_defs: Vec<ModuleDefinition>,
-        selection: &Vec<String>,
+        selection: &[String],
     ) -> Result<HashMap<String, bool>> {
         Self::deployment_set(module_defs, selection)?
             .map(|module_def| {
@@ -82,21 +82,21 @@ impl Planner {
     ///
     /// The module could either be running, stopped or exited and the module
     /// definition of the last attempted deploy will be used.
-    pub fn restart_module(&self, mod_name: &String) -> Result<()> {
+    pub fn restart_module(&self, mod_name: &str) -> Result<()> {
         self.executor().restart_module(mod_name)
     }
 
     /// Stops a running module.
-    pub fn stop_module(&self, mod_name: &String) -> Result<()> {
+    pub fn stop_module(&self, mod_name: &str) -> Result<()> {
         self.executor().stop_module(mod_name)
     }
 
     /// Returns the log path of a running module.
-    pub fn log_path(&self, mod_name: &String) -> Result<OsString> {
+    pub fn log_path(&self, mod_name: &str) -> Result<OsString> {
         let executor = self.executor();
         executor
             .module_status_by_name(mod_name)
-            .ok_or_else(|| DaemonError::NotFound(mod_name.clone()).into())
+            .ok_or_else(|| DaemonError::NotFound(mod_name.to_string()).into())
             .map(|m| m.log_file_path.clone())
     }
 
@@ -149,7 +149,7 @@ impl Planner {
 
     fn deployment_set(
         module_defs: Vec<ModuleDefinition>,
-        selected: &Vec<String>,
+        selected: &[String],
     ) -> Result<impl Iterator<Item = ModuleDefinition>> {
         let module_set: HashSet<String> = HashSet::from_iter(
             module_defs
@@ -158,8 +158,7 @@ impl Planner {
                 .collect::<Vec<String>>(),
         );
 
-        let selection_set: HashSet<String> =
-            HashSet::from_iter(selected.iter().cloned());
+        let selection_set: HashSet<String> = selected.iter().cloned().collect();
 
         if !selection_set.is_subset(&module_set) {
             return Err(DaemonError::SubsetNotFound.into());
@@ -168,5 +167,11 @@ impl Planner {
         Ok(module_defs
             .into_iter()
             .filter(move |m| selection_set.contains(&m.name)))
+    }
+}
+
+impl Default for Planner {
+    fn default() -> Self {
+        Self::new()
     }
 }

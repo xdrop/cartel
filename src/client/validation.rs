@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 pub fn non_existant_modules<'a>(
     module_names: &HashSet<&str>,
-    to_validate: &Vec<&'a str>,
+    to_validate: &[&'a str],
 ) -> Vec<&'a str> {
     let mut non_existent = Vec::new();
     for name in to_validate {
@@ -18,7 +18,7 @@ pub fn non_existant_modules<'a>(
 
 pub fn validate_modules_selected(
     module_names: &HashSet<&str>,
-    to_validate: &Vec<&str>,
+    to_validate: &[&str],
 ) -> Result<()> {
     let non_existant = non_existant_modules(&module_names, &to_validate);
     if !non_existant.is_empty() {
@@ -28,8 +28,8 @@ pub fn validate_modules_selected(
 }
 
 pub fn validate_modules_unique(
-    services_and_tasks: &Vec<ServiceOrTaskDefinitionV1>,
-    checks: &Vec<CheckDefinitionV1>,
+    services_and_tasks: &[ServiceOrTaskDefinitionV1],
+    checks: &[CheckDefinitionV1],
 ) -> Result<()> {
     let mut seen = HashSet::new();
     for module in services_and_tasks {

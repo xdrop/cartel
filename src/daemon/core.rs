@@ -15,3 +15,9 @@ impl Core {
         &self.planner
     }
 }
+
+impl Default for Core {
+    fn default() -> Self {
+        Self::new()
+    }
+}

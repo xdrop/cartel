@@ -64,10 +64,7 @@ impl Executor {
     }
 
     /// Returns the status of module by name.
-    pub fn module_status_by_name(
-        &self,
-        name: &String,
-    ) -> Option<&ModuleStatus> {
+    pub fn module_status_by_name(&self, name: &str) -> Option<&ModuleStatus> {
         self.module_map.get(name)
     }
 
@@ -114,13 +111,15 @@ impl Executor {
     }
 
     /// Restarts a module (re-using the same module definition).
-    pub fn restart_module(&mut self, module_name: &String) -> Result<()> {
+    pub fn restart_module(&mut self, module_name: &str) -> Result<()> {
         info!("Restarting module: {}", module_name);
         let existing = {
             let module = self.module_status_by_name(module_name);
             Arc::clone(
                 &module
-                    .ok_or_else(|| DaemonError::NotFound(module_name.clone()))?
+                    .ok_or_else(|| {
+                        DaemonError::NotFound(module_name.to_string())
+                    })?
                     .module_definition,
             )
         };
@@ -131,7 +130,7 @@ impl Executor {
     /// Stops a module by name.
     ///
     /// Note: This will not stop dependent modules.
-    pub fn stop_module(&mut self, name: &String) -> Result<()> {
+    pub fn stop_module(&mut self, name: &str) -> Result<()> {
         info!("Stopping module: {}", name);
         if let Some(module) = self.module_map.get_mut(name) {
             if let Some(child) = &mut module.child {
@@ -156,7 +155,7 @@ impl Executor {
     pub fn run_module(&mut self, module: Arc<ModuleDefinition>) -> Result<()> {
         info!("Executing module: {}", module.name);
 
-        let log_file_pathbuf = Self::get_log_file_path(&module)?;
+        let log_file_pathbuf = Self::get_log_file_path(&module);
         let log_file_path = log_file_pathbuf.as_path();
 
         let module_entry = self
@@ -233,10 +232,10 @@ impl Executor {
 
     pub(super) fn get_log_file_path(
         module: &ModuleDefinition,
-    ) -> Result<std::path::PathBuf> {
+    ) -> std::path::PathBuf {
         match &module.log_file_path {
-            Some(m) => Ok(PathBuf::from(&m)),
-            _ => Ok(log_file_path(&module.name, &module.kind)),
+            Some(m) => PathBuf::from(&m),
+            _ => log_file_path(&module.name, &module.kind),
         }
     }
 
@@ -249,6 +248,12 @@ impl Executor {
             .try_clone()
             .with_context(|| "Failed to create log file")?;
         Ok((stdout_file, stderr_file))
+    }
+}
+
+impl Default for Executor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -268,7 +273,7 @@ pub mod task_executor {
         task_definition: &ModuleDefinition,
     ) -> Result<ExitStatus> {
         assert!(task_definition.kind == ModuleKind::Task);
-        let log_file_pathbuf = Executor::get_log_file_path(&task_definition)?;
+        let log_file_pathbuf = Executor::get_log_file_path(&task_definition);
         let log_file_path = log_file_pathbuf.as_path();
 
         let (stdout_file, stderr_file) =

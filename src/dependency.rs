@@ -1,7 +1,6 @@
 use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
 
 pub struct DependencyGraph<'a, T: WithDependencies + Eq + Hash> {
     edge_map: HashMap<String, Vec<DependencyNode<&'a T>>>,
@@ -69,8 +68,8 @@ where
     /// let sorted = graph.dependency_sort();
     /// ```
     pub fn from<'b>(
-        src: &'a Vec<T>,
-        selected: &'b Vec<&str>,
+        src: &'a [T],
+        selected: &'b [&str],
     ) -> DependencyGraph<'a, T> {
         // Holds the index of each key in Vec<T>
         let pos_index: HashMap<&str, usize> = src
@@ -137,7 +136,7 @@ where
         let mut stack: Vec<(bool, &DependencyNode<&T>)> = Vec::new();
         let mut marked: HashMap<&DependencyNode<&T>, MarkType> = HashMap::new();
         let mut unmarked: Vec<&DependencyNode<&T>> =
-            Vec::from_iter(self.node_list.iter());
+            self.node_list.iter().collect();
 
         // While we have still nodes unmarked
         while sorted.len() < self.node_list.len() {

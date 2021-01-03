@@ -7,7 +7,7 @@ use signal_hook::{iterator::Signals, SIGCHLD};
 use std::error::Error;
 use std::sync::Arc;
 
-pub fn init() -> () {
+pub fn init() {
     env_logger::init()
 }
 

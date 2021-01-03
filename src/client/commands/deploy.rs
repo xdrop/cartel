@@ -93,7 +93,7 @@ fn do_check(check_def: &CheckDefinitionV1) -> Result<()> {
 
 fn deploy_service(
     module: &ServiceOrTaskDefinitionV1,
-    module_defs: &Vec<ServiceOrTaskDefinitionV1>,
+    module_defs: &[ServiceOrTaskDefinitionV1],
     cli_config: &CliOptions,
 ) -> Result<()> {
     let message = format!("Deploying {}", style(&module.name).white().bold());
@@ -102,7 +102,7 @@ fn deploy_service(
     let mut wu = WaitUntil::new(&spin_opt);
     let deploy_result = wu.spin_until(|| {
         request::deploy_modules(
-            &vec![&module.name],
+            &[&module.name],
             module_defs,
             &cli_config.daemon_url,
         )
