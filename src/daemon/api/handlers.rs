@@ -109,10 +109,10 @@ pub fn deploy(
         .planner()
         .deploy_many(module_defs, &selection)?;
 
-    return Ok(Json(ApiDeploymentResponse {
+    Ok(Json(ApiDeploymentResponse {
         success: true,
         deployed,
-    }));
+    }))
 }
 
 #[post("/api/v1/tasks/deploy", data = "<task>")]
@@ -174,7 +174,7 @@ pub fn log(
     let log_file_path = core_state.core.planner().log_path(&module_name)?;
 
     Ok(Json(ApiLogResponse {
-        log_file_path: log_file_path,
+        log_file_path,
     }))
 }
 

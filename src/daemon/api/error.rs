@@ -24,11 +24,11 @@ impl<'r> Responder<'r> for ApiError {
         req: &rocket::Request<'_>,
     ) -> Result<Response<'r>, Status> {
         let message = match self {
-            ApiError::DeploymentError(error) => String::from(error.to_string()),
+            ApiError::DeploymentError(error) => error.to_string(),
         };
         Json(ErrorResponse {
             status: String::from("error"),
-            message: message,
+            message,
             code: 100,
         })
         .respond_to(req)

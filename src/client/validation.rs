@@ -21,7 +21,7 @@ pub fn validate_modules_selected(
     to_validate: &Vec<&str>,
 ) -> Result<()> {
     let non_existant = non_existant_modules(&module_names, &to_validate);
-    if non_existant.len() > 0 {
+    if !non_existant.is_empty() {
         bail!("The following modules do not exist: {:?}", non_existant)
     }
     Ok(())

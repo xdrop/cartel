@@ -101,9 +101,9 @@ fn cli_config(matches: &ArgMatches) -> Result<CliOptions> {
     let pager_cmd_str =
         env::var("CARTEL_PAGER").unwrap_or("less +F -XRS -~".to_string());
     let pager_cmd: Vec<String> =
-        pager_cmd_str.split(" ").map(|s| s.to_string()).collect();
+        pager_cmd_str.split(' ').map(|s| s.to_string()).collect();
 
-    if pager_cmd.len() == 0 || pager_cmd_str == "" {
+    if pager_cmd.is_empty() || pager_cmd_str.is_empty() {
         bail!(
             "Invalid log pager specified. \
             Are you overriding CARTEL_PAGER?"

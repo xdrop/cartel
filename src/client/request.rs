@@ -1,7 +1,7 @@
 use crate::client::module::ServiceOrTaskDefinitionV1;
 use crate::daemon::api::*;
 use anyhow::{bail, Result};
-use reqwest;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -34,7 +34,7 @@ pub fn deploy_modules(
     let command = ApiDeploymentCommand {
         to_deploy: services_to_deploy.iter().map(|s| s.to_string()).collect(),
         module_definitions: module_definitions
-            .into_iter()
+            .iter()
             .map(|m| ApiModuleDefinition {
                 name: m.name.clone(),
                 command: m.command.clone(),

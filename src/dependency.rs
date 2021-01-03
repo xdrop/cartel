@@ -92,11 +92,11 @@ where
         let mut stack: Vec<usize> =
             selected.iter().map(|k| pos_index[k]).collect();
 
-        while stack.len() > 0 {
+        while !stack.is_empty() {
             let idx = stack.pop().unwrap();
             let item = &src[idx];
 
-            if let None = edge_map.get(item.key_ref()) {
+            if edge_map.get(item.key_ref()).is_none() {
                 edge_map.insert(item.key(), Vec::new());
             } else {
                 continue;
@@ -109,7 +109,7 @@ where
                     value: dep_item,
                 };
 
-                if let None = edge_map.get(dep_key) {
+                if edge_map.get(dep_key).is_none() {
                     node_list.push(dependency_node.clone());
                     stack.push(pos_index[dep_key.as_str()]);
                 }
@@ -144,7 +144,7 @@ where
             let to_mark = unmarked.pop().unwrap();
             stack.push((false, to_mark));
 
-            while stack.len() > 0 {
+            while !stack.is_empty() {
                 let (is_parent, node) = stack.pop().unwrap();
 
                 if is_parent {

@@ -82,7 +82,7 @@ impl Executor {
     /// well as their exit time. If the dead process moved was `RUNNING` then
     /// that indicates a process exited (or got killed). Any other status is
     /// mapped to `STOPPED` (i.e. stopped by the user).
-    pub fn collect(&mut self) -> () {
+    pub fn collect(&mut self) {
         for module in self.running_modules_mut() {
             if let Some(data) = &mut module.child {
                 if let Ok(Some(status)) = data.try_wait() {
@@ -174,7 +174,7 @@ impl Executor {
             stdout_file,
             stderr_file,
             &module.environment,
-            module.working_dir.as_ref().map(|p| p.as_path()),
+            module.working_dir.as_deref(),
         )?;
 
         module_entry.status = RunStatus::RUNNING;
@@ -280,7 +280,7 @@ pub mod task_executor {
             stdout_file,
             stderr_file,
             &task_definition.environment,
-            task_definition.working_dir.as_ref().map(|p| p.as_path()),
+            task_definition.working_dir.as_deref(),
         )?;
 
         let exit_status = child.wait().with_context(|| {

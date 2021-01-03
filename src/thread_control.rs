@@ -75,9 +75,8 @@ impl Control {
 
     /// Set stop flag.
     pub fn stop(&self) {
-        self.alive
-            .upgrade()
-            .map(|flag| (*flag).store(false, Ordering::Relaxed));
+        if let Some(flag) = self.alive
+            .upgrade() { (*flag).store(false, Ordering::Relaxed) }
     }
 
     /// Return `true` if thread ended.

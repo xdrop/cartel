@@ -123,7 +123,7 @@ impl Planner {
     ///
     /// Typically called on SIGCHLD, or via a periodic poll on systems that
     /// don't support it.
-    pub fn collect_dead(&self) -> () {
+    pub fn collect_dead(&self) {
         self.executor().collect()
     }
 }
@@ -141,10 +141,10 @@ impl Planner {
             return true;
         }
         let current = module_status.module_definition.as_ref();
-        return current.command != module_def.command
+        current.command != module_def.command
             || current.environment != module_def.environment
             || current.log_file_path != module_def.log_file_path
-            || current.working_dir != module_def.working_dir;
+            || current.working_dir != module_def.working_dir
     }
 
     fn deployment_set(

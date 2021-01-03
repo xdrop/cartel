@@ -11,7 +11,7 @@ pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {
         src.environment,
         src.log_file_path,
         src.dependencies,
-        src.working_dir.map(|dir| PathBuf::from(dir)),
+        src.working_dir.map(PathBuf::from),
     )
 }
 
@@ -23,7 +23,7 @@ pub fn from_service(src: ApiModuleDefinition) -> ModuleDefinition {
         src.environment,
         src.log_file_path,
         src.dependencies,
-        src.working_dir.map(|dir| PathBuf::from(dir)),
+        src.working_dir.map(PathBuf::from),
     )
 }
 

@@ -88,7 +88,7 @@ impl<'a> WaitSpin<'a> {
     ///
     /// This method spins up a new thread to render the spinner on the screen.
     /// The spinner will keep spinning until `stop` is called.
-    pub fn start(&mut self) -> () {
+    pub fn start(&mut self) {
         let options = self.options.clone();
         let (flag, control) = make_pair();
         self.control = Some(control);
@@ -116,7 +116,7 @@ impl<'a> WaitSpin<'a> {
     }
 
     /// Stops the spinner.
-    pub fn stop(self) -> () {
+    pub fn stop(self) {
         if let Some(control) = self.control {
             if let Some(handle) = self.handle {
                 control.stop();

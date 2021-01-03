@@ -7,7 +7,7 @@ pub fn run_task(task_definition: &ServiceOrTaskDefinitionV1) -> Result<()> {
     let working_dir = task_definition
         .working_dir
         .as_ref()
-        .map(|d| PathBuf::from(d));
+        .map(PathBuf::from);
 
     let mut cmd = Command::new(&task_definition.command[0]);
 
@@ -30,7 +30,7 @@ pub fn run_check(check_definition: &CheckDefinitionV1) -> Result<ExitStatus> {
     let working_dir = check_definition
         .working_dir
         .as_ref()
-        .map(|d| PathBuf::from(d));
+        .map(PathBuf::from);
 
     let mut cmd = Command::new(&check_definition.command[0]);
 
