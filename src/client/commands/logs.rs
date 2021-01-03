@@ -1,12 +1,12 @@
 use crate::client::cli::CliOptions;
-use crate::client::request::log_info;
+use crate::client::request;
 use anyhow::Result;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
 pub fn print_logs(module_name: &str, cli_config: &CliOptions) -> Result<()> {
-    let log_file = log_info(module_name, &cli_config.daemon_url)?;
+    let log_file = request::log_info(module_name, &cli_config.daemon_url)?;
 
     // This might fail on systems like Windows since paths may not be UTF-8
     // encoded there. Since we are using 'less' to page the logs and we don't

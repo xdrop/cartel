@@ -1,5 +1,5 @@
 use crate::client::cli::CliOptions;
-use crate::client::request::list_modules;
+use crate::client::request;
 use crate::daemon::api::ApiModuleRunStatus;
 use anyhow::Result;
 use chrono::Local;
@@ -7,7 +7,7 @@ use std::convert::TryFrom;
 use std::time::Duration;
 
 pub fn list_modules_cmd(cli_config: &CliOptions) -> Result<()> {
-    let module_status = list_modules(&cli_config.daemon_url)?;
+    let module_status = request::list_modules(&cli_config.daemon_url)?;
 
     println!("{:<8}{:<12}{:<12}{:<8}", "pid", "name", "status", "since");
     module_status.status.iter().for_each(|mod_status| {

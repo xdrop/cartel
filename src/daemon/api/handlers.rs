@@ -138,7 +138,9 @@ pub fn module_operation(
         ApiModuleOperation::STOP => {
             planner.stop_module(&module.module_name)?;
         }
-        _ => (),
+        ApiModuleOperation::RESTART => {
+            planner.restart_module(&module.module_name)?;
+        }
     };
     Ok(Json(ApiOperationResponse { success: true }))
 }

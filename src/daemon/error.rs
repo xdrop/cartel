@@ -4,15 +4,15 @@ use thiserror::Error;
 /// Daemon enumerates all possible errors returned by this library.
 #[derive(Error, Debug)]
 pub enum DaemonError {
-    /// Represents the case when a requested resource was not found. For
+    /// Represents the case when a requested module was not found. For
     /// example, trying to stop a module that doesn't exist.
-    #[error("Resource with name `[{0}]` not found")]
+    #[error("Module with name '{0}' not found")]
     NotFound(String),
 
-    /// Represents the case some of the resources in the given subset of
-    /// resources do not exist. For example, trying to deploy a set of modules
+    /// Represents the case some of the module in the given subset of
+    /// modules do not exist. For example, trying to deploy a set of modules
     /// where one doesn't exist.
-    #[error("Resource not found")]
+    #[error("Module not found")]
     SubsetNotFound,
 
     #[error("Task {task_name:?} failed with exit code {code:?}. See {log_file:?} for details")]

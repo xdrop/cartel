@@ -78,8 +78,13 @@ impl Planner {
             .map(|exit_status| exit_status.code().unwrap_or(-1))
     }
 
-    // TODO: Rewrite executor implementation. Should not currently be used
-    pub fn _restart(&self, _mod_name: &String) -> () {}
+    /// Restarts an existing module.
+    ///
+    /// The module could either be running, stopped or exited and the module
+    /// definition of the last attempted deploy will be used.
+    pub fn restart_module(&self, mod_name: &String) -> Result<()> {
+        self.executor().restart_module(mod_name)
+    }
 
     /// Stops a running module.
     pub fn stop_module(&self, mod_name: &String) -> Result<()> {

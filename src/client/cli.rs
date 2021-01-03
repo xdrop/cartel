@@ -12,7 +12,7 @@ pub struct CliOptions {
 
 pub fn cli_app() -> Result<()> {
     let matches = App::new("cartel")
-        .version("0.1.0-alpha")
+        .version("0.1.1-alpha")
         .about("Panayiotis P. <xdrop.me@gmail.com>")
         .about("Service orchestration made easy")
         .arg(
@@ -81,6 +81,15 @@ pub fn cli_app() -> Result<()> {
                         .takes_value(true),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("restart")
+                .about("Restart a service")
+                .arg(
+                    Arg::with_name("service")
+                        .help("Service to restart")
+                        .takes_value(true),
+                ),
+        )
         .get_matches();
 
     let cli_config = cli_config(&matches)?;
@@ -136,6 +145,12 @@ fn invoke_subcommand(
                 .value_of("service")
                 .ok_or_else(|| anyhow!("Expected service name"))?;
             stop_module_cmd(module_to_stop, cli_config)?;
+        }
+        ("restart", Some(restart_cli_opts)) => {
+            let module_to_restart = restart_cli_opts
+                .value_of("service")
+                .ok_or_else(|| anyhow!("Expected service name"))?;
+            restart_module_cmd(module_to_restart, cli_config)?;
         }
         ("logs", Some(logs_cli_opts)) => {
             let module_name = logs_cli_opts

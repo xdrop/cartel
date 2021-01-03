@@ -1,3 +1,4 @@
+use super::error::DaemonError;
 use super::logs::log_file_path;
 use super::module::ModuleDefinition;
 use super::time::epoch_now;
@@ -110,6 +111,21 @@ impl Executor {
         info!("Redeploying module: {}", module.name);
         self.stop_module(&module.name)?;
         self.run_module(module)
+    }
+
+    /// Restarts a module (re-using the same module definition).
+    pub fn restart_module(&mut self, module_name: &String) -> Result<()> {
+        info!("Restarting module: {}", module_name);
+        let existing = {
+            let module = self.module_status_by_name(module_name);
+            Arc::clone(
+                &module
+                    .ok_or_else(|| DaemonError::NotFound(module_name.clone()))?
+                    .module_definition,
+            )
+        };
+        self.stop_module(module_name)?;
+        self.run_module(existing)
     }
 
     /// Stops a module by name.

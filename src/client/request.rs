@@ -18,6 +18,13 @@ pub enum TaskDeploymentResponse {
     Err(ErrorResponse),
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum OperationResponse {
+    Ok(ApiOperationResponse),
+    Err(ErrorResponse),
+}
+
 pub fn deploy_modules(
     services_to_deploy: &Vec<&str>,
     module_definitions: &Vec<ServiceOrTaskDefinitionV1>,
@@ -89,13 +96,38 @@ pub fn stop_module(
         module_name: module_name.to_string(),
     };
 
-    let deployment_result = client
+    let operation_result: OperationResponse = client
         .post(&(daemon_url.to_owned() + "/operation"))
         .json(&command)
         .send()?
         .json()?;
 
-    Ok(deployment_result)
+    match operation_result {
+        OperationResponse::Ok(r) => Ok(r),
+        OperationResponse::Err(e) => bail!(e.message),
+    }
+}
+
+pub fn restart_module(
+    module_name: &str,
+    daemon_url: &String,
+) -> Result<ApiOperationResponse> {
+    let client = reqwest::blocking::Client::new();
+    let command = ApiOperationCommand {
+        operation: ApiModuleOperation::RESTART,
+        module_name: module_name.to_string(),
+    };
+
+    let operation_result: OperationResponse = client
+        .post(&(daemon_url.to_owned() + "/operation"))
+        .json(&command)
+        .send()?
+        .json()?;
+
+    match operation_result {
+        OperationResponse::Ok(r) => Ok(r),
+        OperationResponse::Err(e) => bail!(e.message),
+    }
 }
 
 pub fn list_modules(daemon_url: &String) -> Result<ApiModuleStatusResponse> {
