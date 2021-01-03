@@ -1,8 +1,6 @@
 use crate::client::cli::CliOptions;
 use crate::client::config::read_module_definitions;
-use crate::client::emoji::{
-    HOUR_GLASS, LINK, LOOKING_GLASS, SUCCESS, TEXTBOOK, VAN,
-};
+use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, TEXTBOOK, VAN};
 use crate::client::module::{checks_index, module_names_set};
 use crate::client::module::{
     CheckDefinitionV1, ModuleKindV1, ServiceOrTaskDefinitionV1,
@@ -11,7 +9,6 @@ use crate::client::process::run_check;
 use crate::client::progress::{SpinnerOptions, WaitUntil};
 use crate::client::request;
 use crate::client::validation::validate_modules_selected;
-use crate::daemon::api::ApiDeploymentResponse;
 use crate::dependency::DependencyGraph;
 use anyhow::{bail, Result};
 use console::style;
@@ -135,8 +132,7 @@ fn deploy_task(
     let spin_opt = SpinnerOptions::new(message.clone()).clear_on_finish(false);
 
     let mut wu = WaitUntil::new(&spin_opt);
-    let deploy_result =
-        wu.spin_until(|| request::deploy_task(module, &cli_config.daemon_url))?;
+    wu.spin_until(|| request::deploy_task(module, &cli_config.daemon_url))?;
 
     tiprint!(
         10, // indent level

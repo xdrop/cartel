@@ -1,7 +1,6 @@
 use crate::daemon::api::converter::*;
 use crate::daemon::api::engine::CoreState;
 use crate::daemon::api::error::*;
-use crate::daemon::module::ModuleKind;
 use crate::daemon::planner::Planner;
 use rocket::State;
 use rocket_contrib::json::Json;
@@ -119,11 +118,11 @@ pub fn deploy(
 #[post("/api/v1/tasks/deploy", data = "<task>")]
 pub fn deploy_task(
     task: Json<ApiTaskDeploymentCommand>,
-    core_state: State<CoreState>,
+    _core_state: State<CoreState>,
 ) -> ApiResult<ApiTaskDeploymentResponse> {
     let cmd = task.into_inner();
     let task = cmd.task_definition;
-    let result = Planner::deploy_task(&from_task(task))?;
+    Planner::deploy_task(&from_task(task))?;
     Ok(Json(ApiTaskDeploymentResponse { success: true }))
 }
 
@@ -137,7 +136,7 @@ pub fn module_operation(
 
     match module.operation {
         ApiModuleOperation::STOP => {
-            planner.stop_module(&module.module_name);
+            planner.stop_module(&module.module_name)?;
         }
         _ => (),
     };

@@ -1,7 +1,6 @@
 use super::handlers::{ApiModuleDefinition, ApiModuleRunStatus};
 use crate::daemon::executor::RunStatus;
 use crate::daemon::module::{ModuleDefinition, ModuleKind};
-use anyhow::Result;
 use std::path::PathBuf;
 
 pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {

@@ -1,5 +1,3 @@
-use crate::client::cli::CliOptions;
-use crate::client::conversions;
 use crate::client::module::ServiceOrTaskDefinitionV1;
 use crate::daemon::api::*;
 use anyhow::{bail, Result};

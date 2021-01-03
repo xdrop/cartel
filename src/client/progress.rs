@@ -1,6 +1,7 @@
-use crate::thread_control::{make_pair, Control, Flag};
+use crate::thread_control::{make_pair, Control};
 use console::Term;
 use indicatif::{ProgressBar, ProgressStyle};
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct SpinnerOptions {
@@ -104,7 +105,7 @@ impl<'a> WaitSpin<'a> {
 
             while flag.alive() {
                 pb.inc(1);
-                std::thread::sleep_ms(100);
+                std::thread::sleep(Duration::from_millis(100));
             }
             if options.clear_on_finish == Some(true) {
                 pb.finish_and_clear();

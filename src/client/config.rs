@@ -5,7 +5,6 @@ use crate::client::module::{
 use crate::client::validation::validate_modules_unique;
 use anyhow::{bail, Context, Result};
 use std::env;
-use std::error::Error;
 use std::fs::File;
 use std::io::Read;
 use std::option::Option;

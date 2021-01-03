@@ -1,6 +1,6 @@
 use anyhow::Error;
 use rocket::http::Status;
-use rocket::response::{status, Responder, Response};
+use rocket::response::{Responder, Response};
 use rocket_contrib::json::Json;
 use serde::{Deserialize, Serialize};
 

@@ -1,6 +1,5 @@
 use anyhow::{bail, Result};
-use std::borrow::Borrow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 

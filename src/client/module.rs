@@ -85,7 +85,7 @@ impl ServiceOrTaskDefinitionV1 {
             log_file_path,
             dependencies,
             working_dir,
-            checks: vec![],
+            checks,
         }
     }
 }

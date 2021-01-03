@@ -1,12 +1,10 @@
 use super::error::DaemonError;
-use super::executor::{Executor, ModuleStatus, RunStatus, task_executor};
+use super::executor::{task_executor, Executor, ModuleStatus, RunStatus};
 use super::module::ModuleDefinition;
-use anyhow::{bail, Context, Result};
+use anyhow::Result;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::ffi::OsString;
 use std::iter::FromIterator;
-use std::process::ExitStatus;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 pub struct Planner {
@@ -81,7 +79,7 @@ impl Planner {
     }
 
     // TODO: Rewrite executor implementation. Should not currently be used
-    pub fn _restart(&self, mod_name: &String) -> () {}
+    pub fn _restart(&self, _mod_name: &String) -> () {}
 
     /// Stops a running module.
     pub fn stop_module(&self, mod_name: &String) -> Result<()> {

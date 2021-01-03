@@ -17,8 +17,7 @@ pub fn run_task(task_definition: &ServiceOrTaskDefinitionV1) -> Result<()> {
     if let Some(path) = working_dir {
         cmd.current_dir(path);
     }
-    let task = cmd
-        .spawn()
+    cmd.spawn()
         .with_context(|| {
             format!("Unable to run task '{}'", task_definition.name)
         })?

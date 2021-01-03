@@ -1,10 +1,9 @@
-use super::error::DaemonError;
 use super::logs::log_file_path;
 use super::module::ModuleDefinition;
 use super::time::epoch_now;
 
-use anyhow::{bail, Context, Result};
-use log::{debug, error, info};
+use anyhow::{Context, Result};
+use log::info;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::File;

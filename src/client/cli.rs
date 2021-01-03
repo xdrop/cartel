@@ -1,7 +1,6 @@
 use super::commands::*;
 use anyhow::{anyhow, bail, Result};
 use clap::{App, Arg, ArgMatches, SubCommand};
-use console::{style, Emoji};
 use std::env;
 
 pub struct CliOptions {
@@ -130,19 +129,19 @@ fn invoke_subcommand(
             run_task_cmd(task_name, cli_config)?;
         }
         ("ps", Some(_)) => {
-            list_modules_cmd(cli_config);
+            list_modules_cmd(cli_config)?;
         }
         ("stop", Some(stop_cli_opts)) => {
             let module_to_stop = stop_cli_opts
                 .value_of("service")
                 .ok_or_else(|| anyhow!("Expected service name"))?;
-            stop_module_cmd(module_to_stop, cli_config);
+            stop_module_cmd(module_to_stop, cli_config)?;
         }
         ("logs", Some(logs_cli_opts)) => {
             let module_name = logs_cli_opts
                 .value_of("service")
                 .ok_or_else(|| anyhow!("Expected service name"))?;
-            print_logs(module_name, cli_config);
+            print_logs(module_name, cli_config)?;
         }
         _ => {}
     }
