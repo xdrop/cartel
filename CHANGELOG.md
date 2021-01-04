@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Increased the timeout for deploying tasks
 
 ## [0.1.2-alpha] - 2020-01-04
 ### Fixed
@@ -13,9 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - The `environment` and `dependencies` options are now optional.
 - The `ps` command now has better output with long service names.
+- The error messages when a service fails to start are now slightly more helpful.
 
 ### Added
-- Resolution for the tilde in working_dir paths.
+- Resolution for the tilde in `working_dir` paths.
 - Running with no command now prints the cli help.
 - Added a changelog!
 

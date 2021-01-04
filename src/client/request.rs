@@ -1,6 +1,8 @@
 use crate::client::module::ServiceOrTaskDefinitionV1;
 use crate::daemon::api::*;
 use anyhow::{bail, Result};
+use reqwest::blocking::Client;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +25,13 @@ pub enum TaskDeploymentResponse {
 pub enum OperationResponse {
     Ok(ApiOperationResponse),
     Err(ErrorResponse),
+}
+
+fn long_timeout_client() -> Client {
+    reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(180))
+        .build()
+        .unwrap()
 }
 
 pub fn deploy_modules(
@@ -62,7 +71,7 @@ pub fn deploy_task(
     task_definition: &ServiceOrTaskDefinitionV1,
     daemon_url: &str,
 ) -> Result<ApiTaskDeploymentResponse> {
-    let client = reqwest::blocking::Client::new();
+    let client = long_timeout_client();
     let command = ApiTaskDeploymentCommand {
         task_definition: ApiModuleDefinition {
             name: task_definition.name.clone(),
