@@ -4,13 +4,17 @@ use crate::daemon::api::ApiModuleRunStatus;
 use anyhow::Result;
 use chrono::Local;
 use std::convert::TryFrom;
+use std::io;
+use std::io::Write;
 use std::time::Duration;
+use tabwriter::TabWriter;
 
 pub fn list_modules_cmd(cli_config: &CliOptions) -> Result<()> {
     let module_status = request::list_modules(&cli_config.daemon_url)?;
+    let mut tw = TabWriter::new(io::stdout()).minwidth(8);
 
-    println!("{:<8}{:<12}{:<12}{:<8}", "pid", "name", "status", "since");
-    module_status.status.iter().for_each(|mod_status| {
+    writeln!(&mut tw, "pid\tname\tstatus\tsince")?;
+    module_status.status.iter().try_for_each(|mod_status| {
         let formatted_status = match mod_status.status {
             ApiModuleRunStatus::RUNNING => "running",
             ApiModuleRunStatus::STOPPED => "stopped",
@@ -27,10 +31,12 @@ pub fn list_modules_cmd(cli_config: &CliOptions) -> Result<()> {
             time_formatter.convert(dur)
         };
 
-        println!(
-            "{:<8}{:<12}{:<12}{:<8}",
-            mod_status.pid, mod_status.name, formatted_status, formatted_time
-        );
-    });
+        writeln!(
+            &mut tw,
+            "{}\t{}\t{}\t{}",
+            mod_status.pid, mod_status.name, formatted_status, formatted_time,
+        )
+    })?;
+    tw.flush()?;
     Ok(())
 }
