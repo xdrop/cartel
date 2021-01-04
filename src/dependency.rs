@@ -139,7 +139,7 @@ where
             self.node_list.iter().collect();
 
         // While we have still nodes unmarked
-        while sorted.len() < self.node_list.len() {
+        while !unmarked.is_empty() {
             let to_mark = unmarked.pop().unwrap();
             stack.push((false, to_mark));
 
@@ -202,6 +202,8 @@ mod test {
             HashMap::new(),
             None,
             dependencies.iter().map(|s| s.to_string()).collect(),
+            None,
+            vec![],
         )
     }
 
