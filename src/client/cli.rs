@@ -1,6 +1,6 @@
 use super::commands::*;
 use anyhow::{anyhow, bail, Result};
-use clap::{crate_version, App, Arg, ArgMatches, SubCommand};
+use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::env;
 
 pub struct CliOptions {
@@ -15,6 +15,7 @@ pub fn cli_app() -> Result<()> {
         .version(&crate_version!()[..])
         .about("Panayiotis P. <xdrop.me@gmail.com>")
         .about("Service orchestration made easy")
+        .setting(AppSettings::ArgRequiredElseHelp)
         .arg(
             Arg::with_name("config")
                 .short("c")
