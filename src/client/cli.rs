@@ -1,6 +1,6 @@
 use super::commands::*;
 use anyhow::{anyhow, bail, Result};
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{crate_version, App, Arg, ArgMatches, SubCommand};
 use std::env;
 
 pub struct CliOptions {
@@ -12,7 +12,7 @@ pub struct CliOptions {
 
 pub fn cli_app() -> Result<()> {
     let matches = App::new("cartel")
-        .version("0.1.1-alpha")
+        .version(&crate_version!()[..])
         .about("Panayiotis P. <xdrop.me@gmail.com>")
         .about("Service orchestration made easy")
         .arg(
