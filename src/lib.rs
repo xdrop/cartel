@@ -8,4 +8,5 @@ extern crate rocket;
 pub mod client;
 pub mod daemon;
 pub mod dependency;
+pub mod path;
 pub mod thread_control;

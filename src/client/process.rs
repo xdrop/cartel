@@ -1,13 +1,13 @@
 use crate::client::module::{CheckDefinitionV1, ServiceOrTaskDefinitionV1};
+use crate::path;
 use anyhow::{Context, Result};
-use std::path::PathBuf;
 use std::process::{Command, ExitStatus, Stdio};
 
 pub fn run_task(task_definition: &ServiceOrTaskDefinitionV1) -> Result<()> {
     let working_dir = task_definition
         .working_dir
-        .as_ref()
-        .map(PathBuf::from);
+        .as_deref()
+        .and_then(path::from_user_str);
 
     let mut cmd = Command::new(&task_definition.command[0]);
 
@@ -29,8 +29,8 @@ pub fn run_task(task_definition: &ServiceOrTaskDefinitionV1) -> Result<()> {
 pub fn run_check(check_definition: &CheckDefinitionV1) -> Result<ExitStatus> {
     let working_dir = check_definition
         .working_dir
-        .as_ref()
-        .map(PathBuf::from);
+        .as_deref()
+        .and_then(path::from_user_str);
 
     let mut cmd = Command::new(&check_definition.command[0]);
 

@@ -24,7 +24,9 @@ impl<'r> Responder<'r> for ApiError {
         req: &rocket::Request<'_>,
     ) -> Result<Response<'r>, Status> {
         let message = match self {
-            ApiError::DeploymentError(error) => error.to_string(),
+            ApiError::DeploymentError(error) => {
+                format!("{}: {}", error.to_string(), error.root_cause())
+            }
         };
         Json(ErrorResponse {
             status: String::from("error"),

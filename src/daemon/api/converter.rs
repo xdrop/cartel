@@ -1,7 +1,7 @@
 use super::handlers::{ApiModuleDefinition, ApiModuleRunStatus};
 use crate::daemon::executor::RunStatus;
 use crate::daemon::module::{ModuleDefinition, ModuleKind};
-use std::path::PathBuf;
+use crate::path;
 
 pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {
     ModuleDefinition::new(
@@ -11,7 +11,7 @@ pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {
         src.environment,
         src.log_file_path,
         src.dependencies,
-        src.working_dir.map(PathBuf::from),
+        src.working_dir.and_then(path::from_user_string),
     )
 }
 
@@ -23,7 +23,7 @@ pub fn from_service(src: ApiModuleDefinition) -> ModuleDefinition {
         src.environment,
         src.log_file_path,
         src.dependencies,
-        src.working_dir.map(PathBuf::from),
+        src.working_dir.and_then(path::from_user_string),
     )
 }
 
