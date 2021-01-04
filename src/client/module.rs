@@ -49,8 +49,10 @@ pub struct ServiceOrTaskDefinitionV1 {
     pub kind: ModuleKindV1,
     pub name: String,
     pub command: Vec<String>,
+    #[serde(default = "HashMap::new")]
     pub environment: HashMap<String, String>,
     pub log_file_path: Option<String>,
+    #[serde(default = "Vec::new")]
     pub dependencies: Vec<String>,
     pub working_dir: Option<String>,
     #[serde(default = "Vec::new")]
