@@ -172,7 +172,8 @@ impl Executor {
             stdout_file,
             stderr_file,
             module.working_dir.as_deref(),
-        )?;
+        )
+        .with_context(|| format!("Failed to run service '{}'", module.name))?;
 
         module_entry.status = RunStatus::RUNNING;
         module_entry.pid = process.id();
