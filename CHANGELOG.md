@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Increased the timeout for deploying tasks
 
+### Fixed
+- The daemon will now attempt to also kill descendant processes (rather than only terminating the parent and leaving orphans behind). This is only implemented for Unix based systems and is not foolproof.
+
 ## [0.1.2-alpha] - 2020-01-04
 ### Fixed
 - Fixed a bug that would cause a panic during dependency resolution.

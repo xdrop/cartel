@@ -2,6 +2,7 @@ use super::error::DaemonError;
 use super::logs::log_file_path;
 use super::module::ModuleDefinition;
 use super::time::epoch_now;
+use crate::process::Process;
 
 use anyhow::{Context, Result};
 use log::info;
@@ -35,7 +36,7 @@ pub struct ModuleStatus {
     pub exit_status: Option<ExitStatus>,
     pub log_file_path: OsString,
 
-    child: Option<Child>,
+    child: Option<Process>,
 }
 
 impl ModuleStatus {
@@ -81,8 +82,8 @@ impl Executor {
     /// mapped to `STOPPED` (i.e. stopped by the user).
     pub fn collect(&mut self) {
         for module in self.running_modules_mut() {
-            if let Some(data) = &mut module.child {
-                if let Ok(Some(status)) = data.try_wait() {
+            if let Some(process) = &mut module.child {
+                if let Ok(Some(status)) = process.try_wait() {
                     module.exit_time = epoch_now();
                     module.exit_status = Option::from(status);
                     module.status = match module.status {
@@ -133,13 +134,11 @@ impl Executor {
     pub fn stop_module(&mut self, name: &str) -> Result<()> {
         info!("Stopping module: {}", name);
         if let Some(module) = self.module_map.get_mut(name) {
-            if let Some(child) = &mut module.child {
+            if let Some(process) = &mut module.child {
                 module.status = RunStatus::STOPPED;
                 module.exit_time = epoch_now();
                 // Kill child process
-                child.kill().ok();
-                // Wait for exit
-                child.wait().ok();
+                process.kill();
             }
         }
         Ok(())
@@ -167,18 +166,17 @@ impl Executor {
 
         let (stdout_file, stderr_file) =
             Self::prepare_log_files(log_file_path)?;
-        let child = Executor::spawn_child(
-            &module.command[0],
-            &module.command[1..],
+        let process = Process::spawn(
+            &module.command,
+            &module.environment,
             stdout_file,
             stderr_file,
-            &module.environment,
             module.working_dir.as_deref(),
         )?;
 
         module_entry.status = RunStatus::RUNNING;
-        module_entry.pid = child.id();
-        module_entry.child = Option::Some(child);
+        module_entry.pid = process.id();
+        module_entry.child = Option::Some(process);
         module_entry.uptime = epoch_now();
         module_entry.module_definition = Arc::clone(&module);
 
@@ -279,6 +277,7 @@ pub mod task_executor {
         let (stdout_file, stderr_file) =
             Executor::prepare_log_files(log_file_path)?;
 
+        // TODO: Unify the process implementations.
         let mut child = Executor::spawn_child(
             &task_definition.command[0],
             &task_definition.command[1..],

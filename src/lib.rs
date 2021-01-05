@@ -9,4 +9,5 @@ pub mod client;
 pub mod daemon;
 pub mod dependency;
 pub mod path;
+pub mod process;
 pub mod thread_control;
