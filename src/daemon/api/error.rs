@@ -25,7 +25,11 @@ impl<'r> Responder<'r> for ApiError {
     ) -> Result<Response<'r>, Status> {
         let message = match self {
             ApiError::DeploymentError(error) => {
-                format!("{}: {}", error.to_string(), error.root_cause())
+                if error.chain().len() > 1 {
+                    format!("{}: {}", error.to_string(), error.root_cause())
+                } else {
+                    error.to_string()
+                }
             }
         };
         Json(ErrorResponse {

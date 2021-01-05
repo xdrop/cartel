@@ -27,6 +27,13 @@ pub enum OperationResponse {
     Err(ErrorResponse),
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum LogInfoResponse {
+    Ok(ApiLogResponse),
+    Err(ErrorResponse),
+}
+
 fn long_timeout_client() -> Client {
     reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(180))
@@ -151,10 +158,13 @@ pub fn list_modules(daemon_url: &str) -> Result<ApiModuleStatusResponse> {
 
 pub fn log_info(module_name: &str, daemon_url: &str) -> Result<ApiLogResponse> {
     let client = reqwest::blocking::Client::new();
-    let status = client
+    let status: LogInfoResponse = client
         .get(&(daemon_url.to_owned() + "/log/" + module_name))
         .send()?
         .json()?;
 
-    Ok(status)
+    match status {
+        LogInfoResponse::Ok(r) => Ok(r),
+        LogInfoResponse::Err(e) => bail!(e.message),
+    }
 }

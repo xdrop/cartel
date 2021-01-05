@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- Increased the timeout for deploying tasks
+- Increased the timeout for deploying tasks.
+- Improved error message when trying to view logs of non existant service.
 
 ### Fixed
 - The daemon will now attempt to also kill descendant processes (rather than only terminating the parent and leaving orphans behind). This is only implemented for Unix based systems and is not foolproof.
