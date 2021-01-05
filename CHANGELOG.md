@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.2.0-alpha] - 2020-01-05
 ### Changed
 - Increased the timeout for deploying tasks.
 - Improved error message when trying to view logs of non existant service.
