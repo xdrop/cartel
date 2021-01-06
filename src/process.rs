@@ -66,7 +66,26 @@ mod implementation {
         }
 
         pub fn kill(&mut self) -> () {
-            self.signal_process_group(libc::SIGTERM);
+            self.signal_process_group(libc::SIGKILL);
+        }
+
+        pub fn wait(&mut self) -> () {
+            use nix::sys::wait::*;
+            use nix::unistd::Pid;
+
+            loop {
+                match waitpid(
+                    Pid::from_raw(-self.pgid),
+                    Some(WaitPidFlag::WNOHANG),
+                ) {
+                    Ok(WaitStatus::Exited(_, _))
+                    | Ok(WaitStatus::Signaled(_, _, _)) => {}
+                    Ok(_) => {
+                        break;
+                    }
+                    Err(_) => break,
+                }
+            }
         }
 
         #[inline]
@@ -152,6 +171,7 @@ mod implementation {
             // Unimplemented
         }
 
+        #[inline]
         pub fn kill(&mut self) -> () {
             self.child.kill()
         }
@@ -159,6 +179,11 @@ mod implementation {
         #[inline]
         pub fn id(&self) -> u32 {
             self.child.id()
+        }
+
+        #[inline]
+        pub fn wait(&mut self) -> () {
+            self.child.wait()
         }
 
         #[inline]

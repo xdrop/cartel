@@ -139,6 +139,7 @@ impl Executor {
                 module.exit_time = epoch_now();
                 // Kill child process
                 process.kill();
+                process.wait();
             }
         }
         Ok(())
