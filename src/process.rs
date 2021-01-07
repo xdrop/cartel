@@ -78,11 +78,9 @@ mod implementation {
                     Pid::from_raw(-self.pgid),
                     Some(WaitPidFlag::WNOHANG),
                 ) {
-                    Ok(WaitStatus::Exited(_, _))
-                    | Ok(WaitStatus::Signaled(_, _, _)) => {}
-                    Ok(_) => {
-                        break;
-                    }
+                    Ok(WaitStatus::Exited(_, _)) => break,
+                    Ok(WaitStatus::Signaled(_, _, _)) => break,
+                    Ok(_) => {}
                     Err(_) => break,
                 }
             }
