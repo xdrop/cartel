@@ -101,7 +101,7 @@ pub fn cli_app() -> Result<()> {
 fn cli_config(matches: &ArgMatches) -> Result<CliOptions> {
     #[allow(clippy::or_fun_call)]
     let pager_cmd_str =
-        env::var("CARTEL_PAGER").unwrap_or("less +F -XRS -~".to_string());
+        env::var("CARTEL_PAGER").unwrap_or("tail -f -n 30".to_string());
     let pager_cmd: Vec<String> =
         pager_cmd_str.split(' ').map(|s| s.to_string()).collect();
 

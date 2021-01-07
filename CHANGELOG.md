@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Changed the default pager from `less` to `tail` with a default 30 line output.
+
 ### Fixed
 - Fix incorrectly labeled log files. Services now have a `.service` suffix and tasks have `.task`.
 
@@ -13,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.1-alpha] - 2020-01-06
 ### Fixed
-- Switch to `SIGKILL` as the default kill signal. Fixes a race condition with contention on the log file during restarts.
+- Switched to `SIGKILL` as the default kill signal. Fixes a race condition with contention on the log file during restarts.
 
 ## [0.2.0-alpha] - 2020-01-05
 ### Changed
