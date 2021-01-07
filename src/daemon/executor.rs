@@ -1,6 +1,6 @@
 use super::error::DaemonError;
 use super::logs::log_file_path;
-use super::module::ModuleDefinition;
+use super::module::{ModuleDefinition, TermSignal};
 use super::time::epoch_now;
 use crate::process::Process;
 
@@ -137,8 +137,13 @@ impl Executor {
             if let Some(process) = &mut module.child {
                 module.status = RunStatus::STOPPED;
                 module.exit_time = epoch_now();
-                // Kill child process
-                process.kill();
+
+                // Signal child process to die
+                match module.module_definition.termination_signal {
+                    TermSignal::KILL => process.kill(),
+                    TermSignal::TERM => process.terminate(),
+                    TermSignal::INT => process.interrupt(),
+                }
                 process.wait();
             }
         }

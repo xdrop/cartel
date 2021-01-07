@@ -58,6 +58,7 @@ pub fn deploy_modules(
                 log_file_path: m.log_file_path.clone(),
                 dependencies: m.dependencies.clone(),
                 working_dir: m.working_dir.clone(),
+                termination_signal: (&m.termination_signal).into(),
             })
             .collect(),
     };
@@ -87,6 +88,7 @@ pub fn deploy_task(
             log_file_path: task_definition.log_file_path.clone(),
             dependencies: task_definition.dependencies.clone(),
             working_dir: task_definition.working_dir.clone(),
+            termination_signal: ApiTermSignal::KILL,
         },
     };
 

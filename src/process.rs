@@ -65,6 +65,10 @@ mod implementation {
             self.signal_process_group(libc::SIGINT);
         }
 
+        pub fn terminate(&mut self) -> () {
+            self.signal_process_group(libc::SIGTERM);
+        }
+
         pub fn kill(&mut self) -> () {
             self.signal_process_group(libc::SIGKILL);
         }
@@ -165,8 +169,14 @@ mod implementation {
             command.spawn()
         }
 
+        #[inline]
+        pub fn terminate(&mut self) -> () {
+            self.child.kill()
+        }
+
+        #[inline]
         pub fn interrupt(&mut self) -> () {
-            // Unimplemented
+            self.child.kill()
         }
 
         #[inline]

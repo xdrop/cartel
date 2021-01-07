@@ -13,6 +13,19 @@ pub enum ModuleKind {
     Service,
 }
 
+/// The choice of terminating signal to use when terminating the process.
+///
+/// Note: Only implemented for Unix based systems.
+#[derive(Debug, PartialEq, Clone)]
+pub enum TermSignal {
+    /// Translates to SIGKILL on Unix based systems.
+    KILL,
+    /// Translates to SIGTERM on Unix based systems.
+    TERM,
+    /// Translates to SIGINT on Unix based systems.
+    INT,
+}
+
 #[derive(Debug)]
 pub struct ModuleDefinition {
     pub kind: ModuleKind,
@@ -22,6 +35,7 @@ pub struct ModuleDefinition {
     pub log_file_path: Option<String>,
     pub dependencies: Vec<String>,
     pub working_dir: Option<PathBuf>,
+    pub termination_signal: TermSignal,
 }
 
 impl Hash for ModuleDefinition {
@@ -45,6 +59,7 @@ impl ModuleDefinition {
         log_file_path: Option<String>,
         dependencies: Vec<String>,
         working_dir: Option<PathBuf>,
+        termination_signal: TermSignal,
     ) -> ModuleDefinition {
         ModuleDefinition {
             kind,
@@ -54,6 +69,7 @@ impl ModuleDefinition {
             log_file_path,
             dependencies,
             working_dir,
+            termination_signal,
         }
     }
 }

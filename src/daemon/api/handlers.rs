@@ -16,6 +16,14 @@ pub struct ApiModuleDefinition {
     pub log_file_path: Option<String>,
     pub dependencies: Vec<String>,
     pub working_dir: Option<String>,
+    pub termination_signal: ApiTermSignal,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ApiTermSignal {
+    KILL,
+    TERM,
+    INT,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -91,7 +99,7 @@ pub struct ApiLogResponse {
 }
 
 #[post("/api/v1/deploy", data = "<module>")]
-pub fn deploy(
+pub(crate) fn deploy(
     module: Json<ApiDeploymentCommand>,
     core_state: State<CoreState>,
 ) -> ApiResult<ApiDeploymentResponse> {
@@ -116,7 +124,7 @@ pub fn deploy(
 }
 
 #[post("/api/v1/tasks/deploy", data = "<task>")]
-pub fn deploy_task(
+pub(crate) fn deploy_task(
     task: Json<ApiTaskDeploymentCommand>,
     _core_state: State<CoreState>,
 ) -> ApiResult<ApiTaskDeploymentResponse> {
@@ -127,7 +135,7 @@ pub fn deploy_task(
 }
 
 #[post("/api/v1/operation", data = "<module>")]
-pub fn module_operation(
+pub(crate) fn module_operation(
     module: Json<ApiOperationCommand>,
     core_state: State<CoreState>,
 ) -> ApiResult<ApiOperationResponse> {
@@ -146,7 +154,7 @@ pub fn module_operation(
 }
 
 #[get("/api/v1/status")]
-pub fn status(
+pub(crate) fn status(
     core_state: State<CoreState>,
 ) -> ApiResult<ApiModuleStatusResponse> {
     let status = core_state
@@ -167,18 +175,16 @@ pub fn status(
 }
 
 #[get("/api/v1/log/<module_name>")]
-pub fn log(
+pub(crate) fn log(
     module_name: String,
     core_state: State<CoreState>,
 ) -> ApiResult<ApiLogResponse> {
     let log_file_path = core_state.core.planner().log_path(&module_name)?;
 
-    Ok(Json(ApiLogResponse {
-        log_file_path,
-    }))
+    Ok(Json(ApiLogResponse { log_file_path }))
 }
 
 #[get("/")]
-pub fn index() -> &'static str {
+pub(crate) fn index() -> &'static str {
     "Hello, world!"
 }

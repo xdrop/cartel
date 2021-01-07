@@ -26,9 +26,28 @@ pub enum ModuleKindV1 {
     Check,
 }
 
+/// The choice of terminating signal to use when terminating the process.
+///
+/// Note: Only implemented for Unix based systems.
+#[derive(Debug, Deserialize, PartialEq, Clone)]
+pub enum TermSignal {
+    /// Translates to SIGKILL on Unix based systems.
+    KILL,
+    /// Translates to SIGTERM on Unix based systems.
+    TERM,
+    /// Translates to SIGINT on Unix based systems.
+    INT,
+}
+
+impl Default for TermSignal {
+    fn default() -> Self {
+        Self::KILL
+    }
+}
+
 impl Default for ModuleKindV1 {
     fn default() -> Self {
-        ModuleKindV1::Service
+        Self::Service
     }
 }
 
@@ -49,6 +68,8 @@ pub struct ServiceOrTaskDefinitionV1 {
     pub kind: ModuleKindV1,
     pub name: String,
     pub command: Vec<String>,
+    #[serde(default = "TermSignal::default")]
+    pub termination_signal: TermSignal,
     #[serde(default = "HashMap::new")]
     pub environment: HashMap<String, String>,
     pub log_file_path: Option<String>,
@@ -79,6 +100,7 @@ impl ServiceOrTaskDefinitionV1 {
         dependencies: Vec<String>,
         working_dir: Option<String>,
         checks: Vec<String>,
+        termination_signal: TermSignal,
     ) -> ServiceOrTaskDefinitionV1 {
         ServiceOrTaskDefinitionV1 {
             kind,
@@ -89,6 +111,7 @@ impl ServiceOrTaskDefinitionV1 {
             dependencies,
             working_dir,
             checks,
+            termination_signal,
         }
     }
 }
