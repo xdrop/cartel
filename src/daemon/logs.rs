@@ -24,7 +24,9 @@ pub fn default_log_directory() -> PathBuf {
 pub fn log_file_path(module_name: &str, module_kind: &ModuleKind) -> PathBuf {
     let base = default_log_directory();
     match module_kind {
-        ModuleKind::Task => base.join(format!("{}.log", module_name)),
-        ModuleKind::Service => base.join(format!("{}.task.log", module_name)),
+        ModuleKind::Task => base.join(format!("{}.task.log", module_name)),
+        ModuleKind::Service => {
+            base.join(format!("{}.service.log", module_name))
+        }
     }
 }

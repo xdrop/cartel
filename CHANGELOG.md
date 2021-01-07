@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Fix incorrectly labeled log files. Services now have a `.service` suffix and tasks have `.task`.
+
 ### Added
 - Allow termination signal to be specified on services using `termination_signal` on the YAML config.
 
