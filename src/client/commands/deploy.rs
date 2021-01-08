@@ -43,7 +43,10 @@ pub fn deploy_cmd(
             InnerDefinition::Service(ref service) => {
                 deploy_service(service, services.as_slice(), cli_config)
             }
-            InnerDefinition::Group(ref group) => deploy_group(group),
+            InnerDefinition::Group(ref group) => {
+                deploy_group(group);
+                Ok(())
+            }
             InnerDefinition::Check(_) => Ok(()),
         }?;
     }
@@ -59,7 +62,7 @@ pub fn deploy_cmd(
 
 fn run_checks(
     checks_map: HashMap<String, CheckDefinition>,
-    modules: &Vec<&ModuleDefinition>,
+    modules: &[&ModuleDefinition],
     cli_config: &CliOptions,
 ) -> Result<()> {
     if cli_config.skip_checks {
@@ -166,7 +169,7 @@ fn deploy_task(
     Ok(())
 }
 
-fn deploy_group(module: &GroupDefinition) -> Result<()> {
+fn deploy_group(module: &GroupDefinition) {
     let message = format!("Group {}", style(&module.name).white().bold());
     tiprint!(
         10, // indent level
@@ -174,5 +177,4 @@ fn deploy_group(module: &GroupDefinition) -> Result<()> {
         message,
         style("(Done)").green().bold()
     );
-    Ok(())
 }

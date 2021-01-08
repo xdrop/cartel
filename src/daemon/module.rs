@@ -51,6 +51,7 @@ impl PartialEq for ModuleDefinition {
 }
 
 impl ModuleDefinition {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         kind: ModuleKind,
         name: String,

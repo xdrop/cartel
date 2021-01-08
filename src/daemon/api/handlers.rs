@@ -153,6 +153,7 @@ pub(crate) fn module_operation(
     Ok(Json(ApiOperationResponse { success: true }))
 }
 
+#[allow(clippy::unnecessary_wraps)]
 #[get("/api/v1/status")]
 pub(crate) fn status(
     core_state: State<CoreState>,

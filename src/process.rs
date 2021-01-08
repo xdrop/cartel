@@ -50,30 +50,30 @@ mod implementation {
                 command
                     .pre_exec(|| setsid().map_err(from_nix_error).map(|_| ()));
             }
-            command.spawn().and_then(|p| {
+            command.spawn().map(|p| {
                 let id = p.id();
-                Ok(Self {
+                Self {
                     child: p,
                     pgid: id
                         .try_into()
                         .expect("u32 -> i32 failed in Process::spawn"),
-                })
+                }
             })
         }
 
-        pub fn interrupt(&mut self) -> () {
+        pub fn interrupt(&mut self) {
             self.signal_process_group(libc::SIGINT);
         }
 
-        pub fn terminate(&mut self) -> () {
+        pub fn terminate(&mut self) {
             self.signal_process_group(libc::SIGTERM);
         }
 
-        pub fn kill(&mut self) -> () {
+        pub fn kill(&mut self) {
             self.signal_process_group(libc::SIGKILL);
         }
 
-        pub fn wait(&mut self) -> () {
+        pub fn wait(&mut self) {
             use nix::sys::wait::*;
             use nix::unistd::Pid;
 
@@ -128,7 +128,7 @@ mod implementation {
 mod implementation {
     use std::collections::HashMap;
     use std::fs::File;
-    use std::io::{self, Result};
+    use std::io::{self, ExitStatus, Result};
     use std::path::Path;
     use std::process::{Child, Command, Stdio};
 
@@ -170,17 +170,17 @@ mod implementation {
         }
 
         #[inline]
-        pub fn terminate(&mut self) -> () {
+        pub fn terminate(&mut self) {
             self.child.kill()
         }
 
         #[inline]
-        pub fn interrupt(&mut self) -> () {
+        pub fn interrupt(&mut self) {
             self.child.kill()
         }
 
         #[inline]
-        pub fn kill(&mut self) -> () {
+        pub fn kill(&mut self) {
             self.child.kill()
         }
 
@@ -190,7 +190,7 @@ mod implementation {
         }
 
         #[inline]
-        pub fn wait(&mut self) -> () {
+        pub fn wait(&mut self) -> Result<ExitStatus> {
             self.child.wait()
         }
 
