@@ -7,6 +7,7 @@ impl From<&ModuleKindV1> for ApiKind {
             ModuleKindV1::Service => ApiKind::Service,
             ModuleKindV1::Task => ApiKind::Task,
             ModuleKindV1::Check => ApiKind::Task,
+            ModuleKindV1::Group => ApiKind::Task,
         }
     }
 }

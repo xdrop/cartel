@@ -1,16 +1,16 @@
 use crate::client::cli::CliOptions;
 use crate::client::config::read_module_definitions;
 use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, TEXTBOOK, VAN};
-use crate::client::module::{checks_index, module_names_set};
+use crate::client::module::{filter_services, module_names_set, remove_checks};
 use crate::client::module::{
-    CheckDefinitionV1, ModuleKindV1, ServiceOrTaskDefinitionV1,
+    CheckDefinitionV1, InnerDefinitionV1, ServiceOrTaskDefinitionV1,
 };
 use crate::client::process::run_check;
 use crate::client::progress::{SpinnerOptions, WaitUntil};
 use crate::client::request;
 use crate::client::validation::validate_modules_selected;
 use crate::dependency::DependencyGraph;
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use console::style;
 
 pub fn deploy_cmd(
@@ -18,9 +18,10 @@ pub fn deploy_cmd(
     cli_config: &CliOptions,
 ) -> Result<()> {
     tprintstep!("Looking for module definitions...", 1, 5, LOOKING_GLASS);
-    let (module_defs, check_defs) = read_module_definitions()?;
+    let mut module_defs = read_module_definitions()?;
+    let checks_map = remove_checks(&mut module_defs);
     let module_names = module_names_set(&module_defs);
-    let checks_index = checks_index(&check_defs);
+    let services = filter_services(&module_defs);
 
     tprintstep!("Resolving dependencies...", 2, 5, LINK);
 
@@ -39,9 +40,19 @@ pub fn deploy_cmd(
     } else {
         tprintstep!("Running checks...", 3, 5, TEXTBOOK);
         for m in &ordered {
-            for check in &m.checks {
-                // TODO: Handle error
-                do_check(checks_index.get(check.as_str()).unwrap())?;
+            let checks = match &m.inner {
+                InnerDefinitionV1::Group(grp) => grp.checks.as_slice(),
+                InnerDefinitionV1::Service(srvc) => srvc.checks.as_slice(),
+                InnerDefinitionV1::Task(tsk) => tsk.checks.as_slice(),
+                _ => &[],
+            };
+
+            for check in checks {
+                let check = checks_map
+                    .get(check)
+                    .ok_or_else(|| anyhow!("Check '{}' not defined", check))?;
+
+                perform_check(check)?;
             }
         }
     }
@@ -49,12 +60,13 @@ pub fn deploy_cmd(
     tprintstep!("Deploying...", 4, 5, VAN);
 
     for m in &ordered {
-        match m.kind {
-            ModuleKindV1::Task => deploy_task(m, cli_config),
-            ModuleKindV1::Service => {
-                deploy_service(m, &module_defs, cli_config)
+        match m.inner {
+            InnerDefinitionV1::Task(ref task) => deploy_task(task, cli_config),
+            InnerDefinitionV1::Service(ref service) => {
+                deploy_service(service, services.as_slice(), cli_config)
             }
-            ModuleKindV1::Check => Ok(()),
+            InnerDefinitionV1::Check(_) => Ok(()),
+            InnerDefinitionV1::Group(_) => Ok(()),
         }?;
     }
 
@@ -67,7 +79,7 @@ pub fn deploy_cmd(
     Ok(())
 }
 
-fn do_check(check_def: &CheckDefinitionV1) -> Result<()> {
+fn perform_check(check_def: &CheckDefinitionV1) -> Result<()> {
     let message = format!(
         "Check {} ({})",
         style(&check_def.about).white().bold(),
@@ -93,7 +105,7 @@ fn do_check(check_def: &CheckDefinitionV1) -> Result<()> {
 
 fn deploy_service(
     module: &ServiceOrTaskDefinitionV1,
-    module_defs: &[ServiceOrTaskDefinitionV1],
+    module_defs: &[&ServiceOrTaskDefinitionV1],
     cli_config: &CliOptions,
 ) -> Result<()> {
     let message = format!("Deploying {}", style(&module.name).white().bold());

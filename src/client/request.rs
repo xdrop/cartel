@@ -43,7 +43,7 @@ fn long_timeout_client() -> Client {
 
 pub fn deploy_modules(
     services_to_deploy: &[&str],
-    module_definitions: &[ServiceOrTaskDefinitionV1],
+    module_definitions: &[&ServiceOrTaskDefinitionV1],
     daemon_url: &str,
 ) -> Result<ApiDeploymentResponse> {
     let client = reqwest::blocking::Client::new();

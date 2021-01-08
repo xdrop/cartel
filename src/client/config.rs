@@ -1,6 +1,5 @@
 use crate::client::module::{
-    BaseDefinitionV1, CheckDefinitionV1, ModuleKindV1,
-    ServiceOrTaskDefinitionV1,
+    InnerDefinitionV1, ModuleDefinitionV1, ModuleKindV1,
 };
 use crate::client::validation::validate_modules_unique;
 use anyhow::{bail, Context, Result};
@@ -20,14 +19,27 @@ use std::path::Path;
 /// one or more modules separated by '---'
 pub fn parse_from_yaml_str(
     source: &str,
-) -> Result<Vec<BaseDefinitionV1>, serde_yaml::Error> {
-    let mut parsed = serde_yaml::from_str_multidoc(source)?;
-    for m in parsed.iter_mut() {
-        match m {
-            #[rustfmt::skip]
-            BaseDefinitionV1::Service(inner) => inner.kind = ModuleKindV1::Service,
-            BaseDefinitionV1::Task(inner) => inner.kind = ModuleKindV1::Task,
-            _ => {}
+) -> Result<Vec<ModuleDefinitionV1>, serde_yaml::Error> {
+    let mut parsed: Vec<ModuleDefinitionV1> =
+        serde_yaml::from_str_multidoc(source)?;
+    for mut m in parsed.iter_mut() {
+        match &mut m.inner {
+            InnerDefinitionV1::Service(def) => {
+                m.kind = ModuleKindV1::Service;
+                def.name = m.name.clone();
+            }
+            InnerDefinitionV1::Task(def) => {
+                m.kind = ModuleKindV1::Task;
+                def.name = m.name.clone();
+            }
+            InnerDefinitionV1::Check(def) => {
+                m.kind = ModuleKindV1::Check;
+                def.name = m.name.clone();
+            }
+            InnerDefinitionV1::Group(def) => {
+                m.kind = ModuleKindV1::Group;
+                def.name = m.name.clone();
+            }
         }
     }
     Ok(parsed)
@@ -52,8 +64,7 @@ pub fn locate_config() -> Option<File> {
     None
 }
 
-pub fn read_module_definitions(
-) -> Result<(Vec<ServiceOrTaskDefinitionV1>, Vec<CheckDefinitionV1>)> {
+pub fn read_module_definitions() -> Result<Vec<ModuleDefinitionV1>> {
     match locate_config() {
         Some(mut config_file) => {
             let mut buffer = String::new();
@@ -61,25 +72,12 @@ pub fn read_module_definitions(
                 .read_to_string(&mut buffer)
                 .with_context(|| "While reading config file")?;
 
-            let mut module_defs: Vec<BaseDefinitionV1> =
+            let module_defs: Vec<ModuleDefinitionV1> =
                 parse_from_yaml_str(&buffer)
                     .with_context(|| "Failed to read module definitions")?;
 
-            let mut services_and_tasks = vec![];
-            let mut checks = vec![];
-
-            while !module_defs.is_empty() {
-                let module = module_defs.pop().unwrap();
-                match module {
-                    #[rustfmt::skip]
-                    BaseDefinitionV1::Service(def) => services_and_tasks.push(def),
-                    BaseDefinitionV1::Task(def) => services_and_tasks.push(def),
-                    BaseDefinitionV1::Check(def) => checks.push(def),
-                }
-            }
-
-            validate_modules_unique(&services_and_tasks, &checks)?;
-            Ok((services_and_tasks, checks))
+            validate_modules_unique(&module_defs)?;
+            Ok(module_defs)
         }
         None => bail!("Failed to find config file"),
     }
