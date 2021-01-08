@@ -3,7 +3,8 @@ use crate::client::config::read_module_definitions;
 use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, TEXTBOOK, VAN};
 use crate::client::module::{filter_services, module_names_set, remove_checks};
 use crate::client::module::{
-    CheckDefinition, InnerDefinition, ServiceOrTaskDefinition,
+    CheckDefinition, GroupDefinition, InnerDefinition, ModuleDefinition,
+    ServiceOrTaskDefinition,
 };
 use crate::client::process::run_check;
 use crate::client::progress::{SpinnerOptions, WaitUntil};
@@ -12,6 +13,7 @@ use crate::client::validation::validate_modules_selected;
 use crate::dependency::DependencyGraph;
 use anyhow::{anyhow, bail, Result};
 use console::style;
+use std::collections::HashMap;
 
 pub fn deploy_cmd(
     modules_to_deploy: Vec<&str>,
@@ -31,6 +33,35 @@ pub fn deploy_cmd(
         DependencyGraph::from(&module_defs, &modules_to_deploy);
     let ordered = dependency_graph.dependency_sort()?;
 
+    run_checks(checks_map, &ordered, cli_config)?;
+
+    tprintstep!("Deploying...", 4, 5, VAN);
+
+    for m in &ordered {
+        match m.inner {
+            InnerDefinition::Task(ref task) => deploy_task(task, cli_config),
+            InnerDefinition::Service(ref service) => {
+                deploy_service(service, services.as_slice(), cli_config)
+            }
+            InnerDefinition::Group(ref group) => deploy_group(group),
+            InnerDefinition::Check(_) => Ok(()),
+        }?;
+    }
+
+    let deploy_txt = format!(
+        "{}: {:?}",
+        style("Deployed modules").bold().green(),
+        &ordered.iter().map(|m| &m.name).collect::<Vec<_>>()
+    );
+    tprintstep!(deploy_txt, 5, 5, SUCCESS);
+    Ok(())
+}
+
+fn run_checks(
+    checks_map: HashMap<String, CheckDefinition>,
+    modules: &Vec<&ModuleDefinition>,
+    cli_config: &CliOptions,
+) -> Result<()> {
     if cli_config.skip_checks {
         let msg = format!(
             "Running checks... {}",
@@ -39,7 +70,7 @@ pub fn deploy_cmd(
         tprintstep!(msg, 3, 5, TEXTBOOK);
     } else {
         tprintstep!("Running checks...", 3, 5, TEXTBOOK);
-        for m in &ordered {
+        for m in modules {
             let checks = match &m.inner {
                 InnerDefinition::Group(grp) => grp.checks.as_slice(),
                 InnerDefinition::Service(srvc) => srvc.checks.as_slice(),
@@ -56,26 +87,6 @@ pub fn deploy_cmd(
             }
         }
     }
-
-    tprintstep!("Deploying...", 4, 5, VAN);
-
-    for m in &ordered {
-        match m.inner {
-            InnerDefinition::Task(ref task) => deploy_task(task, cli_config),
-            InnerDefinition::Service(ref service) => {
-                deploy_service(service, services.as_slice(), cli_config)
-            }
-            InnerDefinition::Check(_) => Ok(()),
-            InnerDefinition::Group(_) => Ok(()),
-        }?;
-    }
-
-    let deploy_txt = format!(
-        "{}: {:?}",
-        style("Deployed modules").bold().green(),
-        &ordered.iter().map(|m| &m.name).collect::<Vec<_>>()
-    );
-    tprintstep!(deploy_txt, 5, 5, SUCCESS);
     Ok(())
 }
 
@@ -146,6 +157,17 @@ fn deploy_task(
     let mut wu = WaitUntil::new(&spin_opt);
     wu.spin_until(|| request::deploy_task(module, &cli_config.daemon_url))?;
 
+    tiprint!(
+        10, // indent level
+        "{} {}",
+        message,
+        style("(Done)").green().bold()
+    );
+    Ok(())
+}
+
+fn deploy_group(module: &GroupDefinition) -> Result<()> {
+    let message = format!("Group {}", style(&module.name).white().bold());
     tiprint!(
         10, // indent level
         "{} {}",
