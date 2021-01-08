@@ -1,6 +1,4 @@
-use crate::client::module::{
-    InnerDefinitionV1, ModuleDefinitionV1, ModuleKindV1,
-};
+use crate::client::module::{InnerDefinition, ModuleDefinition, ModuleKind};
 use crate::client::validation::validate_modules_unique;
 use anyhow::{bail, Context, Result};
 use std::env;
@@ -19,25 +17,25 @@ use std::path::Path;
 /// one or more modules separated by '---'
 pub fn parse_from_yaml_str(
     source: &str,
-) -> Result<Vec<ModuleDefinitionV1>, serde_yaml::Error> {
-    let mut parsed: Vec<ModuleDefinitionV1> =
+) -> Result<Vec<ModuleDefinition>, serde_yaml::Error> {
+    let mut parsed: Vec<ModuleDefinition> =
         serde_yaml::from_str_multidoc(source)?;
     for mut m in parsed.iter_mut() {
         match &mut m.inner {
-            InnerDefinitionV1::Service(def) => {
-                m.kind = ModuleKindV1::Service;
+            InnerDefinition::Service(def) => {
+                m.kind = ModuleKind::Service;
                 def.name = m.name.clone();
             }
-            InnerDefinitionV1::Task(def) => {
-                m.kind = ModuleKindV1::Task;
+            InnerDefinition::Task(def) => {
+                m.kind = ModuleKind::Task;
                 def.name = m.name.clone();
             }
-            InnerDefinitionV1::Check(def) => {
-                m.kind = ModuleKindV1::Check;
+            InnerDefinition::Check(def) => {
+                m.kind = ModuleKind::Check;
                 def.name = m.name.clone();
             }
-            InnerDefinitionV1::Group(def) => {
-                m.kind = ModuleKindV1::Group;
+            InnerDefinition::Group(def) => {
+                m.kind = ModuleKind::Group;
                 def.name = m.name.clone();
             }
         }
@@ -64,7 +62,7 @@ pub fn locate_config() -> Option<File> {
     None
 }
 
-pub fn read_module_definitions() -> Result<Vec<ModuleDefinitionV1>> {
+pub fn read_module_definitions() -> Result<Vec<ModuleDefinition>> {
     match locate_config() {
         Some(mut config_file) => {
             let mut buffer = String::new();
@@ -72,7 +70,7 @@ pub fn read_module_definitions() -> Result<Vec<ModuleDefinitionV1>> {
                 .read_to_string(&mut buffer)
                 .with_context(|| "While reading config file")?;
 
-            let module_defs: Vec<ModuleDefinitionV1> =
+            let module_defs: Vec<ModuleDefinition> =
                 parse_from_yaml_str(&buffer)
                     .with_context(|| "Failed to read module definitions")?;
 

@@ -1,4 +1,4 @@
-use crate::client::module::ModuleDefinitionV1;
+use crate::client::module::ModuleDefinition;
 use anyhow::{bail, Result};
 use std::collections::HashSet;
 
@@ -27,7 +27,7 @@ pub fn validate_modules_selected(
     Ok(())
 }
 
-pub fn validate_modules_unique(modules: &[ModuleDefinitionV1]) -> Result<()> {
+pub fn validate_modules_unique(modules: &[ModuleDefinition]) -> Result<()> {
     let mut seen = HashSet::new();
     for module in modules {
         if seen.contains(&module.name) {

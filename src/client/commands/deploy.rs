@@ -3,7 +3,7 @@ use crate::client::config::read_module_definitions;
 use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, TEXTBOOK, VAN};
 use crate::client::module::{filter_services, module_names_set, remove_checks};
 use crate::client::module::{
-    CheckDefinitionV1, InnerDefinitionV1, ServiceOrTaskDefinitionV1,
+    CheckDefinition, InnerDefinition, ServiceOrTaskDefinition,
 };
 use crate::client::process::run_check;
 use crate::client::progress::{SpinnerOptions, WaitUntil};
@@ -41,9 +41,9 @@ pub fn deploy_cmd(
         tprintstep!("Running checks...", 3, 5, TEXTBOOK);
         for m in &ordered {
             let checks = match &m.inner {
-                InnerDefinitionV1::Group(grp) => grp.checks.as_slice(),
-                InnerDefinitionV1::Service(srvc) => srvc.checks.as_slice(),
-                InnerDefinitionV1::Task(tsk) => tsk.checks.as_slice(),
+                InnerDefinition::Group(grp) => grp.checks.as_slice(),
+                InnerDefinition::Service(srvc) => srvc.checks.as_slice(),
+                InnerDefinition::Task(tsk) => tsk.checks.as_slice(),
                 _ => &[],
             };
 
@@ -61,12 +61,12 @@ pub fn deploy_cmd(
 
     for m in &ordered {
         match m.inner {
-            InnerDefinitionV1::Task(ref task) => deploy_task(task, cli_config),
-            InnerDefinitionV1::Service(ref service) => {
+            InnerDefinition::Task(ref task) => deploy_task(task, cli_config),
+            InnerDefinition::Service(ref service) => {
                 deploy_service(service, services.as_slice(), cli_config)
             }
-            InnerDefinitionV1::Check(_) => Ok(()),
-            InnerDefinitionV1::Group(_) => Ok(()),
+            InnerDefinition::Check(_) => Ok(()),
+            InnerDefinition::Group(_) => Ok(()),
         }?;
     }
 
@@ -79,7 +79,7 @@ pub fn deploy_cmd(
     Ok(())
 }
 
-fn perform_check(check_def: &CheckDefinitionV1) -> Result<()> {
+fn perform_check(check_def: &CheckDefinition) -> Result<()> {
     let message = format!(
         "Check {} ({})",
         style(&check_def.about).white().bold(),
@@ -104,8 +104,8 @@ fn perform_check(check_def: &CheckDefinitionV1) -> Result<()> {
 }
 
 fn deploy_service(
-    module: &ServiceOrTaskDefinitionV1,
-    module_defs: &[&ServiceOrTaskDefinitionV1],
+    module: &ServiceOrTaskDefinition,
+    module_defs: &[&ServiceOrTaskDefinition],
     cli_config: &CliOptions,
 ) -> Result<()> {
     let message = format!("Deploying {}", style(&module.name).white().bold());
@@ -136,7 +136,7 @@ fn deploy_service(
 }
 
 fn deploy_task(
-    module: &ServiceOrTaskDefinitionV1,
+    module: &ServiceOrTaskDefinition,
     cli_config: &CliOptions,
 ) -> Result<()> {
     let message =

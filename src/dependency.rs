@@ -176,7 +176,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::client::module::{ModuleKindV1, ServiceOrTaskDefinitionV1};
+    use crate::client::module::{ModuleKind, ServiceOrTaskDefinition};
     use std::convert::TryInto;
 
     fn eq_lists<T>(a: &[T], b: &[T]) -> bool
@@ -194,9 +194,9 @@ mod test {
     fn make_module(
         name: &str,
         dependencies: Vec<&str>,
-    ) -> ServiceOrTaskDefinitionV1 {
-        ServiceOrTaskDefinitionV1::new(
-            ModuleKindV1::Service,
+    ) -> ServiceOrTaskDefinition {
+        ServiceOrTaskDefinition::new(
+            ModuleKind::Service,
             name.to_string(),
             vec!["dummy".to_string()],
             HashMap::new(),
@@ -238,7 +238,7 @@ mod test {
         let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8];
         let selected = vec!["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
 
-        let graph = DependencyGraph::<ServiceOrTaskDefinitionV1>::from(
+        let graph = DependencyGraph::<ServiceOrTaskDefinition>::from(
             &modules, &selected,
         );
         let result: Vec<&str> = graph
@@ -270,7 +270,7 @@ mod test {
         let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8];
         let selected = vec!["m3", "m2"];
 
-        let graph = DependencyGraph::<ServiceOrTaskDefinitionV1>::from(
+        let graph = DependencyGraph::<ServiceOrTaskDefinition>::from(
             &modules, &selected,
         );
         let result: Vec<&str> = graph

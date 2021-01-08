@@ -1,13 +1,13 @@
-use crate::client::module::{ModuleKindV1, TermSignal};
+use crate::client::module::{ModuleKind, TermSignal};
 use crate::daemon::api::{ApiKind, ApiTermSignal};
 
-impl From<&ModuleKindV1> for ApiKind {
-    fn from(kind: &ModuleKindV1) -> ApiKind {
+impl From<&ModuleKind> for ApiKind {
+    fn from(kind: &ModuleKind) -> ApiKind {
         match kind {
-            ModuleKindV1::Service => ApiKind::Service,
-            ModuleKindV1::Task => ApiKind::Task,
-            ModuleKindV1::Check => ApiKind::Task,
-            ModuleKindV1::Group => ApiKind::Task,
+            ModuleKind::Service => ApiKind::Service,
+            ModuleKind::Task => ApiKind::Task,
+            ModuleKind::Check => ApiKind::Task,
+            ModuleKind::Group => ApiKind::Task,
         }
     }
 }

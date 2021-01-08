@@ -5,26 +5,26 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 #[derive(Deserialize)]
-pub struct ModuleDefinitionV1 {
+pub struct ModuleDefinition {
     pub name: String,
     #[serde(skip_deserializing)]
-    pub kind: ModuleKindV1,
+    pub kind: ModuleKind,
     #[serde(flatten)]
-    pub inner: InnerDefinitionV1,
+    pub inner: InnerDefinition,
 }
 
 #[derive(Deserialize)]
 #[serde(tag = "kind")]
-pub enum InnerDefinitionV1 {
-    Task(ServiceOrTaskDefinitionV1),
-    Service(ServiceOrTaskDefinitionV1),
-    Check(CheckDefinitionV1),
-    Group(GroupDefinitionV1),
+pub enum InnerDefinition {
+    Task(ServiceOrTaskDefinition),
+    Service(ServiceOrTaskDefinition),
+    Check(CheckDefinition),
+    Group(GroupDefinition),
 }
 
 /// The type of the module.
 #[derive(Debug, Deserialize, PartialEq, Clone)]
-pub enum ModuleKindV1 {
+pub enum ModuleKind {
     /// A task is a module with a limited lifetime, used to perform some
     /// temporary operation or some setup.
     Task,
@@ -58,13 +58,13 @@ impl Default for TermSignal {
     }
 }
 
-impl Default for ModuleKindV1 {
+impl Default for ModuleKind {
     fn default() -> Self {
         Self::Service
     }
 }
 
-impl fmt::Display for ModuleKindV1 {
+impl fmt::Display for ModuleKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Task => write!(f, "Task"),
@@ -77,7 +77,7 @@ impl fmt::Display for ModuleKindV1 {
 
 /// A definition of a module for version 1 (V1) of the daemon.
 #[derive(Debug, Deserialize)]
-pub struct ServiceOrTaskDefinitionV1 {
+pub struct ServiceOrTaskDefinition {
     #[serde(default = "String::default")]
     pub name: String,
     pub command: Vec<String>,
@@ -94,7 +94,7 @@ pub struct ServiceOrTaskDefinitionV1 {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct GroupDefinitionV1 {
+pub struct GroupDefinition {
     #[serde(default = "String::default")]
     pub name: String,
     #[serde(default = "Vec::new")]
@@ -104,7 +104,7 @@ pub struct GroupDefinitionV1 {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CheckDefinitionV1 {
+pub struct CheckDefinition {
     #[serde(default = "String::default")]
     pub name: String,
     pub about: String,
@@ -113,7 +113,7 @@ pub struct CheckDefinitionV1 {
     pub help: String,
 }
 
-impl ServiceOrTaskDefinitionV1 {
+impl ServiceOrTaskDefinition {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: String,
@@ -124,8 +124,8 @@ impl ServiceOrTaskDefinitionV1 {
         working_dir: Option<String>,
         checks: Vec<String>,
         termination_signal: TermSignal,
-    ) -> ServiceOrTaskDefinitionV1 {
-        ServiceOrTaskDefinitionV1 {
+    ) -> ServiceOrTaskDefinition {
+        ServiceOrTaskDefinition {
             name,
             command,
             environment,
@@ -138,21 +138,21 @@ impl ServiceOrTaskDefinitionV1 {
     }
 }
 
-impl Hash for ModuleDefinitionV1 {
+impl Hash for ModuleDefinition {
     fn hash<S: Hasher>(&self, state: &mut S) {
         self.name.hash(state);
     }
 }
 
-impl PartialEq for ModuleDefinitionV1 {
+impl PartialEq for ModuleDefinition {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
     }
 }
 
-impl Eq for ModuleDefinitionV1 {}
+impl Eq for ModuleDefinition {}
 
-impl WithDependencies for ServiceOrTaskDefinitionV1 {
+impl WithDependencies for ServiceOrTaskDefinition {
     fn key(&self) -> String {
         self.name.clone()
     }
@@ -166,7 +166,7 @@ impl WithDependencies for ServiceOrTaskDefinitionV1 {
     }
 }
 
-impl WithDependencies for ModuleDefinitionV1 {
+impl WithDependencies for ModuleDefinition {
     fn key(&self) -> String {
         self.name.clone()
     }
@@ -177,30 +177,30 @@ impl WithDependencies for ModuleDefinitionV1 {
 
     fn dependencies(&self) -> &Vec<String> {
         match &self.inner {
-            InnerDefinitionV1::Group(group) => &group.dependencies,
-            InnerDefinitionV1::Task(task) => &task.dependencies,
-            InnerDefinitionV1::Service(service) => &service.dependencies,
-            InnerDefinitionV1::Check(_) => panic!("Check used as dependency"),
+            InnerDefinition::Group(group) => &group.dependencies,
+            InnerDefinition::Task(task) => &task.dependencies,
+            InnerDefinition::Service(service) => &service.dependencies,
+            InnerDefinition::Check(_) => panic!("Check used as dependency"),
         }
     }
 }
 
-pub fn module_names(modules: &[ModuleDefinitionV1]) -> Vec<&str> {
+pub fn module_names(modules: &[ModuleDefinition]) -> Vec<&str> {
     modules.iter().map(|m| m.name.as_str()).collect()
 }
 
-pub fn module_names_set(modules: &[ModuleDefinitionV1]) -> HashSet<&str> {
+pub fn module_names_set(modules: &[ModuleDefinition]) -> HashSet<&str> {
     modules.iter().map(|m| m.name.as_str()).collect()
 }
 
 pub fn remove_checks(
-    modules: &mut Vec<ModuleDefinitionV1>,
-) -> HashMap<String, CheckDefinitionV1> {
+    modules: &mut Vec<ModuleDefinition>,
+) -> HashMap<String, CheckDefinition> {
     let mut indices = vec![];
     let mut checks = HashMap::new();
 
     for (idx, module) in modules.iter().enumerate().rev() {
-        if let InnerDefinitionV1::Check(_) = &module.inner {
+        if let InnerDefinition::Check(_) = &module.inner {
             indices.push(idx);
         }
     }
@@ -208,7 +208,7 @@ pub fn remove_checks(
     for idx in indices {
         let module = modules.swap_remove(idx);
         // This match will always be true, is there a way to remove it?
-        if let InnerDefinitionV1::Check(check) = module.inner {
+        if let InnerDefinition::Check(check) = module.inner {
             checks.insert(module.name, check);
         }
     }
@@ -217,12 +217,12 @@ pub fn remove_checks(
 }
 
 pub fn filter_services(
-    modules: &[ModuleDefinitionV1],
-) -> Vec<&ServiceOrTaskDefinitionV1> {
+    modules: &[ModuleDefinition],
+) -> Vec<&ServiceOrTaskDefinition> {
     let mut services = vec![];
 
     for module in modules {
-        if let InnerDefinitionV1::Service(service) = &module.inner {
+        if let InnerDefinition::Service(service) = &module.inner {
             services.push(service);
         }
     }
@@ -232,7 +232,7 @@ pub fn filter_services(
 
 pub fn module_by_name<'a>(
     name: &str,
-    modules: &'a [ModuleDefinitionV1],
-) -> Option<&'a ModuleDefinitionV1> {
+    modules: &'a [ModuleDefinition],
+) -> Option<&'a ModuleDefinition> {
     modules.iter().find(|m| m.name == name)
 }

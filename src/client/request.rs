@@ -1,4 +1,4 @@
-use crate::client::module::ServiceOrTaskDefinitionV1;
+use crate::client::module::ServiceOrTaskDefinition;
 use crate::daemon::api::*;
 use anyhow::{bail, Result};
 use reqwest::blocking::Client;
@@ -43,7 +43,7 @@ fn long_timeout_client() -> Client {
 
 pub fn deploy_modules(
     services_to_deploy: &[&str],
-    module_definitions: &[&ServiceOrTaskDefinitionV1],
+    module_definitions: &[&ServiceOrTaskDefinition],
     daemon_url: &str,
 ) -> Result<ApiDeploymentResponse> {
     let client = reqwest::blocking::Client::new();
@@ -76,7 +76,7 @@ pub fn deploy_modules(
 }
 
 pub fn deploy_task(
-    task_definition: &ServiceOrTaskDefinitionV1,
+    task_definition: &ServiceOrTaskDefinition,
     daemon_url: &str,
 ) -> Result<ApiTaskDeploymentResponse> {
     let client = long_timeout_client();
