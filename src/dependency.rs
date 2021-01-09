@@ -176,7 +176,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::client::module::{ModuleKind, ServiceOrTaskDefinition};
+    use crate::client::module::*;
     use std::convert::TryInto;
 
     fn eq_lists<T>(a: &[T], b: &[T]) -> bool
@@ -191,20 +191,21 @@ mod test {
         a == b
     }
 
-    fn make_module(
-        name: &str,
-        dependencies: Vec<&str>,
-    ) -> ServiceOrTaskDefinition {
-        ServiceOrTaskDefinition::new(
-            ModuleKind::Service,
-            name.to_string(),
-            vec!["dummy".to_string()],
-            HashMap::new(),
-            None,
-            dependencies.iter().map(|s| s.to_string()).collect(),
-            None,
-            vec![],
-        )
+    fn make_module(name: &str, dependencies: Vec<&str>) -> ModuleDefinition {
+        ModuleDefinition {
+            name: name.to_string(),
+            kind: ModuleKind::Service,
+            inner: InnerDefinition::Service(ServiceOrTaskDefinition::new(
+                name.to_string(),
+                vec!["dummy".to_string()],
+                HashMap::new(),
+                None,
+                dependencies.iter().map(|s| s.to_string()).collect(),
+                None,
+                vec![],
+                TermSignal::KILL,
+            )),
+        }
     }
 
     fn is_before(m1: &str, m2: &str, elems: &Vec<&str>) -> bool {
@@ -238,9 +239,8 @@ mod test {
         let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8];
         let selected = vec!["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
 
-        let graph = DependencyGraph::<ServiceOrTaskDefinition>::from(
-            &modules, &selected,
-        );
+        let graph =
+            DependencyGraph::<ModuleDefinition>::from(&modules, &selected);
         let result: Vec<&str> = graph
             .dependency_sort()
             .unwrap()
@@ -270,9 +270,8 @@ mod test {
         let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8];
         let selected = vec!["m3", "m2"];
 
-        let graph = DependencyGraph::<ServiceOrTaskDefinition>::from(
-            &modules, &selected,
-        );
+        let graph =
+            DependencyGraph::<ModuleDefinition>::from(&modules, &selected);
         let result: Vec<&str> = graph
             .dependency_sort()
             .unwrap()
