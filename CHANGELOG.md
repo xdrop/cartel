@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added a new `Group` declaration to allow for modules whose sole purpose is to group other modules. They can be deployed, specified as a dependency, or have checks just like other modules.
+- Added cleanup for child processes on SIGINT or SIGTERM
+
 
 ## [0.2.2-alpha] - 2020-01-07
 ### Changed

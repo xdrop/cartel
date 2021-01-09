@@ -126,6 +126,10 @@ impl Planner {
     pub fn collect_dead(&self) {
         self.executor().collect()
     }
+
+    pub fn cleanup(&self) -> Result<()> {
+        self.executor().cleanup()
+    }
 }
 
 impl Planner {

@@ -5,6 +5,7 @@ pub mod executor;
 pub mod logs;
 pub mod module;
 pub mod planner;
+pub mod signal;
 pub mod time;
 
 pub use self::core::Core;

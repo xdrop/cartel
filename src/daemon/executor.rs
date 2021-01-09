@@ -194,6 +194,18 @@ impl Executor {
 
         Ok(())
     }
+
+    /// Perform cleanup by attempting to kill all running child processes.
+    pub fn cleanup(&mut self) -> Result<()> {
+        let module_names: Vec<String> = self
+            .running_modules()
+            .map(|m| m.module_definition.name.clone())
+            .collect();
+        for module in module_names {
+            self.stop_module(module.as_str())?;
+        }
+        Ok(())
+    }
 }
 
 impl Executor {
