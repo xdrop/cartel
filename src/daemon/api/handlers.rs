@@ -1,7 +1,8 @@
 use crate::daemon::api::converter::*;
 use crate::daemon::api::engine::CoreState;
 use crate::daemon::api::error::*;
-use crate::daemon::planner::Planner;
+use crate::daemon::module::ModuleDefinition;
+use crate::daemon::planner::{MonitorStatus, Planner};
 use rocket::State;
 use rocket_contrib::json::Json;
 use serde::{Deserialize, Serialize};
@@ -17,6 +18,19 @@ pub struct ApiModuleDefinition {
     pub dependencies: Vec<String>,
     pub working_dir: Option<String>,
     pub termination_signal: ApiTermSignal,
+    pub healthcheck: Option<ApiHealthCheck>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "kind")]
+pub enum ApiHealthCheck {
+    Executable(ApiExeHealthcheck),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ApiExeHealthcheck {
+    pub command: Vec<String>,
+    pub working_dir: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -57,6 +71,7 @@ pub struct ApiOperationResponse {
 pub struct ApiDeploymentResponse {
     pub success: bool,
     pub deployed: HashMap<String, bool>,
+    pub monitors: Vec<Option<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -98,28 +113,53 @@ pub struct ApiLogResponse {
     pub log_file_path: OsString,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum ApiHealthStatus {
+    Pending,
+    Successful,
+    RetriesExceeded,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ApiHealthResponse {
+    pub healthcheck_status: Option<ApiHealthStatus>,
+}
 #[post("/api/v1/deploy", data = "<module>")]
 pub(crate) fn deploy(
     module: Json<ApiDeploymentCommand>,
     core_state: State<CoreState>,
 ) -> ApiResult<ApiDeploymentResponse> {
+    let planner = core_state.core.planner();
     let module_inner = module.into_inner();
-    let module_defs = module_inner
+
+    let monitors = module_inner
+        .module_definitions
+        .iter()
+        .map(|m| {
+            if let Some(ref h) = m.healthcheck {
+                let monitor_key =
+                    planner.create_monitor(m.name.as_str(), h.into());
+                Some(monitor_key)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let module_defs: Vec<ModuleDefinition> = module_inner
         .module_definitions
         .into_iter()
         .map(from_service)
         .collect();
 
     let selection = module_inner.to_deploy;
-
-    let deployed = core_state
-        .core
-        .planner()
-        .deploy_many(module_defs, &selection)?;
+    let deployed = planner.deploy_many(module_defs, &selection)?;
 
     Ok(Json(ApiDeploymentResponse {
         success: true,
         deployed,
+        monitors,
     }))
 }
 
@@ -158,9 +198,8 @@ pub(crate) fn module_operation(
 pub(crate) fn status(
     core_state: State<CoreState>,
 ) -> ApiResult<ApiModuleStatusResponse> {
-    let status = core_state
-        .core
-        .planner()
+    let planner = core_state.core.planner();
+    let status = planner
         .module_status()
         .into_iter()
         .map(|m| ApiModuleStatus {
@@ -185,7 +224,29 @@ pub(crate) fn log(
     Ok(Json(ApiLogResponse { log_file_path }))
 }
 
+#[get("/api/v1/health/<module_name>")]
+pub(crate) fn health(
+    module_name: String,
+    core_state: State<CoreState>,
+) -> ApiResult<ApiHealthResponse> {
+    let status = core_state
+        .core
+        .planner()
+        .monitor_status(module_name.as_str());
+
+    let healthcheck_status = match status {
+        Some(MonitorStatus::Pending) => Some(ApiHealthStatus::Pending),
+        Some(MonitorStatus::Successful) => Some(ApiHealthStatus::Successful),
+        Some(MonitorStatus::RetriesExceeded) => {
+            Some(ApiHealthStatus::RetriesExceeded)
+        }
+        None => None,
+    };
+
+    Ok(Json(ApiHealthResponse { healthcheck_status }))
+}
+
 #[get("/")]
 pub(crate) fn index() -> &'static str {
-    "Hello, world!"
+    "Daemon service"
 }

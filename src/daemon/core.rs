@@ -1,3 +1,4 @@
+use crate::daemon::monitor::MonitorHandle;
 use crate::daemon::planner::Planner;
 
 pub struct Core {
@@ -5,19 +6,13 @@ pub struct Core {
 }
 
 impl Core {
-    pub fn new() -> Core {
+    pub fn new(monitor_handle: MonitorHandle) -> Core {
         Core {
-            planner: Planner::new(),
+            planner: Planner::new(monitor_handle),
         }
     }
 
     pub fn planner(&self) -> &Planner {
         &self.planner
-    }
-}
-
-impl Default for Core {
-    fn default() -> Self {
-        Self::new()
     }
 }

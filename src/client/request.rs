@@ -59,6 +59,7 @@ pub fn deploy_modules(
                 dependencies: m.dependencies.clone(),
                 working_dir: m.working_dir.clone(),
                 termination_signal: (&m.termination_signal).into(),
+                healthcheck: None,
             })
             .collect(),
     };
@@ -89,6 +90,7 @@ pub fn deploy_task(
             dependencies: task_definition.dependencies.clone(),
             working_dir: task_definition.working_dir.clone(),
             termination_signal: ApiTermSignal::KILL,
+            healthcheck: None,
         },
     };
 

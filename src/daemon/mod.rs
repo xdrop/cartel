@@ -4,6 +4,7 @@ pub mod error;
 pub mod executor;
 pub mod logs;
 pub mod module;
+pub mod monitor;
 pub mod planner;
 pub mod signal;
 pub mod time;

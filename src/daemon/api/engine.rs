@@ -15,6 +15,7 @@ pub fn start(core: &Arc<Core>) {
             "/",
             routes![
                 handlers::index,
+                handlers::health,
                 handlers::deploy,
                 handlers::deploy_task,
                 handlers::status,

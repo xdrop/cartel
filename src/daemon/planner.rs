@@ -1,6 +1,7 @@
 use super::error::DaemonError;
 use super::executor::{task_executor, Executor, ModuleStatus, RunStatus};
 use super::module::ModuleDefinition;
+pub use crate::daemon::monitor::{Monitor, MonitorHandle, MonitorStatus};
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
@@ -9,6 +10,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 pub struct Planner {
     executor: Mutex<Executor>,
+    monitor_handle: MonitorHandle,
 }
 
 pub struct PsStatus {
@@ -20,9 +22,10 @@ pub struct PsStatus {
 }
 
 impl Planner {
-    pub fn new() -> Planner {
+    pub fn new(monitor_handle: MonitorHandle) -> Planner {
         Planner {
             executor: Mutex::new(Executor::new()),
+            monitor_handle,
         }
     }
 
@@ -130,6 +133,17 @@ impl Planner {
     pub fn cleanup(&self) -> Result<()> {
         self.executor().cleanup()
     }
+
+    pub fn create_monitor(&self, name: &str, monitor: Monitor) -> String {
+        let monitor_key = format!("{}-{}", name, uuid::Uuid::new_v4());
+        self.monitor_handle
+            .new_monitor(monitor_key.clone(), monitor);
+        monitor_key
+    }
+
+    pub fn monitor_status(&self, monitor_name: &str) -> Option<MonitorStatus> {
+        self.monitor_handle.monitor_status(monitor_name)
+    }
 }
 
 impl Planner {
@@ -171,11 +185,5 @@ impl Planner {
         Ok(module_defs
             .into_iter()
             .filter(move |m| selection_set.contains(&m.name)))
-    }
-}
-
-impl Default for Planner {
-    fn default() -> Self {
-        Self::new()
     }
 }
