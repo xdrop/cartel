@@ -91,6 +91,19 @@ pub struct ServiceOrTaskDefinition {
     pub working_dir: Option<String>,
     #[serde(default = "Vec::new")]
     pub checks: Vec<String>,
+    pub healthcheck: Option<Healthcheck>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "kind")]
+pub enum Healthcheck {
+    Executable(ExecutableHealthcheck),
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExecutableHealthcheck {
+    pub command: Vec<String>,
+    pub working_dir: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -124,6 +137,7 @@ impl ServiceOrTaskDefinition {
         working_dir: Option<String>,
         checks: Vec<String>,
         termination_signal: TermSignal,
+        healthcheck: Option<Healthcheck>,
     ) -> ServiceOrTaskDefinition {
         ServiceOrTaskDefinition {
             name,
@@ -134,6 +148,7 @@ impl ServiceOrTaskDefinition {
             working_dir,
             checks,
             termination_signal,
+            healthcheck,
         }
     }
 }

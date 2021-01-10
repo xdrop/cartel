@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added a new `Group` declaration to allow for modules whose sole purpose is to group other modules. They can be deployed, specified as a dependency, or have checks just like other modules.
 - Added cleanup for child processes on SIGINT or SIGTERM
+- Services can now define a `healthcheck` section to implement checks which must pass before further dependencies are started (experimental).
 
 
 ## [0.2.2-alpha] - 2020-01-07

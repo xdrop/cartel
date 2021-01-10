@@ -18,12 +18,12 @@ pub struct ApiModuleDefinition {
     pub dependencies: Vec<String>,
     pub working_dir: Option<String>,
     pub termination_signal: ApiTermSignal,
-    pub healthcheck: Option<ApiHealthCheck>,
+    pub healthcheck: Option<ApiHealthcheck>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "kind")]
-pub enum ApiHealthCheck {
+pub enum ApiHealthcheck {
     Executable(ApiExeHealthcheck),
 }
 

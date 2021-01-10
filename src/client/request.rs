@@ -59,7 +59,7 @@ pub fn deploy_modules(
                 dependencies: m.dependencies.clone(),
                 working_dir: m.working_dir.clone(),
                 termination_signal: (&m.termination_signal).into(),
-                healthcheck: None,
+                healthcheck: m.healthcheck.as_ref().map(|h| h.into()),
             })
             .collect(),
     };
@@ -171,4 +171,17 @@ pub fn log_info(module_name: &str, daemon_url: &str) -> Result<ApiLogResponse> {
         LogInfoResponse::Ok(r) => Ok(r),
         LogInfoResponse::Err(e) => bail!(e.message),
     }
+}
+
+pub fn poll_health(
+    monitor_handle: &str,
+    daemon_url: &str,
+) -> Result<ApiHealthResponse> {
+    let client = reqwest::blocking::Client::new();
+    let health = client
+        .get(&(daemon_url.to_owned() + "/health/" + monitor_handle))
+        .send()?
+        .json()?;
+
+    Ok(health)
 }

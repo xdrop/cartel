@@ -51,10 +51,10 @@ impl From<ApiTermSignal> for TermSignal {
     }
 }
 
-impl From<&ApiHealthCheck> for Monitor {
-    fn from(healthcheck: &ApiHealthCheck) -> Monitor {
+impl From<&ApiHealthcheck> for Monitor {
+    fn from(healthcheck: &ApiHealthcheck) -> Monitor {
         match healthcheck {
-            ApiHealthCheck::Executable(exe) => {
+            ApiHealthcheck::Executable(exe) => {
                 Monitor::Executable(ExeMonitor {
                     command: exe.command.clone(),
                     working_dir: exe.working_dir.clone(),

@@ -10,6 +10,7 @@ use crate::client::process::run_check;
 use crate::client::progress::{SpinnerOptions, WaitUntil};
 use crate::client::request;
 use crate::client::validation::validate_modules_selected;
+use crate::daemon::api::ApiHealthStatus;
 use crate::dependency::DependencyGraph;
 use anyhow::{anyhow, bail, Result};
 use console::style;
@@ -41,7 +42,16 @@ pub fn deploy_cmd(
         match m.inner {
             InnerDefinition::Task(ref task) => deploy_task(task, cli_config),
             InnerDefinition::Service(ref service) => {
-                deploy_service(service, services.as_slice(), cli_config)
+                let monitor_handle =
+                    deploy_service(service, services.as_slice(), cli_config)?;
+                if let Some(handle) = monitor_handle {
+                    wait_until_healthy(
+                        service.name.as_str(),
+                        handle.as_str(),
+                        cli_config,
+                    )?;
+                }
+                Ok(())
             }
             InnerDefinition::Group(ref group) => {
                 deploy_group(group);
@@ -121,12 +131,12 @@ fn deploy_service(
     module: &ServiceOrTaskDefinition,
     module_defs: &[&ServiceOrTaskDefinition],
     cli_config: &CliOptions,
-) -> Result<()> {
+) -> Result<Option<String>> {
     let message = format!("Deploying {}", style(&module.name).white().bold());
     let spin_opt = SpinnerOptions::new(message.clone()).clear_on_finish(false);
 
     let mut wu = WaitUntil::new(&spin_opt);
-    let deploy_result = wu.spin_until(|| {
+    let mut deploy_result = wu.spin_until(|| {
         request::deploy_modules(
             &[&module.name],
             module_defs,
@@ -140,11 +150,50 @@ fn deploy_service(
         style("(Already deployed)").white().dim().bold()
     };
 
+    // TODO: Cleanup
+    let monitor_handle = deploy_result.monitors.remove(0);
+
+    tiprint!(
+        10, // indent level
+        "{} {} {:?}",
+        message,
+        deploy_status,
+        monitor_handle
+    );
+
+    Ok(monitor_handle)
+}
+
+fn wait_until_healthy(
+    module_name: &str,
+    monitor_handle: &str,
+    cli_config: &CliOptions,
+) -> Result<()> {
+    let message = format!(
+        "Waiting {} to be healthy",
+        style(module_name).white().bold()
+    );
+    let spin_opt = SpinnerOptions::new(message.clone()).clear_on_finish(false);
+    let mut wu = WaitUntil::new(&spin_opt);
+
+    wu.spin_until(|| loop {
+        match request::poll_health(monitor_handle, &cli_config.daemon_url)?
+            .healthcheck_status
+            .unwrap()
+        {
+            ApiHealthStatus::Pending => {}
+            ApiHealthStatus::RetriesExceeded => {
+                bail!("The service did not complete its healthcheck in time.")
+            }
+            ApiHealthStatus::Successful => break Ok(()),
+        }
+    })?;
+
     tiprint!(
         10, // indent level
         "{} {}",
         message,
-        deploy_status
+        style("(Healthy)").green().bold()
     );
     Ok(())
 }

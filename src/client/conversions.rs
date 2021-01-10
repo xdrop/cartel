@@ -1,5 +1,7 @@
-use crate::client::module::{ModuleKind, TermSignal};
-use crate::daemon::api::{ApiKind, ApiTermSignal};
+use crate::client::module::{Healthcheck, ModuleKind, TermSignal};
+use crate::daemon::api::{
+    ApiExeHealthcheck, ApiHealthcheck, ApiKind, ApiTermSignal,
+};
 
 impl From<&ModuleKind> for ApiKind {
     fn from(kind: &ModuleKind) -> ApiKind {
@@ -18,6 +20,19 @@ impl From<&TermSignal> for ApiTermSignal {
             TermSignal::TERM => ApiTermSignal::TERM,
             TermSignal::KILL => ApiTermSignal::KILL,
             TermSignal::INT => ApiTermSignal::INT,
+        }
+    }
+}
+
+impl From<&Healthcheck> for ApiHealthcheck {
+    fn from(healthcheck: &Healthcheck) -> ApiHealthcheck {
+        match healthcheck {
+            Healthcheck::Executable(exe) => {
+                ApiHealthcheck::Executable(ApiExeHealthcheck {
+                    command: exe.command.clone(),
+                    working_dir: exe.working_dir.clone(),
+                })
+            }
         }
     }
 }
