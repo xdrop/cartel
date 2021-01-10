@@ -42,26 +42,24 @@ fn long_timeout_client() -> Client {
 }
 
 pub fn deploy_modules(
-    services_to_deploy: &[&str],
-    module_definitions: &[&ServiceOrTaskDefinition],
+    module_definition: &ServiceOrTaskDefinition,
     daemon_url: &str,
 ) -> Result<ApiDeploymentResponse> {
     let client = reqwest::blocking::Client::new();
     let command = ApiDeploymentCommand {
-        to_deploy: services_to_deploy.iter().map(|s| s.to_string()).collect(),
-        module_definitions: module_definitions
-            .iter()
-            .map(|m| ApiModuleDefinition {
-                name: m.name.clone(),
-                command: m.command.clone(),
-                environment: m.environment.clone(),
-                log_file_path: m.log_file_path.clone(),
-                dependencies: m.dependencies.clone(),
-                working_dir: m.working_dir.clone(),
-                termination_signal: (&m.termination_signal).into(),
-                healthcheck: m.healthcheck.as_ref().map(|h| h.into()),
-            })
-            .collect(),
+        module_definition: ApiModuleDefinition {
+            name: module_definition.name.clone(),
+            command: module_definition.command.clone(),
+            environment: module_definition.environment.clone(),
+            log_file_path: module_definition.log_file_path.clone(),
+            dependencies: module_definition.dependencies.clone(),
+            working_dir: module_definition.working_dir.clone(),
+            termination_signal: (&module_definition.termination_signal).into(),
+            healthcheck: module_definition
+                .healthcheck
+                .as_ref()
+                .map(|h| h.into()),
+        },
     };
 
     let deployment_result: DeploymentResponse = client

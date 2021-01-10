@@ -1,8 +1,7 @@
 use crate::daemon::api::converter::*;
 use crate::daemon::api::engine::CoreState;
 use crate::daemon::api::error::*;
-use crate::daemon::module::ModuleDefinition;
-use crate::daemon::planner::{MonitorStatus, Planner};
+use crate::daemon::planner::{Monitor, MonitorStatus, Planner};
 use rocket::State;
 use rocket_contrib::json::Json;
 use serde::{Deserialize, Serialize};
@@ -42,8 +41,7 @@ pub enum ApiTermSignal {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiDeploymentCommand {
-    pub to_deploy: Vec<String>,
-    pub module_definitions: Vec<ApiModuleDefinition>,
+    pub module_definition: ApiModuleDefinition,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -70,8 +68,8 @@ pub struct ApiOperationResponse {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiDeploymentResponse {
     pub success: bool,
-    pub deployed: HashMap<String, bool>,
-    pub monitors: Vec<Option<String>>,
+    pub deployed: bool,
+    pub monitor: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -125,41 +123,35 @@ pub enum ApiHealthStatus {
 pub struct ApiHealthResponse {
     pub healthcheck_status: Option<ApiHealthStatus>,
 }
-#[post("/api/v1/deploy", data = "<module>")]
+#[post("/api/v1/deploy", data = "<command>")]
 pub(crate) fn deploy(
-    module: Json<ApiDeploymentCommand>,
+    command: Json<ApiDeploymentCommand>,
     core_state: State<CoreState>,
 ) -> ApiResult<ApiDeploymentResponse> {
     let planner = core_state.core.planner();
-    let module_inner = module.into_inner();
+    let command = command.into_inner();
 
-    let monitors = module_inner
-        .module_definitions
-        .iter()
-        .map(|m| {
-            if let Some(ref h) = m.healthcheck {
-                let monitor_key =
-                    planner.create_monitor(m.name.as_str(), h.into());
-                Some(monitor_key)
-            } else {
-                None
-            }
-        })
-        .collect();
+    let monitor: Option<Monitor> = match command.module_definition.healthcheck {
+        Some(ref h) => Some(h.into()),
+        None => None,
+    };
 
-    let module_defs: Vec<ModuleDefinition> = module_inner
-        .module_definitions
-        .into_iter()
-        .map(from_service)
-        .collect();
+    let module_def = from_service(command.module_definition);
+    let module_name = module_def.name.clone();
 
-    let selection = module_inner.to_deploy;
-    let deployed = planner.deploy_many(module_defs, &selection)?;
+    let deployed = planner.deploy(module_def)?;
+
+    let monitor_key = if deployed && monitor.is_some() {
+        let monitor_key = planner.create_monitor(module_name, monitor.unwrap());
+        Some(monitor_key)
+    } else {
+        None
+    };
 
     Ok(Json(ApiDeploymentResponse {
         success: true,
         deployed,
-        monitors,
+        monitor: monitor_key,
     }))
 }
 

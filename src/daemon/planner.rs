@@ -134,7 +134,7 @@ impl Planner {
         self.executor().cleanup()
     }
 
-    pub fn create_monitor(&self, name: &str, monitor: Monitor) -> String {
+    pub fn create_monitor(&self, name: String, monitor: Monitor) -> String {
         let monitor_key = format!("{}-{}", name, uuid::Uuid::new_v4());
         self.monitor_handle
             .new_monitor(monitor_key.clone(), monitor);

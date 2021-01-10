@@ -1,7 +1,7 @@
 use crate::client::cli::CliOptions;
 use crate::client::config::read_module_definitions;
 use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, TEXTBOOK, VAN};
-use crate::client::module::{filter_services, module_names_set, remove_checks};
+use crate::client::module::{module_names_set, remove_checks};
 use crate::client::module::{
     CheckDefinition, GroupDefinition, InnerDefinition, ModuleDefinition,
     ServiceOrTaskDefinition,
@@ -24,7 +24,6 @@ pub fn deploy_cmd(
     let mut module_defs = read_module_definitions()?;
     let checks_map = remove_checks(&mut module_defs);
     let module_names = module_names_set(&module_defs);
-    let services = filter_services(&module_defs);
 
     tprintstep!("Resolving dependencies...", 2, 5, LINK);
 
@@ -42,8 +41,7 @@ pub fn deploy_cmd(
         match m.inner {
             InnerDefinition::Task(ref task) => deploy_task(task, cli_config),
             InnerDefinition::Service(ref service) => {
-                let monitor_handle =
-                    deploy_service(service, services.as_slice(), cli_config)?;
+                let monitor_handle = deploy_service(service, cli_config)?;
                 if let Some(handle) = monitor_handle {
                     wait_until_healthy(
                         service.name.as_str(),
@@ -129,36 +127,29 @@ fn perform_check(check_def: &CheckDefinition) -> Result<()> {
 
 fn deploy_service(
     module: &ServiceOrTaskDefinition,
-    module_defs: &[&ServiceOrTaskDefinition],
     cli_config: &CliOptions,
 ) -> Result<Option<String>> {
     let message = format!("Deploying {}", style(&module.name).white().bold());
     let spin_opt = SpinnerOptions::new(message.clone()).clear_on_finish(false);
 
     let mut wu = WaitUntil::new(&spin_opt);
-    let mut deploy_result = wu.spin_until(|| {
-        request::deploy_modules(
-            &[&module.name],
-            module_defs,
-            &cli_config.daemon_url,
-        )
+    let deploy_result = wu.spin_until(|| {
+        request::deploy_modules(module, &cli_config.daemon_url)
     })?;
 
-    let deploy_status = if deploy_result.deployed[&module.name] {
+    let deploy_status = if deploy_result.deployed {
         style("(Deployed)").green().bold()
     } else {
         style("(Already deployed)").white().dim().bold()
     };
 
-    // TODO: Cleanup
-    let monitor_handle = deploy_result.monitors.remove(0);
+    let monitor_handle = deploy_result.monitor;
 
     tiprint!(
         10, // indent level
-        "{} {} {:?}",
+        "{} {}",
         message,
         deploy_status,
-        monitor_handle
     );
 
     Ok(monitor_handle)
@@ -179,13 +170,13 @@ fn wait_until_healthy(
     wu.spin_until(|| loop {
         match request::poll_health(monitor_handle, &cli_config.daemon_url)?
             .healthcheck_status
-            .unwrap()
         {
-            ApiHealthStatus::Pending => {}
-            ApiHealthStatus::RetriesExceeded => {
+            Some(ApiHealthStatus::Pending) => {}
+            Some(ApiHealthStatus::RetriesExceeded) => {
                 bail!("The service did not complete its healthcheck in time.")
             }
-            ApiHealthStatus::Successful => break Ok(()),
+            Some(ApiHealthStatus::Successful) => break Ok(()),
+            None => {}
         }
     })?;
 
@@ -193,7 +184,7 @@ fn wait_until_healthy(
         10, // indent level
         "{} {}",
         message,
-        style("(Healthy)").green().bold()
+        style("(Done)").green().bold()
     );
     Ok(())
 }
