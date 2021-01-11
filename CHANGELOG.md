@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.1-alpha] - 2020-01-11
 ### Added
 - Added the ability for the `stop` command to stop multiple services at once.
 - Added a new `down` command to allow stopping every running service without having to specify names.
