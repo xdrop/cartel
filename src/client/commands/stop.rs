@@ -5,7 +5,7 @@ use crate::client::request;
 use anyhow::Result;
 use console::style;
 
-pub fn stop_module_cmd(
+pub fn stop_service_cmd(
     services: Vec<&str>,
     cli_config: &CliOptions,
 ) -> Result<()> {

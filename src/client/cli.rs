@@ -151,7 +151,7 @@ fn invoke_subcommand(
                 .values_of("services")
                 .ok_or_else(|| anyhow!("Expected at least one service"))?
                 .collect();
-            stop_module_cmd(modules_to_stop, cli_config)?;
+            stop_service_cmd(modules_to_stop, cli_config)?;
         }
         ("down", Some(_down_cli_opts)) => {
             down_cmd(cli_config)?;

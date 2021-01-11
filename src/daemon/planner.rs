@@ -130,16 +130,25 @@ impl Planner {
         self.executor().collect()
     }
 
+    /// Performs cleanup (by killing all running children).
     pub fn cleanup(&self) -> Result<()> {
         self.executor().cleanup()
     }
 
+    /// Stops all running services.
     pub fn stop_all(&self) -> Result<()> {
         // Currently uses cleanup, but having this as a separate function since
         // it may change in the future.
         self.executor().cleanup()
     }
 
+    /// Creates a monitor and returns it.
+    ///
+    /// The monitor can be used to track the health of a service. Once it's
+    /// created it will continue to attempt to check if the service is healthy
+    /// for a number of times until eventually it gives up.
+    ///
+    /// The monitors status can be obtained with [monitor_status].
     pub fn create_monitor(&self, name: String, monitor: Monitor) -> String {
         let monitor_key = format!("{}-{}", name, uuid::Uuid::new_v4());
         self.monitor_handle
@@ -147,6 +156,15 @@ impl Planner {
         monitor_key
     }
 
+    /// Get the status of the monitor with the provided name.
+    ///
+    /// Returns an enum indicating whether:
+    ///  - The monitor check was successful
+    ///  - The monitor is still pending
+    ///  - The monitor failed too many times
+    ///
+    /// If an invalid name was given, or the monitor has not started yet this
+    /// may return None.
     pub fn monitor_status(&self, monitor_name: &str) -> Option<MonitorStatus> {
         self.monitor_handle.monitor_status(monitor_name)
     }
