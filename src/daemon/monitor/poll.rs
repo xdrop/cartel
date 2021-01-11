@@ -54,7 +54,7 @@ async fn perform_poll(
             monitor_list.swap_remove(idx);
             attempt_count.remove_entry(&key);
             status.push((key, MonitorStatus::Successful));
-        } else if attempts > 5 {
+        } else if attempts > 6 {
             // If it failed too many times we also want to remove it
             monitor_list.swap_remove(idx);
             attempt_count.remove_entry(&key);

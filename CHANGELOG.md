@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Healthcheck `kind` has been renamed to `type` and it's values are now lowercase (eg. `type: exec`).
+- Increased the number of attempts for a healthcheck by 4 seconds.
 
 ### Fixed
 - Paths within module definitions are now correctly resolved relative to the client rather than the daemon.
