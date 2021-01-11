@@ -123,6 +123,8 @@ pub enum ApiHealthStatus {
 pub struct ApiHealthResponse {
     pub healthcheck_status: Option<ApiHealthStatus>,
 }
+
+#[allow(clippy::unnecessary_unwrap)]
 #[post("/api/v1/deploy", data = "<command>")]
 pub(crate) fn deploy(
     command: Json<ApiDeploymentCommand>,
@@ -230,7 +232,7 @@ pub(crate) fn log(
 pub(crate) fn health(
     module_name: String,
     core_state: State<CoreState>,
-) -> ApiResult<ApiHealthResponse> {
+) -> Json<ApiHealthResponse> {
     let status = core_state
         .core
         .planner()
@@ -245,7 +247,7 @@ pub(crate) fn health(
         None => None,
     };
 
-    Ok(Json(ApiHealthResponse { healthcheck_status }))
+    Json(ApiHealthResponse { healthcheck_status })
 }
 
 #[get("/")]

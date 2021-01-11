@@ -9,7 +9,7 @@ pub fn stop_service_cmd(
     services: Vec<&str>,
     cli_config: &CliOptions,
 ) -> Result<()> {
-    tprintstep!(format!("Stopping service(s)..."), 1, 2, HOUR_GLASS);
+    tprintstep!("Stopping service(s)...", 1, 2, HOUR_GLASS);
     for service in services {
         stop_service(service, cli_config)?;
     }
