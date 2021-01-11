@@ -77,8 +77,9 @@ pub fn cli_app() -> Result<()> {
             SubCommand::with_name("stop")
                 .about("Stop a running service")
                 .arg(
-                    Arg::with_name("service")
-                        .help("Service to stop")
+                    Arg::with_name("services")
+                        .help("Services to stop")
+                        .multiple(true)
                         .takes_value(true),
                 ),
         )
@@ -143,10 +144,11 @@ fn invoke_subcommand(
             list_modules_cmd(cli_config)?;
         }
         ("stop", Some(stop_cli_opts)) => {
-            let module_to_stop = stop_cli_opts
-                .value_of("service")
-                .ok_or_else(|| anyhow!("Expected service name"))?;
-            stop_module_cmd(module_to_stop, cli_config)?;
+            let modules_to_stop = stop_cli_opts
+                .values_of("services")
+                .ok_or_else(|| anyhow!("Expected at least one service"))?
+                .collect();
+            stop_module_cmd(modules_to_stop, cli_config)?;
         }
         ("restart", Some(restart_cli_opts)) => {
             let module_to_restart = restart_cli_opts
