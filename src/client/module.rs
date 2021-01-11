@@ -95,9 +95,9 @@ pub struct ServiceOrTaskDefinition {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(tag = "kind")]
+#[serde(tag = "type", rename_all = "lowercase")]
 pub enum Healthcheck {
-    Executable(ExecutableHealthcheck),
+    Exec(ExecutableHealthcheck),
 }
 
 #[derive(Debug, Deserialize)]

@@ -27,10 +27,10 @@ impl From<&TermSignal> for ApiTermSignal {
 impl From<&Healthcheck> for ApiHealthcheck {
     fn from(healthcheck: &Healthcheck) -> ApiHealthcheck {
         match healthcheck {
-            Healthcheck::Executable(exe) => {
+            Healthcheck::Exec(exec) => {
                 ApiHealthcheck::Executable(ApiExeHealthcheck {
-                    command: exe.command.clone(),
-                    working_dir: exe.working_dir.clone(),
+                    command: exec.command.clone(),
+                    working_dir: exec.working_dir.clone(),
                 })
             }
         }
