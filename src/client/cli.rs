@@ -84,6 +84,9 @@ pub fn cli_app() -> Result<()> {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("down").about("Stop all running services"),
+        )
+        .subcommand(
             SubCommand::with_name("restart")
                 .about("Restart a service")
                 .arg(
@@ -149,6 +152,9 @@ fn invoke_subcommand(
                 .ok_or_else(|| anyhow!("Expected at least one service"))?
                 .collect();
             stop_module_cmd(modules_to_stop, cli_config)?;
+        }
+        ("down", Some(_down_cli_opts)) => {
+            down_cmd(cli_config)?;
         }
         ("restart", Some(restart_cli_opts)) => {
             let module_to_restart = restart_cli_opts

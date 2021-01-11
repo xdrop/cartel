@@ -185,6 +185,16 @@ pub(crate) fn module_operation(
     Ok(Json(ApiOperationResponse { success: true }))
 }
 
+#[post("/api/v1/stop_all")]
+pub(crate) fn stop_all(
+    core_state: State<CoreState>,
+) -> ApiResult<ApiOperationResponse> {
+    let planner = core_state.core.planner();
+    planner.stop_all()?;
+
+    Ok(Json(ApiOperationResponse { success: true }))
+}
+
 #[allow(clippy::unnecessary_wraps)]
 #[get("/api/v1/status")]
 pub(crate) fn status(

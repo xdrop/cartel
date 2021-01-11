@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added the ability for the `stop` command to stop multiple services at once.
+- Added a new `down` command to allow stopping every running service without having to specify names.
 
 ### Changed
 - Healthcheck `kind` has been renamed to `type` and it's values are now lowercase (eg. `type: exec`).

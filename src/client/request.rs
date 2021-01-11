@@ -126,6 +126,20 @@ pub fn stop_module(
     }
 }
 
+pub fn stop_all(daemon_url: &str) -> Result<ApiOperationResponse> {
+    let client = reqwest::blocking::Client::new();
+
+    let operation_result: OperationResponse = client
+        .post(&(daemon_url.to_owned() + "/stop_all"))
+        .send()?
+        .json()?;
+
+    match operation_result {
+        OperationResponse::Ok(r) => Ok(r),
+        OperationResponse::Err(e) => bail!(e.message),
+    }
+}
+
 pub fn restart_module(
     module_name: &str,
     daemon_url: &str,

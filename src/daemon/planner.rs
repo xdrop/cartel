@@ -134,6 +134,12 @@ impl Planner {
         self.executor().cleanup()
     }
 
+    pub fn stop_all(&self) -> Result<()> {
+        // Currently uses cleanup, but having this as a separate function since
+        // it may change in the future.
+        self.executor().cleanup()
+    }
+
     pub fn create_monitor(&self, name: String, monitor: Monitor) -> String {
         let monitor_key = format!("{}-{}", name, uuid::Uuid::new_v4());
         self.monitor_handle

@@ -19,6 +19,7 @@ pub fn start(core: &Arc<Core>) {
                 handlers::deploy,
                 handlers::deploy_task,
                 handlers::status,
+                handlers::stop_all,
                 handlers::module_operation,
                 handlers::log
             ],
