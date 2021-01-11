@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Paths within module definitions are now correctly resolved relative to the client rather than the daemon.
+- Fixed an issue where the healthchecks command stdout will be printed on the daemon stdout.
 
 ## [0.3.0-alpha] - 2020-01-11
 ### Added

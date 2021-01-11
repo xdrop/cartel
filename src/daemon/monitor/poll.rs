@@ -2,6 +2,7 @@ use super::commands::*;
 use super::state::{MonitorState, MonitorStatus};
 use log::{debug, info};
 use std::collections::HashMap;
+use std::process::Stdio;
 use std::sync::Arc;
 use tokio::process;
 use tokio::sync::mpsc;
@@ -91,6 +92,8 @@ async fn poll_exe_monitor(exe_monitor: &ExeMonitor) -> bool {
     // TODO: Handle error
     let mut child = process::Command::new(head)
         .args(tail)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .spawn()
         .expect("failed to spawn");
     // TODO: Handle error
