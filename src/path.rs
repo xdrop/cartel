@@ -1,3 +1,4 @@
+use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
 
 /// Expands the `~` symbol in paths.
@@ -35,4 +36,19 @@ pub fn from_user_str(path: &str) -> Option<PathBuf> {
 /// users directory.
 pub fn from_user_string(path: String) -> Option<PathBuf> {
     expand_tilde(PathBuf::from(path))
+}
+
+/// Canonicalize a user provided path from the given `&str`.
+///
+/// Attempts to canonicalize the given path (read from `&str`) and convert it
+/// back into a [String]. Before canonicalizing, any tilde are expanded to the
+/// users home directory.
+pub fn canonicalize_str(path: &str) -> Result<String> {
+    let path = from_user_str(path).expect("Failed to locate users home dir");
+    let canonicalized = path.canonicalize()?;
+    if let Ok(path) = canonicalized.into_os_string().into_string() {
+        Ok(path)
+    } else {
+        bail!("Failed to convert path during canonicalize")
+    }
 }

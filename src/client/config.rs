@@ -1,5 +1,8 @@
-use crate::client::module::{InnerDefinition, ModuleDefinition, ModuleKind};
+use crate::client::module::{
+    Healthcheck, InnerDefinition, ModuleDefinition, ModuleKind,
+};
 use crate::client::validation::validate_modules_unique;
+use crate::path;
 use anyhow::{bail, Context, Result};
 use std::env;
 use std::fs::File;
@@ -15,24 +18,31 @@ use std::path::Path;
 /// # Arguments
 /// * `source` - The source string to parse from. It may contain
 /// one or more modules separated by '---'
-pub fn parse_from_yaml_str(
-    source: &str,
-) -> Result<Vec<ModuleDefinition>, serde_yaml::Error> {
+pub fn parse_from_yaml_str(source: &str) -> Result<Vec<ModuleDefinition>> {
     let mut parsed: Vec<ModuleDefinition> =
         serde_yaml::from_str_multidoc(source)?;
     for mut m in parsed.iter_mut() {
         match &mut m.inner {
-            InnerDefinition::Service(def) => {
+            InnerDefinition::Service(ref mut def) => {
                 m.kind = ModuleKind::Service;
                 def.name = m.name.clone();
+                update_path(&mut def.working_dir)?;
+                if let Some(Healthcheck::Exec(ref mut exec)) = def.healthcheck {
+                    update_path(&mut exec.working_dir)?;
+                }
             }
             InnerDefinition::Task(def) => {
                 m.kind = ModuleKind::Task;
                 def.name = m.name.clone();
+                update_path(&mut def.working_dir)?;
+                if let Some(Healthcheck::Exec(ref mut exec)) = def.healthcheck {
+                    update_path(&mut exec.working_dir)?;
+                }
             }
             InnerDefinition::Check(def) => {
                 m.kind = ModuleKind::Check;
                 def.name = m.name.clone();
+                update_path(&mut def.working_dir)?;
             }
             InnerDefinition::Group(def) => {
                 m.kind = ModuleKind::Group;
@@ -41,6 +51,28 @@ pub fn parse_from_yaml_str(
         }
     }
     Ok(parsed)
+}
+
+/// Canonicalize the path in the given option.
+///
+/// The incoming option's content is replaced by a new [String] containing the
+/// canonicalized version of the path represented by the [String].
+///
+/// Paths like `~/mypath` or `./../mypath/..` will be converted to absolute
+/// paths, while also resolving any symlinks.
+///
+/// # Errors
+///
+/// If the path provided cannot be canonicalized then an error will be returned.
+fn update_path(o: &mut Option<String>) -> Result<()> {
+    if let Some(path) = o.as_mut() {
+        let canon =
+            path::canonicalize_str(path.as_str()).with_context(|| {
+                format!("Failed to parse path: {}", path.as_str())
+            })?;
+        *path = canon;
+    }
+    Ok(())
 }
 
 /// Attempts to locate the config file in the given directory.
