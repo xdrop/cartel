@@ -15,6 +15,8 @@ use crate::dependency::DependencyGraph;
 use anyhow::{anyhow, bail, Result};
 use console::style;
 use std::collections::HashMap;
+use std::thread;
+use std::time::Duration;
 
 pub fn deploy_cmd(
     modules_to_deploy: Vec<&str>,
@@ -171,12 +173,13 @@ fn wait_until_healthy(
         match request::poll_health(monitor_handle, &cli_config.daemon_url)?
             .healthcheck_status
         {
-            Some(ApiHealthStatus::Pending) => {}
+            Some(ApiHealthStatus::Successful) => break Ok(()),
             Some(ApiHealthStatus::RetriesExceeded) => {
                 bail!("The service did not complete its healthcheck in time.")
             }
-            Some(ApiHealthStatus::Successful) => break Ok(()),
-            None => {}
+            Some(ApiHealthStatus::Pending) | None => {
+                thread::sleep(Duration::from_secs(2));
+            }
         }
     })?;
 
