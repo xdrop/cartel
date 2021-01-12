@@ -1,3 +1,4 @@
+use crate::client::cli::CliOptions;
 use crate::client::module::{
     Healthcheck, InnerDefinition, ModuleDefinition, ModuleKind,
 };
@@ -79,41 +80,59 @@ fn update_path(o: &mut Option<String>, relative_to: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Attempts to locate the config file in the given directory.
+/// Attempts to locate the module definitions file.
 ///
 /// Tries to read the config file by looking in the current working directory.
 /// Returns `Some((File, PathBuf))` if it has been found, or `None` otherwise.
-pub fn locate_config() -> Option<(File, PathBuf)> {
+pub fn try_locate_file() -> Result<(File, PathBuf)> {
     let cwd =
         env::current_dir().expect("Failed to get current working directory");
     let path_to_try = cwd.join(Path::new("./cartel.yaml"));
-    let config_file = path_to_try.as_path();
+    let module_file = path_to_try.as_path();
 
-    if config_file.exists() {
-        return Some((
-            File::open(config_file)
-                .expect("Failed to open config file for reading"),
-            path_to_try,
-        ));
+    if module_file.exists() {
+        return Ok((File::open(module_file)?, path_to_try));
     }
-    None
+    bail!("Failed to locate cartel.yaml")
 }
 
-pub fn read_module_definitions() -> Result<Vec<ModuleDefinition>> {
-    match locate_config() {
-        Some((mut config_file, path)) => {
-            let mut buffer = String::new();
-            config_file
-                .read_to_string(&mut buffer)
-                .with_context(|| "While reading config file")?;
-
-            let module_defs: Vec<ModuleDefinition> =
-                parse_from_yaml_str(&buffer, path.as_path().parent().unwrap())
-                    .with_context(|| "Failed to read module definitions")?;
-
-            validate_modules_unique(&module_defs)?;
-            Ok(module_defs)
-        }
-        None => bail!("Failed to find config file"),
+/// Attempts to locate the module definitions file in the given directory.
+///
+/// Tries to read the config file by looking in the current working directory.
+/// Returns `Some((File, PathBuf))` if it has been found, or `None` otherwise.
+pub fn locate_file(file: &Option<String>) -> Result<(File, PathBuf)> {
+    if let Some(path) = file {
+        file_from_str_path(path.as_str())
+    } else {
+        try_locate_file()
     }
+}
+
+pub fn file_from_str_path(file_path: &str) -> Result<(File, PathBuf)> {
+    let path = PathBuf::from(file_path);
+    if path.exists() {
+        return Ok((
+            File::open(&path)
+                .context("Failed to open given file for reading")?,
+            path,
+        ));
+    }
+    bail!("File at {} not found", file_path)
+}
+
+pub fn read_module_definitions(
+    opts: &CliOptions,
+) -> Result<Vec<ModuleDefinition>> {
+    let (mut config_file, path) = locate_file(&opts.module_file)?;
+    let mut buffer = String::new();
+    config_file
+        .read_to_string(&mut buffer)
+        .with_context(|| "While reading config file")?;
+
+    let module_defs: Vec<ModuleDefinition> =
+        parse_from_yaml_str(&buffer, path.as_path().parent().unwrap())
+            .with_context(|| "Failed to read module definitions")?;
+
+    validate_modules_unique(&module_defs)?;
+    Ok(module_defs)
 }

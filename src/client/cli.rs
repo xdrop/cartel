@@ -5,6 +5,7 @@ use std::env;
 
 pub struct CliOptions {
     pub verbose: u64,
+    pub module_file: Option<String>,
     pub default_pager_cmd: Vec<String>,
     pub full_pager_cmd: Vec<String>,
     pub follow_pager_cmd: Vec<String>,
@@ -25,6 +26,15 @@ pub fn cli_app() -> Result<()> {
                 .value_name("FILE")
                 .help("Sets a custom config file")
                 .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("file")
+                .short("f")
+                .long("file")
+                .value_name("FILE")
+                .help("Specify a module definitions file to read")
+                .takes_value(true)
+                .multiple(false),
         )
         .arg(
             Arg::with_name("verbose")
@@ -138,6 +148,7 @@ fn cli_config(matches: &ArgMatches) -> Result<CliOptions> {
     Ok(CliOptions {
         verbose: matches.occurrences_of("v"),
         skip_checks: matches.is_present("skip_checks"),
+        module_file: matches.value_of("file").map(String::from),
         default_pager_cmd,
         full_pager_cmd,
         follow_pager_cmd,

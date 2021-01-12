@@ -23,7 +23,7 @@ pub fn deploy_cmd(
     cli_config: &CliOptions,
 ) -> Result<()> {
     tprintstep!("Looking for module definitions...", 1, 5, LOOKING_GLASS);
-    let mut module_defs = read_module_definitions()?;
+    let mut module_defs = read_module_definitions(&cli_config)?;
     let checks_map = remove_checks(&mut module_defs);
     let module_names = module_names_set(&module_defs);
 

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - Added aliases for most commands (eg. `deploy,d`, `restart,rr`, `run,r`, `stop,s`).
 - Added two new options for logs `--all` and `--follow`.
+- The path to the module definition file can now be specified with `-f` or `--file`.
 
 
 ## [0.3.1-alpha] - 2020-01-11
