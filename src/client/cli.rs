@@ -5,7 +5,9 @@ use std::env;
 
 pub struct CliOptions {
     pub verbose: u64,
-    pub pager_cmd: Vec<String>,
+    pub default_pager_cmd: Vec<String>,
+    pub full_pager_cmd: Vec<String>,
+    pub follow_pager_cmd: Vec<String>,
     pub daemon_url: String,
     pub skip_checks: bool,
 }
@@ -39,6 +41,7 @@ pub fn cli_app() -> Result<()> {
         .subcommand(
             SubCommand::with_name("deploy")
                 .about("Deploys a module (and it's dependencies)")
+                .visible_alias("d")
                 .arg(
                     Arg::with_name("modules")
                         .help("Modules to deploy")
@@ -48,6 +51,7 @@ pub fn cli_app() -> Result<()> {
         )
         .subcommand(
             SubCommand::with_name("run")
+                .visible_alias("r")
                 .about("Runs a task (but NOT it's dependencies)")
                 .arg(
                     Arg::with_name("task")
@@ -62,10 +66,30 @@ pub fn cli_app() -> Result<()> {
         )
         .subcommand(
             SubCommand::with_name("logs")
+                .visible_alias("l")
                 .about("Print logs of a service")
                 .after_help(
-                    "By default the 'less' pager is used. To change this, \
-                    set the CARTEL_PAGER environment variable.",
+                    "By default `tail` and `less` are used to page logs \
+                    (depending on the option). Each can be controlled from \
+                    an environment variable. \n\n\
+                    You can do this by overriding \
+                    CARTEL_DEFAULT_LOG_PAGER, \
+                    CARTEL_FULL_LOG_PAGER or CARTEL_FOLLOW_LOG_PAGER.",
+                )
+                .arg(
+                    Arg::with_name("follow")
+                        .long("follow")
+                        .short("f")
+                        .help("Print the full logs in follow mode")
+                        .takes_value(false),
+                )
+                .arg(
+                    Arg::with_name("all")
+                        .long("all")
+                        .short("a")
+                        .conflicts_with("follow")
+                        .help("Print the full logs")
+                        .takes_value(false),
                 )
                 .arg(
                     Arg::with_name("service")
@@ -75,6 +99,7 @@ pub fn cli_app() -> Result<()> {
         )
         .subcommand(
             SubCommand::with_name("stop")
+                .visible_alias("s")
                 .about("Stop a running service")
                 .arg(
                     Arg::with_name("services")
@@ -88,6 +113,7 @@ pub fn cli_app() -> Result<()> {
         )
         .subcommand(
             SubCommand::with_name("restart")
+                .visible_alias("rr")
                 .about("Restart a service")
                 .arg(
                     Arg::with_name("service")
@@ -103,26 +129,37 @@ pub fn cli_app() -> Result<()> {
 }
 
 fn cli_config(matches: &ArgMatches) -> Result<CliOptions> {
-    #[allow(clippy::or_fun_call)]
-    let pager_cmd_str =
-        env::var("CARTEL_PAGER").unwrap_or("tail -f -n 30".to_string());
-    let pager_cmd: Vec<String> =
-        pager_cmd_str.split(' ').map(|s| s.to_string()).collect();
-
-    if pager_cmd.is_empty() || pager_cmd_str.is_empty() {
-        bail!(
-            "Invalid log pager specified. \
-            Are you overriding CARTEL_PAGER?"
-        );
-    }
+    let full_pager_cmd = parse_cmd_from_env("CARTEL_FULL_LOG_PAGER", "less")?;
+    let default_pager_cmd =
+        parse_cmd_from_env("CARTEL_DEFAULT_LOG_PAGER", "tail -f -n 30")?;
+    let follow_pager_cmd =
+        parse_cmd_from_env("CARTEL_FOLLOW_LOG_PAGER", "less +F")?;
 
     Ok(CliOptions {
         verbose: matches.occurrences_of("v"),
         skip_checks: matches.is_present("skip_checks"),
-        pager_cmd,
+        default_pager_cmd,
+        full_pager_cmd,
+        follow_pager_cmd,
         // TODO: Make config
         daemon_url: "http://localhost:8000/api/v1".to_string(),
     })
+}
+
+fn parse_cmd_from_env(env: &str, default: &str) -> Result<Vec<String>> {
+    #[allow(clippy::or_fun_call)]
+    let cmd_str = env::var(env).unwrap_or(default.to_string());
+    let cmd: Vec<String> = cmd_str.split(' ').map(|s| s.to_string()).collect();
+
+    if cmd.is_empty() || cmd_str.is_empty() {
+        bail!(
+            "Invalid command specified \
+            Are you overriding {}?",
+            env
+        );
+    }
+
+    Ok(cmd)
 }
 
 fn invoke_subcommand(
@@ -166,7 +203,18 @@ fn invoke_subcommand(
             let module_name = logs_cli_opts
                 .value_of("service")
                 .ok_or_else(|| anyhow!("Expected service name"))?;
-            print_logs(module_name, cli_config)?;
+            let follow = logs_cli_opts.is_present("follow");
+            let all = logs_cli_opts.is_present("all");
+
+            let mode = if follow {
+                LogMode::FOLLOW
+            } else if all {
+                LogMode::FULL
+            } else {
+                LogMode::DEFAULT
+            };
+
+            print_logs(module_name, mode, cli_config)?;
         }
         _ => {}
     }

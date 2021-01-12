@@ -5,7 +5,17 @@ use anyhow::Result;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
-pub fn print_logs(module_name: &str, cli_config: &CliOptions) -> Result<()> {
+pub enum LogMode {
+    FULL,
+    FOLLOW,
+    DEFAULT,
+}
+
+pub fn print_logs(
+    module_name: &str,
+    log_mode: LogMode,
+    cli_config: &CliOptions,
+) -> Result<()> {
     let log_file = request::log_info(module_name, &cli_config.daemon_url)?;
 
     // This might fail on systems like Windows since paths may not be UTF-8
@@ -17,10 +27,16 @@ pub fn print_logs(module_name: &str, cli_config: &CliOptions) -> Result<()> {
         .to_str()
         .expect("Systems where paths aren't UTF-8 encoded are not supported");
 
+    let pager_cmd = match log_mode {
+        LogMode::DEFAULT => &cli_config.default_pager_cmd,
+        LogMode::FOLLOW => &cli_config.follow_pager_cmd,
+        LogMode::FULL => &cli_config.full_pager_cmd,
+    };
+
     #[cfg(unix)]
     {
-        Command::new(&cli_config.pager_cmd[0])
-            .args(&cli_config.pager_cmd[1..])
+        Command::new(&pager_cmd[0])
+            .args(&pager_cmd[1..])
             .arg(unix_path)
             .exec(); // Note: The process ends here; subsequent code won't run.
     }
@@ -28,8 +44,8 @@ pub fn print_logs(module_name: &str, cli_config: &CliOptions) -> Result<()> {
     // test it + set an appropriate pager for Windows.
     #[cfg(windows)]
     {
-        Command::new(&cli_config.pager_cmd[0])
-            .args(&cli_config.pager_cmd[1..])
+        Command::new(&pager_cmd[0])
+            .args(&pager_cmd[1..])
             .arg(unix_path)
             .spawn()?
             .wait()?;
