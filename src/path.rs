@@ -40,12 +40,19 @@ pub fn from_user_string(path: String) -> Option<PathBuf> {
 
 /// Canonicalize a user provided path from the given `&str`.
 ///
-/// Attempts to canonicalize the given path (read from `&str`) and convert it
-/// back into a [String]. Before canonicalizing, any tilde are expanded to the
-/// users home directory.
-pub fn canonicalize_str(path: &str) -> Result<String> {
+/// Attempts to canonicalize the given path (read from `&str`) relative to given
+/// directory and convert it back into a [String]. Before canonicalizing, any
+/// tilde are expanded to the users home directory.
+pub fn canonicalize_str(path: &str, relative_to: &Path) -> Result<String> {
     let path = from_user_str(path).expect("Failed to locate users home dir");
-    let canonicalized = path.canonicalize()?;
+
+    let absolute = if path.is_absolute() {
+        path
+    } else {
+        relative_to.join(path)
+    };
+
+    let canonicalized = absolute.canonicalize()?;
     if let Ok(path) = canonicalized.into_os_string().into_string() {
         Ok(path)
     } else {
