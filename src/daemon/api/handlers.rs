@@ -28,6 +28,7 @@ pub enum ApiHealthcheck {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ApiExeHealthcheck {
+    pub retries: u32,
     pub command: Vec<String>,
     pub working_dir: Option<String>,
 }

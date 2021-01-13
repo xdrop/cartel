@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Fixed
 - Fixed an issue where the paths failed to resolve if `working_dir` was not specified.
 
+## Added
+- Made retries for a healthcheck configurable via the `retries` property.
+
 ## [0.3.2-alpha] - 2020-01-12
 ## Added
 - Added aliases for most commands (eg. `deploy,d`, `restart,rr`, `run,r`, `stop,s`).

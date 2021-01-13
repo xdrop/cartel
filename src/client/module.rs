@@ -102,6 +102,8 @@ pub enum Healthcheck {
 
 #[derive(Debug, Deserialize)]
 pub struct ExecutableHealthcheck {
+    #[serde(default = "default_healthcheck_retries")]
+    pub retries: u32,
     pub command: Vec<String>,
     pub working_dir: Option<String>,
 }
@@ -198,6 +200,10 @@ impl WithDependencies for ModuleDefinition {
             InnerDefinition::Check(_) => panic!("Check used as dependency"),
         }
     }
+}
+
+fn default_healthcheck_retries() -> u32 {
+    5
 }
 
 pub fn module_names(modules: &[ModuleDefinition]) -> Vec<&str> {

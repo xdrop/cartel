@@ -49,20 +49,22 @@ async fn perform_poll(
     let mut status: Vec<(String, MonitorStatus)> = Vec::new();
 
     for (idx, (key, succesful)) in poll_results.into_iter().enumerate().rev() {
-        let attempts = attempt_count.get(&key).copied().unwrap_or(0);
+        let retries = monitor_list[idx].1.retries;
+        let attempts = *attempt_count.entry(key.to_string()).or_insert(1);
+
         if succesful {
             // If succeeded we want to remove it from the poll list
             monitor_list.swap_remove(idx);
             attempt_count.remove_entry(&key);
             status.push((key, MonitorStatus::Successful));
-        } else if attempts > 6 {
+        } else if attempts >= retries {
             // If it failed too many times we also want to remove it
             monitor_list.swap_remove(idx);
             attempt_count.remove_entry(&key);
             status.push((key, MonitorStatus::RetriesExceeded));
         } else {
             // If it failed we want to track how many times it's failed
-            *attempt_count.entry(key.to_string()).or_insert(0) += 1;
+            *attempt_count.get_mut(&key).unwrap() += 1;
             status.push((key, MonitorStatus::Pending));
         }
     }
@@ -72,8 +74,8 @@ async fn perform_poll(
 async fn poll_monitors(monitors: &[(String, Monitor)]) -> Vec<(String, bool)> {
     let mut results = vec![];
     for (key, monitor) in monitors {
-        match monitor {
-            Monitor::Executable(exe_monitor) => {
+        match &monitor.task {
+            MonitorTask::Executable(exe_monitor) => {
                 debug!("Polling exe monitor: {}", key);
                 let result = poll_exe_monitor(&exe_monitor).await;
                 debug!("Exe monitor result: {}", result);
@@ -84,7 +86,7 @@ async fn poll_monitors(monitors: &[(String, Monitor)]) -> Vec<(String, bool)> {
     results
 }
 
-async fn poll_exe_monitor(exe_monitor: &ExeMonitor) -> bool {
+async fn poll_exe_monitor(exe_monitor: &ExecMonitor) -> bool {
     let (head, tail) = exe_monitor
         .command
         .split_first()

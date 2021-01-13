@@ -29,6 +29,7 @@ impl From<&Healthcheck> for ApiHealthcheck {
         match healthcheck {
             Healthcheck::Exec(exec) => {
                 ApiHealthcheck::Executable(ApiExeHealthcheck {
+                    retries: exec.retries,
                     command: exec.command.clone(),
                     working_dir: exec.working_dir.clone(),
                 })

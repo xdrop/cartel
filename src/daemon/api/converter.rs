@@ -1,7 +1,7 @@
 use super::handlers::*;
 use crate::daemon::executor::RunStatus;
 use crate::daemon::module::{ModuleDefinition, ModuleKind, TermSignal};
-use crate::daemon::monitor::{ExeMonitor, Monitor};
+use crate::daemon::monitor::{ExecMonitor, Monitor, MonitorTask};
 use crate::path;
 
 pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {
@@ -54,12 +54,13 @@ impl From<ApiTermSignal> for TermSignal {
 impl From<&ApiHealthcheck> for Monitor {
     fn from(healthcheck: &ApiHealthcheck) -> Monitor {
         match healthcheck {
-            ApiHealthcheck::Executable(exe) => {
-                Monitor::Executable(ExeMonitor {
+            ApiHealthcheck::Executable(exe) => Monitor {
+                retries: exe.retries,
+                task: MonitorTask::Executable(ExecMonitor {
                     command: exe.command.clone(),
                     working_dir: exe.working_dir.clone(),
-                })
-            }
+                }),
+            },
         }
     }
 }
