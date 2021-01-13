@@ -7,14 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [0.3.3-alpha] - 2020-01-13
-## Fixed
+### Fixed
 - Fixed an issue where the paths failed to resolve if `working_dir` was not specified.
 
-## Added
+### Added
 - Made retries for a healthcheck configurable via the `retries` property.
 
 ## [0.3.2-alpha] - 2020-01-12
-## Added
+### Added
 - Added aliases for most commands (eg. `deploy,d`, `restart,rr`, `run,r`, `stop,s`).
 - Added two new options for logs `--all` and `--follow`.
 - The path to the module definition file can now be specified with `-f` or `--file`.
