@@ -18,7 +18,7 @@ pub fn cli_app() -> Result<()> {
         .version(&crate_version!()[..])
         .about("Panayiotis P. <xdrop.me@gmail.com>")
         .about("Service orchestration made easy")
-        .setting(AppSettings::ArgRequiredElseHelp)
+        .setting(AppSettings::SubcommandRequiredElseHelp)
         .arg(
             Arg::with_name("config")
                 .short("c")
