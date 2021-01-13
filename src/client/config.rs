@@ -76,6 +76,13 @@ fn update_path(o: &mut Option<String>, relative_to: &Path) -> Result<()> {
                 format!("Failed to parse path: {}", path.as_str())
             })?;
         *path = canon;
+    } else {
+        o.get_or_insert_with(|| {
+            relative_to
+                .to_str()
+                .expect("Failed to convert path to str in update_path")
+                .to_string()
+        });
     }
     Ok(())
 }

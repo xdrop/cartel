@@ -175,7 +175,10 @@ fn wait_until_healthy(
         {
             Some(ApiHealthStatus::Successful) => break Ok(()),
             Some(ApiHealthStatus::RetriesExceeded) => {
-                bail!("The service did not complete its healthcheck in time.")
+                bail!(
+                    "The service did not complete its healthcheck in time.\n\
+                       Check the logs for more details."
+                )
             }
             Some(ApiHealthStatus::Pending) | None => {
                 thread::sleep(Duration::from_secs(2));
