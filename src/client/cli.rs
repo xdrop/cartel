@@ -17,7 +17,7 @@ pub fn cli_app() -> Result<()> {
     let matches = App::new("cartel")
         .version(&crate_version!()[..])
         .about("Panayiotis P. <xdrop.me@gmail.com>")
-        .about("Service orchestration made easy")
+        .about("Development workflow service orhchestrator")
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .arg(
             Arg::with_name("config")
