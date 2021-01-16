@@ -14,18 +14,30 @@ where
 
 #[derive(Debug)]
 pub struct DependencyNode<T, M> {
+    /// The unique identifier for this dependency node.
     pub key: String,
+    /// The original value this dependency node wraps.
     pub value: T,
-    pub marker: M,
+    /// The marker for the node (if it has been marked by an edge). None otherwise.
+    pub marker: Option<M>,
+}
+
+pub enum EdgeDirection {
+    /// The edge points to the given node.
+    To,
+    /// The originates from the given node.
+    From,
 }
 
 pub struct DependencyEdge<M: PartialOrd> {
     /// The key of the node this edge points to.
     pub edge_ptr: String,
+    /// The direction this edge points to.
+    pub direction: EdgeDirection,
     /// A marker is used to mark the node that this edge points to. Since
     /// multiple edges may be pointing to the same node with potentially
     /// different markers, the marker type must implement [PartialOrd].
-    pub edge_marker: M,
+    pub marker: M,
 }
 
 pub trait WithDependencies<M: PartialOrd> {
@@ -97,17 +109,18 @@ where
 
         let mut raw_entries: Vec<DependencyNode<&T, M>> = Vec::new();
         // Contains the edges of each node as indices in raw_entries
-        let mut edge_map: HashMap<String, Vec<usize>> = HashMap::new();
+        let mut edge_map: HashMap<String, Vec<usize>> =
+            src.iter().map(|t| (t.key(), Vec::new())).collect();
         // Map each node to its index in raw_entries
         let mut node_map: HashMap<String, usize> = HashMap::new();
 
-        let node_list: Vec<usize> = selected
+        let mut node_list: Vec<usize> = selected
             .iter()
             .map(|s| {
                 raw_entries.push_get_idx(Self::new_node(
                     s.to_string(),
                     &src[pos_index[s]],
-                    M::default(),
+                    None,
                 ))
             })
             .collect();
@@ -126,26 +139,19 @@ where
                 node_map.insert(node_key.clone(), node_idx);
             }
 
-            if edge_map.get(&node_key).is_none() {
-                edge_map.insert(node_key.clone(), Vec::new());
-            }
-
             dependencies.iter().for_each(|edge| {
                 let ref edge_ptr = edge.edge_ptr;
-                let marker = edge.edge_marker;
+                let marker = edge.marker;
                 let dep_item = &src[pos_index[edge_ptr.as_str()]];
 
-                let pointed_to = match node_map.get(edge_ptr.as_str()) {
-                    Some(idx) => {
-                        Self::maybe_upgrade_marker(
-                            marker,
-                            &mut raw_entries[*idx],
-                        );
-                        *idx
-                    }
+                let pointed_to_idx = match node_map.get(edge_ptr.as_str()) {
+                    Some(idx) => *idx,
                     None => {
-                        let new_node =
-                            Self::new_node(edge_ptr.clone(), dep_item, marker);
+                        let new_node = Self::new_node(
+                            edge_ptr.clone(),
+                            dep_item,
+                            Some(marker),
+                        );
                         let idx = raw_entries.push_get_idx(new_node);
                         node_map.insert(edge_ptr.clone(), idx);
                         node_stack.push(idx);
@@ -153,8 +159,16 @@ where
                     }
                 };
 
-                #[rustfmt::skip]
-                edge_map.get_mut(node_key.as_str()).unwrap().push(pointed_to);
+                let (key, idx) = match edge.direction {
+                    EdgeDirection::To => (node_key.as_str(), pointed_to_idx),
+                    EdgeDirection::From => {
+                        node_list.push(pointed_to_idx);
+                        (edge_ptr.as_str(), node_idx)
+                    }
+                };
+
+                Self::maybe_upgrade_marker(marker, &mut raw_entries[idx]);
+                edge_map.get_mut(key).unwrap().push(idx);
             })
         }
 
@@ -170,13 +184,27 @@ where
     /// Checks the existing marker on the node, if the new marker is higher
     /// ranked than the current one, then the node is marked with the new marker
     /// instead.
+    ///
+    /// If no marker existed on the node, then the node is marked with the new
+    /// marker instead.
     fn maybe_upgrade_marker(new_marker: M, node: &mut DependencyNode<&T, M>) {
-        if new_marker > node.marker {
-            node.marker = new_marker;
+        match node.marker {
+            Some(marker) => {
+                if new_marker > marker {
+                    node.marker = Some(new_marker);
+                }
+            }
+            None => {
+                node.marker = Some(new_marker);
+            }
         }
     }
 
-    fn new_node(key: String, value: &T, marker: M) -> DependencyNode<&T, M> {
+    fn new_node(
+        key: String,
+        value: &T,
+        marker: Option<M>,
+    ) -> DependencyNode<&T, M> {
         DependencyNode { key, value, marker }
     }
 
@@ -244,7 +272,11 @@ mod test {
         a == b
     }
 
-    fn make_module(name: &str, dependencies: Vec<&str>) -> ModuleDefinition {
+    fn make_module(
+        name: &str,
+        dependencies: Vec<&str>,
+        inverse: Vec<&str>,
+    ) -> ModuleDefinition {
         ModuleDefinition {
             name: name.to_string(),
             kind: ModuleKind::Service,
@@ -254,6 +286,8 @@ mod test {
                 HashMap::new(),
                 None,
                 dependencies.iter().map(|s| s.to_string()).collect(),
+                inverse.iter().map(|s| s.to_string()).collect(),
+                vec![],
                 None,
                 vec![],
                 TermSignal::KILL,
@@ -282,16 +316,18 @@ mod test {
 
     #[test]
     fn test_dependency_graph() {
-        let m1 = make_module("m1", vec!["m3", "m6"]);
-        let m2 = make_module("m2", vec!["m4", "m5"]);
-        let m3 = make_module("m3", vec!["m7"]);
-        let m4 = make_module("m4", vec!["m7"]);
-        let m5 = make_module("m5", vec![]);
-        let m6 = make_module("m6", vec![]);
-        let m7 = make_module("m7", vec!["m8"]);
-        let m8 = make_module("m8", vec![]);
-        let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8];
-        let selected = vec!["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
+        let m1 = make_module("m1", vec!["m3", "m6"], vec![]);
+        let m2 = make_module("m2", vec!["m4", "m5"], vec![]);
+        let m3 = make_module("m3", vec!["m7"], vec!["m9"]);
+        let m4 = make_module("m4", vec!["m7"], vec![]);
+        let m5 = make_module("m5", vec![], vec![]);
+        let m6 = make_module("m6", vec![], vec![]);
+        let m7 = make_module("m7", vec!["m8"], vec![]);
+        let m8 = make_module("m8", vec![], vec![]);
+        let m9 = make_module("m9", vec!["m8"], vec![]);
+        let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8, m9];
+        let selected =
+            vec!["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"];
 
         let graph = DependencyGraph::from(&modules, &selected);
         let result: Vec<&str> = graph
@@ -308,19 +344,22 @@ mod test {
         assert!(is_before("m5", "m2", &result));
         assert!(is_before("m3", "m1", &result));
         assert!(is_before("m6", "m1", &result));
+        assert!(is_before("m8", "m9", &result));
+        assert!(is_before("m3", "m9", &result));
     }
 
     #[test]
     fn test_dependency_graph_partial() {
-        let m1 = make_module("m1", vec!["m3", "m6"]);
-        let m2 = make_module("m2", vec!["m4", "m5"]);
-        let m3 = make_module("m3", vec!["m7"]);
-        let m4 = make_module("m4", vec!["m7"]);
-        let m5 = make_module("m5", vec![]);
-        let m6 = make_module("m6", vec![]);
-        let m7 = make_module("m7", vec!["m8"]);
-        let m8 = make_module("m8", vec![]);
-        let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8];
+        let m1 = make_module("m1", vec!["m3", "m6"], vec![]);
+        let m2 = make_module("m2", vec!["m4", "m5"], vec![]);
+        let m3 = make_module("m3", vec!["m7"], vec!["m9"]);
+        let m4 = make_module("m4", vec!["m7"], vec![]);
+        let m5 = make_module("m5", vec![], vec![]);
+        let m6 = make_module("m6", vec![], vec![]);
+        let m7 = make_module("m7", vec!["m8"], vec![]);
+        let m8 = make_module("m8", vec![], vec![]);
+        let m9 = make_module("m9", vec![], vec![]);
+        let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8, m9];
         let selected = vec!["m3", "m2"];
 
         let graph = DependencyGraph::from(&modules, &selected);
@@ -331,7 +370,7 @@ mod test {
             .map(|v| &v.value.name[..])
             .collect();
 
-        let expected_items = vec!["m3", "m7", "m8", "m4", "m2", "m5"];
+        let expected_items = vec!["m3", "m7", "m8", "m4", "m2", "m5", "m9"];
         assert!(eq_lists(&result, &expected_items));
 
         assert!(is_before("m8", "m7", &result));
@@ -339,5 +378,6 @@ mod test {
         assert!(is_before("m7", "m4", &result));
         assert!(is_before("m4", "m2", &result));
         assert!(is_before("m5", "m2", &result));
+        assert!(is_before("m3", "m9", &result));
     }
 }

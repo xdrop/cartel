@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Print help when no subcommand specified.
 
+### Changed
+- Healthchecks are not awaited by default. Only when there is a dependency on the module (or a `post_up` task is defined) then the healtheck will be awaited. This behaviour may be overriden with `always_wait_healthcheck` in the module definition.
+
+### Added
+- Introduced two new options `post` and `post_up` to add tasks to be performed _after_ a service has been deployed (`post`) / or has passed its healthcheck (`post_up`) respectively (experimental).
+
 ## [0.3.3-alpha] - 2020-01-13
 ### Fixed
 - Fixed an issue where the paths failed to resolve if `working_dir` was not specified.

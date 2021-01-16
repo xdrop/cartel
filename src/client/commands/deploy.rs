@@ -45,11 +45,15 @@ pub fn deploy_cmd(
             InnerDefinition::Service(ref service) => {
                 let monitor_handle = deploy_service(service, cli_config)?;
                 if let Some(handle) = monitor_handle {
-                    wait_until_healthy(
-                        service.name.as_str(),
-                        handle.as_str(),
-                        cli_config,
-                    )?;
+                    if m.marker != Some(ModuleMarker::Instant)
+                        || service.always_wait_healthcheck
+                    {
+                        wait_until_healthy(
+                            service.name.as_str(),
+                            handle.as_str(),
+                            cli_config,
+                        )?;
+                    }
                 }
                 Ok(())
             }

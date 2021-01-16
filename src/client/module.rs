@@ -1,4 +1,4 @@
-use crate::dependency::{DependencyEdge, WithDependencies};
+use crate::dependency::{DependencyEdge, EdgeDirection, WithDependencies};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -88,9 +88,15 @@ pub struct ServiceOrTaskDefinition {
     pub log_file_path: Option<String>,
     #[serde(default = "Vec::new")]
     pub dependencies: Vec<String>,
+    #[serde(default = "Vec::new")]
+    pub post_up: Vec<String>,
+    #[serde(default = "Vec::new")]
+    pub post: Vec<String>,
     pub working_dir: Option<String>,
     #[serde(default = "Vec::new")]
     pub checks: Vec<String>,
+    #[serde(default = "default_always_wait_healthcheck")]
+    pub always_wait_healthcheck: bool,
     pub healthcheck: Option<Healthcheck>,
 }
 
@@ -136,9 +142,12 @@ impl ServiceOrTaskDefinition {
         environment: HashMap<String, String>,
         log_file_path: Option<String>,
         dependencies: Vec<String>,
+        post_up: Vec<String>,
+        post: Vec<String>,
         working_dir: Option<String>,
         checks: Vec<String>,
         termination_signal: TermSignal,
+        always_wait_healthcheck: bool,
         healthcheck: Option<Healthcheck>,
     ) -> ServiceOrTaskDefinition {
         ServiceOrTaskDefinition {
@@ -147,9 +156,12 @@ impl ServiceOrTaskDefinition {
             environment,
             log_file_path,
             dependencies,
+            post_up,
+            post,
             working_dir,
             checks,
             termination_signal,
+            always_wait_healthcheck,
             healthcheck,
         }
     }
@@ -169,8 +181,8 @@ impl PartialEq for ModuleDefinition {
 
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub enum ModuleMarker {
-    WaitHealthcheck = 1,
-    Instant = 2,
+    Instant = 1,
+    WaitHealthcheck = 2,
 }
 
 impl Default for ModuleMarker {
@@ -205,7 +217,8 @@ impl EdgeList for GroupDefinition {
             .iter()
             .map(|key| DependencyEdge {
                 edge_ptr: key.clone(),
-                edge_marker: ModuleMarker::WaitHealthcheck,
+                direction: EdgeDirection::To,
+                marker: ModuleMarker::WaitHealthcheck,
             })
             .collect()
     }
@@ -213,13 +226,27 @@ impl EdgeList for GroupDefinition {
 
 impl EdgeList for ServiceOrTaskDefinition {
     fn edges(&self) -> Vec<DependencyEdge<ModuleMarker>> {
-        self.dependencies
+        let edges: Vec<DependencyEdge<ModuleMarker>> = self
+            .dependencies
             .iter()
             .map(|key| DependencyEdge {
                 edge_ptr: key.clone(),
-                edge_marker: ModuleMarker::WaitHealthcheck,
+                direction: EdgeDirection::To,
+                marker: ModuleMarker::WaitHealthcheck,
             })
-            .collect()
+            .chain(self.post_up.iter().map(|key| DependencyEdge {
+                edge_ptr: key.clone(),
+                direction: EdgeDirection::From,
+                marker: ModuleMarker::WaitHealthcheck,
+            }))
+            .chain(self.post.iter().map(|key| DependencyEdge {
+                edge_ptr: key.clone(),
+                direction: EdgeDirection::From,
+                marker: ModuleMarker::Instant,
+            }))
+            .collect();
+
+        edges
     }
 }
 
@@ -244,6 +271,10 @@ impl WithDependencies<ModuleMarker> for ModuleDefinition {
 
 fn default_healthcheck_retries() -> u32 {
     5
+}
+
+fn default_always_wait_healthcheck() -> bool {
+    false
 }
 
 pub fn module_names(modules: &[ModuleDefinition]) -> Vec<&str> {
