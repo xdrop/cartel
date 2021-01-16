@@ -4,14 +4,14 @@ use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, TEXTBOOK, VAN};
 use crate::client::module::{module_names_set, remove_checks};
 use crate::client::module::{
     CheckDefinition, GroupDefinition, InnerDefinition, ModuleDefinition,
-    ServiceOrTaskDefinition,
+    ModuleMarker, ServiceOrTaskDefinition,
 };
 use crate::client::process::run_check;
 use crate::client::progress::{SpinnerOptions, WaitUntil};
 use crate::client::request;
 use crate::client::validation::validate_modules_selected;
 use crate::daemon::api::ApiHealthStatus;
-use crate::dependency::DependencyGraph;
+use crate::dependency::{DependencyGraph, DependencyNode};
 use anyhow::{anyhow, bail, Result};
 use console::style;
 use std::collections::HashMap;
@@ -40,7 +40,7 @@ pub fn deploy_cmd(
     tprintstep!("Deploying...", 4, 5, VAN);
 
     for m in &ordered {
-        match m.inner {
+        match m.value.inner {
             InnerDefinition::Task(ref task) => deploy_task(task, cli_config),
             InnerDefinition::Service(ref service) => {
                 let monitor_handle = deploy_service(service, cli_config)?;
@@ -64,7 +64,7 @@ pub fn deploy_cmd(
     let deploy_txt = format!(
         "{}: {:?}",
         style("Deployed modules").bold().green(),
-        &ordered.iter().map(|m| &m.name).collect::<Vec<_>>()
+        &ordered.iter().map(|m| &m.value.name).collect::<Vec<_>>()
     );
     tprintstep!(deploy_txt, 5, 5, SUCCESS);
     Ok(())
@@ -72,7 +72,7 @@ pub fn deploy_cmd(
 
 fn run_checks(
     checks_map: HashMap<String, CheckDefinition>,
-    modules: &[&ModuleDefinition],
+    modules: &Vec<&DependencyNode<&ModuleDefinition, ModuleMarker>>,
     cli_config: &CliOptions,
 ) -> Result<()> {
     if cli_config.skip_checks {
@@ -84,7 +84,7 @@ fn run_checks(
     } else {
         tprintstep!("Running checks...", 3, 5, TEXTBOOK);
         for m in modules {
-            let checks = match &m.inner {
+            let checks = match &m.value.inner {
                 InnerDefinition::Group(grp) => grp.checks.as_slice(),
                 InnerDefinition::Service(srvc) => srvc.checks.as_slice(),
                 InnerDefinition::Task(tsk) => tsk.checks.as_slice(),

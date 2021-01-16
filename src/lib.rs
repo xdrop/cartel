@@ -6,6 +6,7 @@ extern crate rocket;
 
 #[macro_use]
 pub mod client;
+pub mod collections;
 pub mod daemon;
 pub mod dependency;
 pub mod path;

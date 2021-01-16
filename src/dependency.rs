@@ -1,46 +1,62 @@
+use crate::collections::{FromIndexContainer, FromOwnedIndexContainer, VecExt};
 use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
-pub struct DependencyGraph<'a, T: WithDependencies + Eq + Hash> {
-    edge_map: HashMap<String, Vec<DependencyNode<&'a T>>>,
-    node_list: Vec<DependencyNode<&'a T>>,
+pub struct DependencyGraph<'a, T, M>
+where
+    T: WithDependencies<M> + Eq + Hash,
+    M: PartialOrd + Default,
+{
+    edge_map: HashMap<String, Vec<DependencyNode<&'a T, M>>>,
+    node_list: Vec<DependencyNode<&'a T, M>>,
 }
 
 #[derive(Debug)]
-struct DependencyNode<T> {
-    key: String,
-    value: T,
+pub struct DependencyNode<T, M> {
+    pub key: String,
+    pub value: T,
+    pub marker: M,
 }
 
-pub trait WithDependencies {
+pub struct DependencyEdge<M: PartialOrd> {
+    /// The key of the node this edge points to.
+    pub edge_ptr: String,
+    /// A marker is used to mark the node that this edge points to. Since
+    /// multiple edges may be pointing to the same node with potentially
+    /// different markers, the marker type must implement [PartialOrd].
+    pub edge_marker: M,
+}
+
+pub trait WithDependencies<M: PartialOrd> {
     fn key(&self) -> String;
     fn key_ref(&self) -> &str;
-    fn dependencies(&self) -> &Vec<String>;
+    fn dependencies(&self) -> Vec<DependencyEdge<M>>;
 }
 
-impl<T: Copy> Clone for DependencyNode<T> {
+impl<T: Copy, M: Copy> Clone for DependencyNode<T, M> {
     fn clone(&self) -> Self {
         DependencyNode {
             key: self.key.clone(),
             value: self.value,
+            marker: self.marker,
         }
     }
 }
 
-impl<T> Hash for DependencyNode<T> {
+impl<T, M> Hash for DependencyNode<T, M> {
     fn hash<S: Hasher>(&self, state: &mut S) {
         self.key.hash(state);
     }
 }
 
-impl<T> PartialEq for DependencyNode<T> {
+impl<T, M> PartialEq for DependencyNode<T, M> {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key
     }
 }
 
-impl<T> Eq for DependencyNode<T> {}
+impl<T, M> Eq for DependencyNode<T, M> {}
 
 enum MarkType {
     PERMANENT,
@@ -48,9 +64,10 @@ enum MarkType {
 }
 
 /// A dependency graph over type T.
-impl<'a, T> DependencyGraph<'a, T>
+impl<'a, T, M> DependencyGraph<'a, T, M>
 where
-    T: WithDependencies + Eq + Hash,
+    T: WithDependencies<M> + Eq + Hash,
+    M: PartialOrd + Copy + Default,
 {
     /// Build a partial dependency graph from a list of module definitions.
     ///
@@ -70,7 +87,7 @@ where
     pub fn from<'b>(
         src: &'a [T],
         selected: &'b [&str],
-    ) -> DependencyGraph<'a, T> {
+    ) -> DependencyGraph<'a, T, M> {
         // Holds the index of each key in Vec<T>
         let pos_index: HashMap<&str, usize> = src
             .iter()
@@ -78,52 +95,89 @@ where
             .map(|(idx, t)| (t.key_ref(), idx))
             .collect();
 
-        let mut node_list: Vec<DependencyNode<&'a T>> = selected
+        let mut raw_entries: Vec<DependencyNode<&T, M>> = Vec::new();
+        // Contains the edges of each node as indices in raw_entries
+        let mut edge_map: HashMap<String, Vec<usize>> = HashMap::new();
+        // Map each node to its index in raw_entries
+        let mut node_map: HashMap<String, usize> = HashMap::new();
+
+        let node_list: Vec<usize> = selected
             .iter()
-            .map(|s| DependencyNode {
-                key: s.to_owned().to_string(),
-                value: &src[pos_index[s]],
+            .map(|s| {
+                raw_entries.push_get_idx(Self::new_node(
+                    s.to_string(),
+                    &src[pos_index[s]],
+                    M::default(),
+                ))
             })
             .collect();
 
-        let mut edge_map = HashMap::new();
+        let mut node_stack: Vec<usize> = node_list.iter().copied().collect();
 
-        let mut stack: Vec<usize> =
-            selected.iter().map(|k| pos_index[k]).collect();
+        while !node_stack.is_empty() {
+            let node_idx = node_stack.pop().unwrap();
 
-        while !stack.is_empty() {
-            let idx = stack.pop().unwrap();
-            let item = &src[idx];
+            let (node_key, dependencies) = {
+                let node = &raw_entries[node_idx];
+                (node.key.clone(), node.value.dependencies())
+            };
 
-            if edge_map.get(item.key_ref()).is_none() {
-                edge_map.insert(item.key(), Vec::new());
-            } else {
-                continue;
+            if node_map.get(&node_key).is_none() {
+                node_map.insert(node_key.clone(), node_idx);
             }
 
-            item.dependencies().iter().for_each(|dep_key| {
-                let dep_item = &src[pos_index[dep_key.as_str()]];
-                let dependency_node = DependencyNode {
-                    key: dep_key.clone(),
-                    value: dep_item,
+            if edge_map.get(&node_key).is_none() {
+                edge_map.insert(node_key.clone(), Vec::new());
+            }
+
+            dependencies.iter().for_each(|edge| {
+                let ref edge_ptr = edge.edge_ptr;
+                let marker = edge.edge_marker;
+                let dep_item = &src[pos_index[edge_ptr.as_str()]];
+
+                let pointed_to = match node_map.get(edge_ptr.as_str()) {
+                    Some(idx) => {
+                        Self::maybe_upgrade_marker(
+                            marker,
+                            &mut raw_entries[*idx],
+                        );
+                        *idx
+                    }
+                    None => {
+                        let new_node =
+                            Self::new_node(edge_ptr.clone(), dep_item, marker);
+                        let idx = raw_entries.push_get_idx(new_node);
+                        node_map.insert(edge_ptr.clone(), idx);
+                        node_stack.push(idx);
+                        idx
+                    }
                 };
 
-                if edge_map.get(dep_key).is_none() {
-                    node_list.push(dependency_node.clone());
-                    stack.push(pos_index[dep_key.as_str()]);
-                }
-
-                edge_map
-                    .get_mut(item.key_ref())
-                    .unwrap()
-                    .push(dependency_node);
+                #[rustfmt::skip]
+                edge_map.get_mut(node_key.as_str()).unwrap().push(pointed_to);
             })
         }
 
+        // Convert the index backed map and list to the actual dependency nodes.
         DependencyGraph {
-            edge_map,
-            node_list,
+            edge_map: edge_map.from_index_backed(&raw_entries),
+            node_list: node_list.from_index_backed(&raw_entries),
         }
+    }
+
+    /// Upgrade the current marker on the dependency node.
+    ///
+    /// Checks the existing marker on the node, if the new marker is higher
+    /// ranked than the current one, then the node is marked with the new marker
+    /// instead.
+    fn maybe_upgrade_marker(new_marker: M, node: &mut DependencyNode<&T, M>) {
+        if new_marker > node.marker {
+            node.marker = new_marker;
+        }
+    }
+
+    fn new_node(key: String, value: &T, marker: M) -> DependencyNode<&T, M> {
+        DependencyNode { key, value, marker }
     }
 
     /// Return a sorted list of dependencies.
@@ -131,12 +185,11 @@ where
     /// Sorts dependencies so that dependent modules are deployed before the
     /// modules that depend on them. The topological sort is performed using
     /// modified DFS.
-    pub fn dependency_sort(&self) -> Result<Vec<&T>> {
+    pub fn dependency_sort(&self) -> Result<Vec<&DependencyNode<&T, M>>> {
         let mut sorted = Vec::new();
-        let mut stack: Vec<(bool, &DependencyNode<&T>)> = Vec::new();
-        let mut marked: HashMap<&DependencyNode<&T>, MarkType> = HashMap::new();
-        let mut unmarked: Vec<&DependencyNode<&T>> =
-            self.node_list.iter().collect();
+        let mut stack: Vec<(bool, &DependencyNode<&T, M>)> = Vec::new();
+        let mut marked: HashMap<_, MarkType> = HashMap::new();
+        let mut unmarked: Vec<_> = self.node_list.iter().collect();
 
         // While we have still nodes unmarked
         while !unmarked.is_empty() {
@@ -147,7 +200,7 @@ where
                 let (is_parent, node) = stack.pop().unwrap();
 
                 if is_parent {
-                    sorted.push(node.value);
+                    sorted.push(node);
                     marked.entry(node).and_modify(|e| *e = MarkType::PERMANENT);
                     continue;
                 }
@@ -204,6 +257,7 @@ mod test {
                 None,
                 vec![],
                 TermSignal::KILL,
+                None,
             )),
         }
     }
@@ -239,13 +293,12 @@ mod test {
         let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8];
         let selected = vec!["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"];
 
-        let graph =
-            DependencyGraph::<ModuleDefinition>::from(&modules, &selected);
+        let graph = DependencyGraph::from(&modules, &selected);
         let result: Vec<&str> = graph
             .dependency_sort()
             .unwrap()
             .iter()
-            .map(|v| &v.name[..])
+            .map(|v| &v.value.name[..])
             .collect();
 
         assert!(is_before("m8", "m7", &result));
@@ -270,13 +323,12 @@ mod test {
         let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8];
         let selected = vec!["m3", "m2"];
 
-        let graph =
-            DependencyGraph::<ModuleDefinition>::from(&modules, &selected);
+        let graph = DependencyGraph::from(&modules, &selected);
         let result: Vec<&str> = graph
             .dependency_sort()
             .unwrap()
             .iter()
-            .map(|v| &v.name[..])
+            .map(|v| &v.value.name[..])
             .collect();
 
         let expected_items = vec!["m3", "m7", "m8", "m4", "m2", "m5"];

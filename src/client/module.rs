@@ -1,10 +1,10 @@
-use crate::dependency::WithDependencies;
+use crate::dependency::{DependencyEdge, WithDependencies};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct ModuleDefinition {
     pub name: String,
     #[serde(skip_deserializing)]
@@ -13,7 +13,7 @@ pub struct ModuleDefinition {
     pub inner: InnerDefinition,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(tag = "kind")]
 pub enum InnerDefinition {
     Task(ServiceOrTaskDefinition),
@@ -167,23 +167,21 @@ impl PartialEq for ModuleDefinition {
     }
 }
 
-impl Eq for ModuleDefinition {}
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+pub enum ModuleMarker {
+    WaitHealthcheck = 1,
+    Instant = 2,
+}
 
-impl WithDependencies for ServiceOrTaskDefinition {
-    fn key(&self) -> String {
-        self.name.clone()
-    }
-
-    fn key_ref(&self) -> &str {
-        self.name.as_str()
-    }
-
-    fn dependencies(&self) -> &Vec<String> {
-        &self.dependencies
+impl Default for ModuleMarker {
+    fn default() -> Self {
+        Self::WaitHealthcheck
     }
 }
 
-impl WithDependencies for ModuleDefinition {
+impl Eq for ModuleDefinition {}
+
+impl WithDependencies<ModuleMarker> for ServiceOrTaskDefinition {
     fn key(&self) -> String {
         self.name.clone()
     }
@@ -192,11 +190,53 @@ impl WithDependencies for ModuleDefinition {
         self.name.as_str()
     }
 
-    fn dependencies(&self) -> &Vec<String> {
+    fn dependencies(&self) -> Vec<DependencyEdge<ModuleMarker>> {
+        self.edges()
+    }
+}
+
+trait EdgeList {
+    fn edges(&self) -> Vec<DependencyEdge<ModuleMarker>>;
+}
+
+impl EdgeList for GroupDefinition {
+    fn edges(&self) -> Vec<DependencyEdge<ModuleMarker>> {
+        self.dependencies
+            .iter()
+            .map(|key| DependencyEdge {
+                edge_ptr: key.clone(),
+                edge_marker: ModuleMarker::WaitHealthcheck,
+            })
+            .collect()
+    }
+}
+
+impl EdgeList for ServiceOrTaskDefinition {
+    fn edges(&self) -> Vec<DependencyEdge<ModuleMarker>> {
+        self.dependencies
+            .iter()
+            .map(|key| DependencyEdge {
+                edge_ptr: key.clone(),
+                edge_marker: ModuleMarker::WaitHealthcheck,
+            })
+            .collect()
+    }
+}
+
+impl WithDependencies<ModuleMarker> for ModuleDefinition {
+    fn key(&self) -> String {
+        self.name.clone()
+    }
+
+    fn key_ref(&self) -> &str {
+        self.name.as_str()
+    }
+
+    fn dependencies(&self) -> Vec<DependencyEdge<ModuleMarker>> {
         match &self.inner {
-            InnerDefinition::Group(group) => &group.dependencies,
-            InnerDefinition::Task(task) => &task.dependencies,
-            InnerDefinition::Service(service) => &service.dependencies,
+            InnerDefinition::Group(group) => group.edges(),
+            InnerDefinition::Task(task) => task.edges(),
+            InnerDefinition::Service(service) => service.edges(),
             InnerDefinition::Check(_) => panic!("Check used as dependency"),
         }
     }
