@@ -43,19 +43,7 @@ pub fn deploy_cmd(
         match m.value.inner {
             InnerDefinition::Task(ref task) => deploy_task(task, cli_config),
             InnerDefinition::Service(ref service) => {
-                let monitor_handle = deploy_service(service, cli_config)?;
-                if let Some(handle) = monitor_handle {
-                    if m.marker == Some(ModuleMarker::WaitHealthcheck)
-                        || service.always_wait_healthcheck
-                    {
-                        wait_until_healthy(
-                            service.name.as_str(),
-                            handle.as_str(),
-                            cli_config,
-                        )?;
-                    }
-                }
-                Ok(())
+                deploy_and_maybe_wait_service(service, m.marker, cli_config)
             }
             InnerDefinition::Group(ref group) => {
                 deploy_group(group);
@@ -134,6 +122,26 @@ fn perform_check(check_def: &CheckDefinition) -> Result<()> {
             style("Message").white().bold(),
             check_def.help
         )
+    }
+    Ok(())
+}
+
+fn deploy_and_maybe_wait_service(
+    service: &ServiceOrTaskDefinition,
+    marker: Option<ModuleMarker>,
+    cli_config: &CliOptions,
+) -> Result<()> {
+    let monitor_handle = deploy_service(service, cli_config)?;
+    if let Some(handle) = monitor_handle {
+        if marker == Some(ModuleMarker::WaitHealthcheck)
+            || service.always_wait_healthcheck
+        {
+            wait_until_healthy(
+                service.name.as_str(),
+                handle.as_str(),
+                cli_config,
+            )?;
+        }
     }
     Ok(())
 }
