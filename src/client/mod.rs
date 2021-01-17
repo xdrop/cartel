@@ -3,7 +3,7 @@ pub mod terminal;
 pub mod cli;
 pub mod commands;
 pub mod config;
-pub mod conversions;
+pub mod convert;
 pub mod emoji;
 pub mod module;
 pub mod process;
