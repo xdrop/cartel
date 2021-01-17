@@ -19,11 +19,11 @@ impl<T> VecExt for Vec<T> {
 }
 
 pub trait FromIndexContainer<V, R> {
-    fn from_index_backed(&self, container: &Vec<V>) -> R;
+    fn from_index_backed(&self, container: &[V]) -> R;
 }
 
 pub trait FromOwnedIndexContainer<V, R> {
-    fn from_index_backed(self, container: &Vec<V>) -> R;
+    fn from_index_backed(self, container: &[V]) -> R;
 }
 
 impl<V: Clone> FromIndexContainer<V, Vec<V>> for Vec<usize> {
@@ -36,7 +36,7 @@ impl<V: Clone> FromIndexContainer<V, Vec<V>> for Vec<usize> {
     /// * `vec` - A vector containing indices to the index backed container.
     /// * `container` - The container containing the elements pointed by the
     ///   indices in `vec`.
-    fn from_index_backed(&self, container: &Vec<V>) -> Vec<V> {
+    fn from_index_backed(&self, container: &[V]) -> Vec<V> {
         self.iter().map(|idx| container[*idx].clone()).collect()
     }
 }
@@ -58,7 +58,7 @@ where
     /// * `map` - A map containing indices to the index backed container.
     /// * `container` - The container containing the elements pointed by the
     ///   indices in `vec`.
-    fn from_index_backed(self, container: &Vec<V>) -> HashMap<K, Vec<V>> {
+    fn from_index_backed(self, container: &[V]) -> HashMap<K, Vec<V>> {
         self.into_iter()
             .map(|(k, v)| {
                 (k, v.iter().map(|idx| container[*idx].clone()).collect())

@@ -129,10 +129,7 @@ pub fn try_locate_file() -> Result<(File, PathBuf)> {
 
     if let Some(module_file) = module_file {
         if module_file.exists() {
-            return Ok((
-                File::open(module_file.as_path())?,
-                module_file.clone(),
-            ));
+            return Ok((File::open(module_file.as_path())?, module_file));
         }
     }
     bail!("Failed to locate cartel.yaml in current or ancestor directories")

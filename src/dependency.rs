@@ -140,7 +140,7 @@ where
             }
 
             dependencies.iter().for_each(|edge| {
-                let ref edge_ptr = edge.edge_ptr;
+                let edge_ptr = &edge.edge_ptr;
                 let marker = edge.marker;
                 let dep_item = &src[pos_index[edge_ptr.as_str()]];
 
@@ -291,6 +291,7 @@ mod test {
                 None,
                 vec![],
                 TermSignal::KILL,
+                false,
                 None,
             )),
         }

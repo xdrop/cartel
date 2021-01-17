@@ -76,7 +76,7 @@ pub fn deploy_cmd(
 
 fn run_checks(
     checks_map: HashMap<String, CheckDefinition>,
-    modules: &Vec<&DependencyNode<&ModuleDefinition, ModuleMarker>>,
+    modules: &[&DependencyNode<&ModuleDefinition, ModuleMarker>],
     cli_config: &CliOptions,
 ) -> Result<()> {
     if cli_config.skip_checks {
