@@ -7,7 +7,7 @@ use crate::client::module::{
     ModuleMarker, ServiceOrTaskDefinition,
 };
 use crate::client::process::run_check;
-use crate::client::progress::{SpinnerOptions, WaitUntil};
+use crate::client::progress::{SpinnerOptions, WaitResult, WaitUntil};
 use crate::client::request;
 use crate::client::validation::validate_modules_selected;
 use crate::daemon::api::ApiHealthStatus;
@@ -113,13 +113,20 @@ fn perform_check(check_def: &CheckDefinition) -> Result<()> {
         style(&check_def.about).white().bold(),
         check_def.name
     );
-    let spin_opt = SpinnerOptions::new(message.clone()).clear_on_finish(false);
+    let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
     let mut wu = WaitUntil::new(&spin_opt);
-    let check_result = wu.spin_until(|| run_check(check_def))?;
-    if check_result.success() {
-        tiprint!(10, "{} {}", message, style("(OK)").green().bold());
-    } else {
-        tiprint!(10, "{} {}", message, style("(FAIL)").red().bold());
+
+    let check_result = wu.spin_until_status(|| {
+        let check_result = run_check(check_def)?;
+        let status = if check_result.success() {
+            style("(OK)").green().bold()
+        } else {
+            style("(FAIL)").red().bold()
+        };
+        Ok(WaitResult::from(check_result, status.to_string()))
+    })?;
+
+    if !check_result.success() {
         bail!(
             "The {} check has failed\n\
             {}: {}",
@@ -136,28 +143,21 @@ fn deploy_service(
     cli_config: &CliOptions,
 ) -> Result<Option<String>> {
     let message = format!("Deploying {}", style(&module.name).white().bold());
-    let spin_opt = SpinnerOptions::new(message.clone()).clear_on_finish(false);
+    let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
 
     let mut wu = WaitUntil::new(&spin_opt);
-    let deploy_result = wu.spin_until(|| {
-        request::deploy_modules(module, &cli_config.daemon_url)
+    let deploy_result = wu.spin_until_status(|| {
+        let result = request::deploy_modules(module, &cli_config.daemon_url)?;
+
+        let deploy_status = if result.deployed {
+            style("(Deployed)").green().bold()
+        } else {
+            style("(Already deployed)").white().dim().bold()
+        };
+        Ok(WaitResult::from(result, deploy_status.to_string()))
     })?;
 
-    let deploy_status = if deploy_result.deployed {
-        style("(Deployed)").green().bold()
-    } else {
-        style("(Already deployed)").white().dim().bold()
-    };
-
     let monitor_handle = deploy_result.monitor;
-
-    tiprint!(
-        10, // indent level
-        "{} {}",
-        message,
-        deploy_status,
-    );
-
     Ok(monitor_handle)
 }
 
@@ -170,14 +170,17 @@ fn wait_until_healthy(
         "Waiting {} to be healthy",
         style(module_name).white().bold()
     );
-    let spin_opt = SpinnerOptions::new(message.clone()).clear_on_finish(false);
+    let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
     let mut wu = WaitUntil::new(&spin_opt);
 
-    wu.spin_until(|| loop {
+    wu.spin_until_status(|| loop {
+        let status = style("(Done)").green().bold().to_string();
         match request::poll_health(monitor_handle, &cli_config.daemon_url)?
             .healthcheck_status
         {
-            Some(ApiHealthStatus::Successful) => break Ok(()),
+            Some(ApiHealthStatus::Successful) => {
+                break Ok(WaitResult::from((), status))
+            }
             Some(ApiHealthStatus::RetriesExceeded) => {
                 bail!(
                     "The service did not complete its healthcheck in time.\n\
@@ -190,12 +193,6 @@ fn wait_until_healthy(
         }
     })?;
 
-    tiprint!(
-        10, // indent level
-        "{} {}",
-        message,
-        style("(Done)").green().bold()
-    );
     Ok(())
 }
 
@@ -205,17 +202,15 @@ fn deploy_task(
 ) -> Result<()> {
     let message =
         format!("Running task {}", style(&module.name).white().bold());
-    let spin_opt = SpinnerOptions::new(message.clone()).clear_on_finish(false);
+    let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
 
     let mut wu = WaitUntil::new(&spin_opt);
-    wu.spin_until(|| request::deploy_task(module, &cli_config.daemon_url))?;
+    wu.spin_until_status(|| {
+        let result = request::deploy_task(module, &cli_config.daemon_url)?;
+        let status = style("(Done)").green().bold().to_string();
+        Ok(WaitResult::from(result, status))
+    })?;
 
-    tiprint!(
-        10, // indent level
-        "{} {}",
-        message,
-        style("(Done)").green().bold()
-    );
     Ok(())
 }
 
