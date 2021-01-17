@@ -6,6 +6,7 @@ use std::env;
 pub struct CliOptions {
     pub verbose: u64,
     pub module_file: Option<String>,
+    pub override_file: Option<String>,
     pub default_pager_cmd: Vec<String>,
     pub full_pager_cmd: Vec<String>,
     pub follow_pager_cmd: Vec<String>,
@@ -33,6 +34,15 @@ pub fn cli_app() -> Result<()> {
                 .long("file")
                 .value_name("FILE")
                 .help("Specify a module definitions file to read")
+                .takes_value(true)
+                .multiple(false),
+        )
+        .arg(
+            Arg::with_name("override")
+                .short("o")
+                .long("override")
+                .value_name("FILE")
+                .help("Specify a module definitions file to override with")
                 .takes_value(true)
                 .multiple(false),
         )
@@ -149,6 +159,7 @@ fn cli_config(matches: &ArgMatches) -> Result<CliOptions> {
         verbose: matches.occurrences_of("v"),
         skip_checks: matches.is_present("skip_checks"),
         module_file: matches.value_of("file").map(String::from),
+        override_file: matches.value_of("override").map(String::from),
         default_pager_cmd,
         full_pager_cmd,
         follow_pager_cmd,

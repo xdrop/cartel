@@ -5,6 +5,7 @@ use crate::client::module::{
 use crate::client::validation::validate_modules_unique;
 use crate::path;
 use anyhow::{bail, Context, Result};
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::Read;
@@ -137,15 +138,31 @@ pub fn try_locate_file() -> Result<(File, PathBuf)> {
     bail!("Failed to locate cartel.yaml in current or ancestor directories")
 }
 
-/// Attempts to locate the module definitions file in the given directory.
+/// Open the given module definitions file.
 ///
-/// Tries to read the config file by looking in the current working directory.
-/// Returns `Some((File, PathBuf))` if it has been found, or `None` otherwise.
-pub fn locate_file(file: &Option<String>) -> Result<(File, PathBuf)> {
+/// If no file is given, an attempt to locate the file is done instead.
+pub fn open_module_file(file: &Option<String>) -> Result<(File, PathBuf)> {
     if let Some(path) = file {
         file_from_str_path(path.as_str())
     } else {
         try_locate_file()
+    }
+}
+
+/// Open the given override module definitions file.
+///
+/// If no file is given, an attempt to locate the file is done instead.
+fn open_override_file(
+    mod_def_file: &Path,
+    cli_config: &CliOptions,
+) -> Result<Option<(File, PathBuf)>> {
+    let override_file = locate_override_file(mod_def_file, cli_config);
+    if let Some(file_path) = override_file {
+        let file = File::open(file_path.as_path())
+            .context("Failed to open override file path")?;
+        Ok(Some((file, file_path)))
+    } else {
+        Ok(None)
     }
 }
 
@@ -161,19 +178,93 @@ pub fn file_from_str_path(file_path: &str) -> Result<(File, PathBuf)> {
     bail!("File at {} not found", file_path)
 }
 
-pub fn read_module_definitions(
-    opts: &CliOptions,
+fn try_find_sibling(path: &Path, file_name: &str) -> Option<PathBuf> {
+    let mut buf = path.to_path_buf();
+
+    // Pop file name from sibling file path to get dir
+    buf.pop();
+    buf.push(file_name);
+
+    if buf.exists() {
+        Some(buf)
+    } else {
+        None
+    }
+}
+
+fn locate_override_file(
+    module_definitions_file: &Path,
+    cli_config: &CliOptions,
+) -> Option<PathBuf> {
+    if let Some(file_path) = &cli_config.override_file {
+        let path = Path::new(&file_path);
+        if path.exists() {
+            Some(path.to_path_buf())
+        } else {
+            None
+        }
+    } else {
+        try_find_sibling(module_definitions_file, "cartel.override.yaml")
+    }
+}
+
+fn parse_module_def_file(
+    mut file: File,
+    path: &Path,
 ) -> Result<Vec<ModuleDefinition>> {
-    let (mut config_file, path) = locate_file(&opts.module_file)?;
     let mut buffer = String::new();
-    config_file
-        .read_to_string(&mut buffer)
-        .with_context(|| "While reading config file")?;
+    file.read_to_string(&mut buffer)
+        .with_context(|| "While reading module definition file")?;
+
+    let canonicalized = path.canonicalize()?;
 
     let module_defs: Vec<ModuleDefinition> =
-        parse_from_yaml_str(&buffer, path.as_path().parent().unwrap())
+        parse_from_yaml_str(&buffer, canonicalized.parent().unwrap())
             .with_context(|| "Failed to read module definitions")?;
 
     validate_modules_unique(&module_defs)?;
+
+    Ok(module_defs)
+}
+
+fn merge_module_definitions(
+    main: Vec<ModuleDefinition>,
+    mut overriden: Vec<ModuleDefinition>,
+) -> Vec<ModuleDefinition> {
+    let mut merged = main;
+    let mut module_map = HashMap::new();
+
+    for (idx, m) in merged.iter().enumerate() {
+        module_map.insert(m.name.clone(), idx);
+    }
+
+    while !overriden.is_empty() {
+        let m = overriden.pop().unwrap();
+
+        if let Some(idx) = module_map.get(&m.name) {
+            merged[*idx] = m;
+        } else {
+            merged.push(m);
+        }
+    }
+    merged
+}
+
+pub fn read_module_definitions(
+    opts: &CliOptions,
+) -> Result<Vec<ModuleDefinition>> {
+    let (mod_def_file, path) = open_module_file(&opts.module_file)?;
+
+    let module_defs = parse_module_def_file(mod_def_file, path.as_path())?;
+
+    if let Some((override_file, override_file_path)) =
+        open_override_file(path.as_path(), opts)?
+    {
+        let override_module_defs =
+            parse_module_def_file(override_file, override_file_path.as_path())
+                .context("Failed while parsing overrides file")?;
+        return Ok(merge_module_definitions(module_defs, override_module_defs));
+    }
+
     Ok(module_defs)
 }

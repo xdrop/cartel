@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Module file can now be discovered on any path ancestral to the path the command was called.
+- Modules can now be overriden with user specific settings with an overrides file (`.override.yaml'`) or using `-o <override_file>`.
 
 ## [0.4.0-alpha] - 2020-01-16
 ### Fixed
