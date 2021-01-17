@@ -87,20 +87,54 @@ fn update_path(o: &mut Option<String>, relative_to: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Discover the given file in the directory tree.
+///
+/// Tries to discover `file_to_try` in the current directory or any of it's
+/// ancestor directories.
+///
+/// Navigates the directory tree starting at `current_path` and walking
+/// upwards for each failure. The search will stop once a path component
+/// with no parent is encountered.
+fn discover_file(current_path: &Path, file_to_try: &str) -> Option<PathBuf> {
+    let mut buf = current_path.to_path_buf();
+    let mut found = None;
+    loop {
+        buf.push(file_to_try);
+
+        if buf.exists() {
+            found = Some(buf);
+            break;
+        }
+
+        buf.pop(); // pop file
+        let has_parent = buf.pop(); // pop dir
+
+        if !has_parent {
+            break;
+        }
+    }
+    found
+}
+
 /// Attempts to locate the module definitions file.
 ///
-/// Tries to read the config file by looking in the current working directory.
-/// Returns `Some((File, PathBuf))` if it has been found, or `None` otherwise.
+/// Tries to locate the module definition file checking each parent directory,
+/// in order. Returns the file and it's path if found, or returns an error
+/// otherwise.
 pub fn try_locate_file() -> Result<(File, PathBuf)> {
     let cwd =
         env::current_dir().expect("Failed to get current working directory");
-    let path_to_try = cwd.join(Path::new("./cartel.yaml"));
-    let module_file = path_to_try.as_path();
+    let module_file = discover_file(cwd.as_path(), "cartel.yaml");
 
-    if module_file.exists() {
-        return Ok((File::open(module_file)?, path_to_try));
+    if let Some(module_file) = module_file {
+        if module_file.exists() {
+            return Ok((
+                File::open(module_file.as_path())?,
+                module_file.clone(),
+            ));
+        }
     }
-    bail!("Failed to locate cartel.yaml")
+    bail!("Failed to locate cartel.yaml in current or ancestor directories")
 }
 
 /// Attempts to locate the module definitions file in the given directory.
