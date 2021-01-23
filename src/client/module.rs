@@ -80,46 +80,78 @@ impl fmt::Display for ModuleKind {
 pub struct ServiceOrTaskDefinition {
     #[serde(default = "String::default")]
     pub name: String,
+    /// The command used to run the service / task.
     pub command: Vec<String>,
     #[serde(default = "TermSignal::default")]
+    /// The termination signal to use when stopping the service.
+    /// Can choose between SIGKILL, SIGTERM, SIGINT on Unix systems.
     pub termination_signal: TermSignal,
+    /// The environment variables to create the process with.
     #[serde(default = "HashMap::new")]
     pub environment: HashMap<String, String>,
+    /// A custom alternate log file path.
     pub log_file_path: Option<String>,
     #[serde(default = "Vec::new")]
+    /// A list of dependencies of the service / task.
     pub dependencies: Vec<String>,
+    /// A list of tasks to perform after the services healthcheck has passed.
+    /// If the service has no healthcheck then this equivalent to `post`.
     #[serde(default = "Vec::new")]
     pub post_up: Vec<String>,
+    /// A list of tasks to perform after the service has been deployed.
+    /// This will not wait for the healthcheck to complete before starting
+    /// the task.
     #[serde(default = "Vec::new")]
     pub post: Vec<String>,
+    /// The working directory of the service / task.
+    /// Relative or absolute paths are supported.
     pub working_dir: Option<String>,
+    /// A list of checks to perform.
     #[serde(default = "Vec::new")]
     pub checks: Vec<String>,
+    /// Set to true for healthcheck to always be waited for completion.
     #[serde(default = "default_always_wait_healthcheck")]
     pub always_wait_healthcheck: bool,
+    /// Definition of a healthcheck for the service.
     pub healthcheck: Option<Healthcheck>,
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Healthcheck {
     Exec(ExecutableHealthcheck),
+    LogLine(LogLineHealthcheck),
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ExecutableHealthcheck {
+    /// Number of retries before the healthcheck is considered failed.
     #[serde(default = "default_healthcheck_retries")]
     pub retries: u32,
+    /// The command to execute as the healthcheck. Exit code zero is considered
+    /// healthy.
     pub command: Vec<String>,
+    /// The working directory where the command is performed from.
     pub working_dir: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LogLineHealthcheck {
+    /// Number of retries before the healthcheck is considered failed.
+    #[serde(default = "default_healthcheck_retries")]
+    pub retries: u32,
+    /// The regex to attempt to match on a log line.
+    pub line_regex: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct GroupDefinition {
     #[serde(default = "String::default")]
     pub name: String,
+    /// A list of dependencies of the group.
     #[serde(default = "Vec::new")]
     pub dependencies: Vec<String>,
+    /// A list of checks to perform.
     #[serde(default = "Vec::new")]
     pub checks: Vec<String>,
 }
@@ -128,9 +160,15 @@ pub struct GroupDefinition {
 pub struct CheckDefinition {
     #[serde(default = "String::default")]
     pub name: String,
+    /// A short description of the check checks for.
     pub about: String,
+    /// The command used to perform the check. The command should exit with code
+    /// zero to be considered a pass.
     pub command: Vec<String>,
+    /// The working dir to perform the command in.
     pub working_dir: Option<String>,
+    /// An detailed error message to display the user instructing how to fix the
+    /// issue the check is concerned with.
     pub help: String,
 }
 

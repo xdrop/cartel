@@ -1,6 +1,7 @@
 use crate::client::module::{Healthcheck, ModuleKind, TermSignal};
 use crate::daemon::api::{
-    ApiExeHealthcheck, ApiHealthcheck, ApiKind, ApiTermSignal,
+    ApiExeHealthcheck, ApiHealthcheck, ApiKind, ApiLogLineHealthcheck,
+    ApiTermSignal,
 };
 
 impl From<&ModuleKind> for ApiKind {
@@ -32,6 +33,12 @@ impl From<&Healthcheck> for ApiHealthcheck {
                     retries: exec.retries,
                     command: exec.command.clone(),
                     working_dir: exec.working_dir.clone(),
+                })
+            }
+            Healthcheck::LogLine(log_line) => {
+                ApiHealthcheck::LogLine(ApiLogLineHealthcheck {
+                    retries: log_line.retries,
+                    line_regex: log_line.line_regex.clone(),
                 })
             }
         }

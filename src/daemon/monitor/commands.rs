@@ -1,6 +1,9 @@
+use std::path::{Path, PathBuf};
+
 #[derive(Debug)]
 pub enum MonitorTask {
     Executable(ExecMonitor),
+    LogLine(LogLineMonitor),
 }
 
 #[derive(Debug)]
@@ -16,6 +19,30 @@ pub struct Monitor {
 pub struct ExecMonitor {
     pub command: Vec<String>,
     pub working_dir: Option<String>,
+}
+
+impl ExecMonitor {
+    pub fn from(command: Vec<String>, working_dir: Option<String>) -> Self {
+        Self {
+            command,
+            working_dir,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct LogLineMonitor {
+    pub line_regex: String,
+    pub file_path: PathBuf,
+}
+
+impl LogLineMonitor {
+    pub fn from(line_regex: String, file_path: &Path) -> Self {
+        Self {
+            line_regex,
+            file_path: file_path.to_path_buf(),
+        }
+    }
 }
 
 #[derive(Debug)]

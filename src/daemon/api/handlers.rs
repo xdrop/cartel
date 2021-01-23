@@ -1,7 +1,7 @@
 use crate::daemon::api::convert::*;
 use crate::daemon::api::engine::CoreState;
 use crate::daemon::api::error::*;
-use crate::daemon::planner::{Monitor, MonitorStatus, Planner};
+use crate::daemon::planner::{MonitorStatus, Planner};
 use rocket::State;
 use rocket_contrib::json::Json;
 use serde::{Deserialize, Serialize};
@@ -24,6 +24,7 @@ pub struct ApiModuleDefinition {
 #[serde(tag = "kind")]
 pub enum ApiHealthcheck {
     Executable(ApiExeHealthcheck),
+    LogLine(ApiLogLineHealthcheck),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -31,6 +32,12 @@ pub struct ApiExeHealthcheck {
     pub retries: u32,
     pub command: Vec<String>,
     pub working_dir: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ApiLogLineHealthcheck {
+    pub retries: u32,
+    pub line_regex: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -119,6 +126,7 @@ pub enum ApiHealthStatus {
     Pending,
     Successful,
     RetriesExceeded,
+    Error,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -135,12 +143,7 @@ pub(crate) fn deploy(
     let planner = core_state.core.planner();
     let command = command.into_inner();
 
-    let monitor: Option<Monitor> = match command.module_definition.healthcheck {
-        Some(ref h) => Some(h.into()),
-        None => None,
-    };
-
-    let module_def = from_service(command.module_definition);
+    let (module_def, monitor) = from_service(command.module_definition);
     let module_name = module_def.name.clone();
 
     let deployed = planner.deploy(module_def, command.force)?;
@@ -246,6 +249,7 @@ pub(crate) fn health(
         Some(MonitorStatus::RetriesExceeded) => {
             Some(ApiHealthStatus::RetriesExceeded)
         }
+        Some(MonitorStatus::Error) => Some(ApiHealthStatus::Error),
         None => None,
     };
 

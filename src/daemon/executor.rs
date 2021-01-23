@@ -1,5 +1,5 @@
 use super::error::DaemonError;
-use super::logs::log_file_path;
+use super::logs::log_file_module;
 use super::module::{ModuleDefinition, TermSignal};
 use super::time::epoch_now;
 use crate::process::Process;
@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::File;
 use std::path::Path;
-use std::path::PathBuf;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::Arc;
 
@@ -163,7 +162,7 @@ impl Executor {
     pub fn run_module(&mut self, module: Arc<ModuleDefinition>) -> Result<()> {
         info!("Executing module: {}", module.name);
 
-        let log_file_pathbuf = Self::get_log_file_path(&module);
+        let log_file_pathbuf = log_file_module(&module);
         let log_file_path = log_file_pathbuf.as_path();
 
         let module_entry = self
@@ -250,15 +249,6 @@ impl Executor {
             .with_context(|| format!("Unable to start process '{}'", command))
     }
 
-    pub(super) fn get_log_file_path(
-        module: &ModuleDefinition,
-    ) -> std::path::PathBuf {
-        match &module.log_file_path {
-            Some(m) => PathBuf::from(&m),
-            _ => log_file_path(&module.name, &module.kind),
-        }
-    }
-
     pub(super) fn prepare_log_files(
         log_file_path: &Path,
     ) -> Result<(File, File)> {
@@ -280,6 +270,7 @@ impl Default for Executor {
 pub mod task_executor {
     use super::Executor;
     use crate::daemon::error::DaemonError;
+    use crate::daemon::logs::log_file_module;
     use crate::daemon::module::{ModuleDefinition, ModuleKind};
     use anyhow::{Context, Result};
     use std::process::ExitStatus;
@@ -293,7 +284,7 @@ pub mod task_executor {
         task_definition: &ModuleDefinition,
     ) -> Result<ExitStatus> {
         assert!(task_definition.kind == ModuleKind::Task);
-        let log_file_pathbuf = Executor::get_log_file_path(&task_definition);
+        let log_file_pathbuf = log_file_module(&task_definition);
         let log_file_path = log_file_pathbuf.as_path();
 
         let (stdout_file, stderr_file) =

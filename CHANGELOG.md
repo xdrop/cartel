@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Changed flag for skipping checks to `-z` and `--no-checks`.
+- Improved the error message when a healthcheck failed due to misconfiguration.
 
 ### Fixed
 - Attempting to stop or restart a module that doesn't exist now returns an appropriate error message.
 
 ### Added
 - Allow forcing deployments to always redeploy using `-f` or `--force`.
+- Introduced a new type of healthcheck (`log_line`) which allows for considering a
+  service healthy when a certain line has appeared in its stdout.
 
 ## [0.4.2-alpha] - 2020-01-17
 ### Changed

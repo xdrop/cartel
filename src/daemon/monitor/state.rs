@@ -6,6 +6,7 @@ pub enum MonitorStatus {
     Pending = 0x1,
     Successful = 0x2,
     RetriesExceeded = 0x3,
+    Error = 0x4,
 }
 
 pub struct MonitorState {

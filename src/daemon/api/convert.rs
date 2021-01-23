@@ -1,8 +1,12 @@
 use super::handlers::*;
 use crate::daemon::executor::RunStatus;
+use crate::daemon::logs::log_file_module;
 use crate::daemon::module::{ModuleDefinition, ModuleKind, TermSignal};
-use crate::daemon::monitor::{ExecMonitor, Monitor, MonitorTask};
+use crate::daemon::monitor::{
+    ExecMonitor, LogLineMonitor, Monitor, MonitorTask,
+};
 use crate::path;
+use std::path::Path;
 
 pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {
     ModuleDefinition::new(
@@ -17,8 +21,12 @@ pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {
     )
 }
 
-pub fn from_service(src: ApiModuleDefinition) -> ModuleDefinition {
-    ModuleDefinition::new(
+pub fn from_service(
+    mut src: ApiModuleDefinition,
+) -> (ModuleDefinition, Option<Monitor>) {
+    let healthcheck = src.healthcheck.take();
+
+    let module_definition = ModuleDefinition::new(
         ModuleKind::Service,
         src.name,
         src.command,
@@ -27,7 +35,20 @@ pub fn from_service(src: ApiModuleDefinition) -> ModuleDefinition {
         src.dependencies,
         src.working_dir.and_then(path::from_user_string),
         src.termination_signal.into(),
-    )
+    );
+
+    let monitor: Option<Monitor> = match healthcheck {
+        Some(ApiHealthcheck::Executable(exe)) => Some(exe.into()),
+        Some(ApiHealthcheck::LogLine(log_line)) => {
+            Some(from_log_line_healthcheck(
+                log_line,
+                &log_file_module(&module_definition),
+            ))
+        }
+        None => None,
+    };
+
+    (module_definition, monitor)
 }
 
 impl From<RunStatus> for ApiModuleRunStatus {
@@ -51,16 +72,27 @@ impl From<ApiTermSignal> for TermSignal {
     }
 }
 
-impl From<&ApiHealthcheck> for Monitor {
-    fn from(healthcheck: &ApiHealthcheck) -> Monitor {
-        match healthcheck {
-            ApiHealthcheck::Executable(exe) => Monitor {
-                retries: exe.retries,
-                task: MonitorTask::Executable(ExecMonitor {
-                    command: exe.command.clone(),
-                    working_dir: exe.working_dir.clone(),
-                }),
-            },
+impl From<ApiExeHealthcheck> for Monitor {
+    fn from(exe: ApiExeHealthcheck) -> Monitor {
+        Monitor {
+            retries: exe.retries,
+            task: MonitorTask::Executable(ExecMonitor::from(
+                exe.command,
+                exe.working_dir,
+            )),
         }
+    }
+}
+
+pub fn from_log_line_healthcheck(
+    log_line: ApiLogLineHealthcheck,
+    log_file_path: &Path,
+) -> Monitor {
+    Monitor {
+        retries: log_line.retries,
+        task: MonitorTask::LogLine(LogLineMonitor::from(
+            log_line.line_regex,
+            log_file_path,
+        )),
     }
 }

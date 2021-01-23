@@ -1,3 +1,4 @@
+use crate::daemon::module::ModuleDefinition;
 use crate::daemon::module::ModuleKind;
 use dirs::home_dir;
 use std::fs;
@@ -28,5 +29,16 @@ pub fn log_file_path(module_name: &str, module_kind: &ModuleKind) -> PathBuf {
         ModuleKind::Service => {
             base.join(format!("{}.service.log", module_name))
         }
+    }
+}
+
+/// Returns the log file path to use for the module.
+///
+/// If the module has a custom path then that will be used instead. Otherwise
+/// the path is computed according to [log_file_path].
+pub fn log_file_module(module: &ModuleDefinition) -> PathBuf {
+    match &module.log_file_path {
+        Some(m) => PathBuf::from(&m),
+        _ => log_file_path(&module.name, &module.kind),
     }
 }

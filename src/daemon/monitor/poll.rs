@@ -1,5 +1,10 @@
 use super::commands::*;
 use super::state::{MonitorState, MonitorStatus};
+use anyhow::{anyhow, Result};
+use grep_matcher::Matcher;
+use grep_regex::RegexMatcher;
+use grep_searcher::sinks::UTF8;
+use grep_searcher::Searcher;
 use log::{debug, info};
 use std::collections::HashMap;
 use std::process::Stdio;
@@ -48,17 +53,24 @@ async fn perform_poll(
     let poll_results = poll_monitors(&monitor_list).await;
     let mut status: Vec<(String, MonitorStatus)> = Vec::new();
 
-    for (idx, (key, succesful)) in poll_results.into_iter().enumerate().rev() {
+    for (idx, (key, result)) in poll_results.into_iter().enumerate().rev() {
         let retries = monitor_list[idx].1.retries;
         let attempts = *attempt_count.entry(key.to_string()).or_insert(1);
+        let is_error = result.is_err();
+        let poll_successful = result.unwrap_or(false);
 
-        if succesful {
-            // If succeeded we want to remove it from the poll list
+        if is_error {
+            // If the poll errored remove and set status to error
+            monitor_list.swap_remove(idx);
+            attempt_count.remove_entry(&key);
+            status.push((key, MonitorStatus::Error));
+        } else if poll_successful {
+            // If the poll succeeded remove and set status to error
             monitor_list.swap_remove(idx);
             attempt_count.remove_entry(&key);
             status.push((key, MonitorStatus::Successful));
         } else if attempts >= retries {
-            // If it failed too many times we also want to remove it
+            // If it failed too many times remove and update status
             monitor_list.swap_remove(idx);
             attempt_count.remove_entry(&key);
             status.push((key, MonitorStatus::RetriesExceeded));
@@ -71,14 +83,22 @@ async fn perform_poll(
     status
 }
 
-async fn poll_monitors(monitors: &[(String, Monitor)]) -> Vec<(String, bool)> {
+async fn poll_monitors(
+    monitors: &[(String, Monitor)],
+) -> Vec<(String, Result<bool>)> {
     let mut results = vec![];
     for (key, monitor) in monitors {
         match &monitor.task {
             MonitorTask::Executable(exe_monitor) => {
                 debug!("Polling exe monitor: {}", key);
                 let result = poll_exe_monitor(&exe_monitor).await;
-                debug!("Exe monitor result: {}", result);
+                debug!("Exe monitor result: {:?}", result);
+                results.push((key.to_string(), result));
+            }
+            MonitorTask::LogLine(log_line_monitor) => {
+                debug!("Polling log line monitor: {}", key);
+                let result = poll_log_line_monitor(&log_line_monitor).await;
+                debug!("Log line monitor result: {:?}", result);
                 results.push((key.to_string(), result));
             }
         }
@@ -86,20 +106,43 @@ async fn poll_monitors(monitors: &[(String, Monitor)]) -> Vec<(String, bool)> {
     results
 }
 
-async fn poll_exe_monitor(exe_monitor: &ExecMonitor) -> bool {
+async fn poll_exe_monitor(exe_monitor: &ExecMonitor) -> Result<bool> {
     let (head, tail) = exe_monitor
         .command
         .split_first()
-        .expect("Empty command in poll_exe_monitor");
-    // TODO: Handle error
+        .ok_or_else(|| anyhow!("Empty command in exe monitor"))?;
+
     let mut child = process::Command::new(head)
         .args(tail)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .spawn()
-        .expect("failed to spawn");
-    // TODO: Handle error
-    let status = child.wait().await.expect("failed to await child");
+        .spawn()?;
 
-    status.success()
+    let status = child.wait().await?;
+    Ok(status.success())
+}
+
+async fn poll_log_line_monitor(
+    log_line_monitor: &LogLineMonitor,
+) -> Result<bool> {
+    // TODO: Share the Searcher / RegexMatcher if expensive
+    let matcher =
+        RegexMatcher::new(&log_line_monitor.line_regex).expect("Invalid regex");
+    let mut found = false;
+
+    Searcher::new().search_path(
+        &matcher,
+        log_line_monitor.file_path.as_path(),
+        UTF8(|_, line| {
+            let match_ = matcher.find(line.as_bytes())?;
+            if match_.is_some() {
+                found = true;
+                Ok(false)
+            } else {
+                Ok(true)
+            }
+        }),
+    )?;
+
+    Ok(found)
 }

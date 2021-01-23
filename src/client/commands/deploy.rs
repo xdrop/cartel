@@ -219,6 +219,14 @@ fn wait_until_healthy(
                        Check the logs for more details."
                 )
             }
+            Some(ApiHealthStatus::Error) => {
+                bail!(
+                    "An error occured while waiting for the service \
+                    healthcheck to complete.\nThis is usually a mistake in \
+                    the healthcheck configuration, ensure the command or \
+                    condition is correct."
+                )
+            }
             Some(ApiHealthStatus::Pending) | None => {
                 thread::sleep(Duration::from_secs(2));
             }
