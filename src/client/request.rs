@@ -41,8 +41,9 @@ fn long_timeout_client() -> Client {
         .unwrap()
 }
 
-pub fn deploy_modules(
+pub fn deploy_module(
     module_definition: &ServiceOrTaskDefinition,
+    force_deploy: bool,
     daemon_url: &str,
 ) -> Result<ApiDeploymentResponse> {
     let client = reqwest::blocking::Client::new();
@@ -60,6 +61,7 @@ pub fn deploy_modules(
                 .as_ref()
                 .map(|h| h.into()),
         },
+        force: force_deploy,
     };
 
     let deployment_result: DeploymentResponse = client

@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Changed flag for skipping checks to `-z` and `--no-checks`.
 
+### Added
+- Allow forcing deployments to always redeploy using `-f` or `--force`.
+
 ## [0.4.2-alpha] - 2020-01-17
 ### Changed
 - Minor improvements to wait spinners.

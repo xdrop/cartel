@@ -13,14 +13,27 @@ use crate::client::validation::validate_modules_selected;
 use crate::daemon::api::ApiHealthStatus;
 use crate::dependency::{DependencyGraph, DependencyNode};
 use anyhow::{anyhow, bail, Result};
+use clap::ArgMatches;
 use console::style;
 use std::collections::HashMap;
 use std::thread;
 use std::time::Duration;
 
+pub struct DeployOptions {
+    force_deploy: bool,
+}
+
+impl DeployOptions {
+    pub fn from(opts: &ArgMatches) -> DeployOptions {
+        let force_deploy = opts.is_present("force");
+        Self { force_deploy }
+    }
+}
+
 pub fn deploy_cmd(
     modules_to_deploy: Vec<&str>,
     cli_config: &CliOptions,
+    deploy_opts: &DeployOptions,
 ) -> Result<()> {
     tprintstep!("Looking for module definitions...", 1, 5, LOOKING_GLASS);
     let mut module_defs = read_module_definitions(&cli_config)?;
@@ -43,7 +56,12 @@ pub fn deploy_cmd(
         match m.value.inner {
             InnerDefinition::Task(ref task) => deploy_task(task, cli_config),
             InnerDefinition::Service(ref service) => {
-                deploy_and_maybe_wait_service(service, m.marker, cli_config)
+                deploy_and_maybe_wait_service(
+                    service,
+                    m.marker,
+                    cli_config,
+                    deploy_opts,
+                )
             }
             InnerDefinition::Group(ref group) => {
                 deploy_group(group);
@@ -130,8 +148,9 @@ fn deploy_and_maybe_wait_service(
     service: &ServiceOrTaskDefinition,
     marker: Option<ModuleMarker>,
     cli_config: &CliOptions,
+    deploy_opts: &DeployOptions,
 ) -> Result<()> {
-    let monitor_handle = deploy_service(service, cli_config)?;
+    let monitor_handle = deploy_service(service, cli_config, deploy_opts)?;
     if let Some(handle) = monitor_handle {
         if marker == Some(ModuleMarker::WaitHealthcheck)
             || service.always_wait_healthcheck
@@ -149,13 +168,18 @@ fn deploy_and_maybe_wait_service(
 fn deploy_service(
     module: &ServiceOrTaskDefinition,
     cli_config: &CliOptions,
+    deploy_opts: &DeployOptions,
 ) -> Result<Option<String>> {
     let message = format!("Deploying {}", style(&module.name).white().bold());
     let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
 
     let mut wu = WaitUntil::new(&spin_opt);
     let deploy_result = wu.spin_until_status(|| {
-        let result = request::deploy_modules(module, &cli_config.daemon_url)?;
+        let result = request::deploy_module(
+            module,
+            deploy_opts.force_deploy,
+            &cli_config.daemon_url,
+        )?;
 
         let deploy_status = if result.deployed {
             style("(Deployed)").green().bold()

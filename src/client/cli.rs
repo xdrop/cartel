@@ -63,6 +63,12 @@ pub fn cli_app() -> Result<()> {
                 .about("Deploys a module (and it's dependencies)")
                 .visible_alias("d")
                 .arg(
+                    Arg::with_name("force")
+                        .help("Force deploy all modules")
+                        .short("f")
+                        .long("force"),
+                )
+                .arg(
                     Arg::with_name("modules")
                         .help("Modules to deploy")
                         .multiple(true)
@@ -194,7 +200,8 @@ fn invoke_subcommand(
                 .values_of("modules")
                 .ok_or_else(|| anyhow!("Expected at least one module"))?
                 .collect();
-            deploy_cmd(modules_to_deploy, cli_config)?;
+            let options = DeployOptions::from(deploy_cli_opts);
+            deploy_cmd(modules_to_deploy, cli_config, &options)?;
         }
         ("run", Some(run_cli_opts)) => {
             let task_name = run_cli_opts

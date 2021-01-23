@@ -43,6 +43,7 @@ pub enum ApiTermSignal {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiDeploymentCommand {
     pub module_definition: ApiModuleDefinition,
+    pub force: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -142,7 +143,7 @@ pub(crate) fn deploy(
     let module_def = from_service(command.module_definition);
     let module_name = module_def.name.clone();
 
-    let deployed = planner.deploy(module_def)?;
+    let deployed = planner.deploy(module_def, command.force)?;
 
     let monitor_key = if deployed && monitor.is_some() {
         let monitor_key = planner.create_monitor(module_name, monitor.unwrap());

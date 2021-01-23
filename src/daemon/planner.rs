@@ -36,14 +36,19 @@ impl Planner {
     /// already in the correct state.
     ///
     /// # Arguments
-    /// * `module_def` - The module definition of the module
-    pub fn deploy(&self, module_def: ModuleDefinition) -> Result<bool> {
+    /// * `module_def` - The module definition of the module.
+    /// * `force` - Force the module to deploy.
+    pub fn deploy(
+        &self,
+        module_def: ModuleDefinition,
+        force: bool,
+    ) -> Result<bool> {
         let mut executor = self.executor();
         let existing = executor.module_status_by_name(&module_def.name);
 
         match existing {
             Some(module_status) => {
-                if Self::should_restart(&module_def, module_status) {
+                if Self::should_restart(&module_def, module_status) || force {
                     executor.redeploy_module(Arc::new(module_def))?;
                     Ok(true)
                 } else {
@@ -70,7 +75,7 @@ impl Planner {
         Self::deployment_set(module_defs, selection)?
             .map(|module_def| {
                 let name = module_def.name.clone();
-                let result = self.deploy(module_def)?;
+                let result = self.deploy(module_def, false)?;
                 Ok((name, result))
             })
             .collect()
