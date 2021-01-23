@@ -54,8 +54,8 @@ pub fn cli_app() -> Result<()> {
         )
         .arg(
             Arg::with_name("skip_checks")
-                .short("nc")
-                .long("skip checks")
+                .short("z")
+                .long("no-checks")
                 .help("Disables running checks"),
         )
         .subcommand(
