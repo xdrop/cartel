@@ -1,10 +1,10 @@
 use super::commands::*;
-use super::config::{read_client_config, ClientConfig};
+use super::config::{read_persisted_config, PersistedConfig};
 use anyhow::{anyhow, bail, Result};
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::env;
 
-pub struct CliOptions {
+pub struct ClientConfig {
     pub verbose: u64,
     pub module_file: Option<String>,
     pub override_file: Option<String>,
@@ -12,6 +12,7 @@ pub struct CliOptions {
     pub full_pager_cmd: Vec<String>,
     pub follow_pager_cmd: Vec<String>,
     pub daemon_url: String,
+    pub default_dir: Option<String>,
     pub skip_checks: bool,
 }
 
@@ -150,30 +151,33 @@ pub fn cli_app() -> Result<()> {
         )
         .get_matches();
 
-    let client_config = read_client_config()?;
-    let cli_config = cli_config(&matches, &client_config)?;
-    invoke_subcommand(&matches, &cli_config)?;
+    let persisted_config = read_persisted_config()?;
+    let cfg = cfg(&matches, persisted_config)?;
+    invoke_subcommand(&matches, &cfg)?;
     Ok(())
 }
 
-fn cli_config(
+fn cfg(
     matches: &ArgMatches,
-    client_config: &Option<ClientConfig>,
-) -> Result<CliOptions> {
+    persisted_config: Option<PersistedConfig>,
+) -> Result<ClientConfig> {
     let full_pager_cmd = parse_cmd_from_env("CARTEL_FULL_LOG_PAGER", "less")?;
     let default_pager_cmd =
         parse_cmd_from_env("CARTEL_DEFAULT_LOG_PAGER", "tail -f -n 30")?;
     let follow_pager_cmd =
         parse_cmd_from_env("CARTEL_FOLLOW_LOG_PAGER", "less +F")?;
 
-    let daemon_url = match client_config {
+    let daemon_url = match &persisted_config {
         Some(client_conf) => client_conf
             .daemon_port
             .map(|port| format!("http://localhost:{}/api/v1", port)),
         _ => None,
     };
 
-    Ok(CliOptions {
+    let default_dir =
+        persisted_config.and_then(|mut cfg| cfg.default_dir.take());
+
+    Ok(ClientConfig {
         verbose: matches.occurrences_of("v"),
         skip_checks: matches.is_present("skip_checks"),
         module_file: matches.value_of("file").map(String::from),
@@ -181,8 +185,9 @@ fn cli_config(
         default_pager_cmd,
         full_pager_cmd,
         follow_pager_cmd,
+        default_dir,
         daemon_url: daemon_url
-            .unwrap_or(String::from("http://localhost:8000/api/v1")),
+            .unwrap_or_else(|| String::from("http://localhost:8000/api/v1")),
     })
 }
 
@@ -202,10 +207,7 @@ fn parse_cmd_from_env(env: &str, default: &str) -> Result<Vec<String>> {
     Ok(cmd)
 }
 
-fn invoke_subcommand(
-    matches: &ArgMatches,
-    cli_config: &CliOptions,
-) -> Result<()> {
+fn invoke_subcommand(matches: &ArgMatches, cfg: &ClientConfig) -> Result<()> {
     match matches.subcommand() {
         ("deploy", Some(deploy_cli_opts)) => {
             let modules_to_deploy = deploy_cli_opts
@@ -213,32 +215,32 @@ fn invoke_subcommand(
                 .ok_or_else(|| anyhow!("Expected at least one module"))?
                 .collect();
             let options = DeployOptions::from(deploy_cli_opts);
-            deploy_cmd(modules_to_deploy, cli_config, &options)?;
+            deploy_cmd(modules_to_deploy, cfg, &options)?;
         }
         ("run", Some(run_cli_opts)) => {
             let task_name = run_cli_opts
                 .value_of("task")
                 .ok_or_else(|| anyhow!("Expected task name"))?;
-            run_task_cmd(task_name, cli_config)?;
+            run_task_cmd(task_name, cfg)?;
         }
         ("ps", Some(_)) => {
-            list_modules_cmd(cli_config)?;
+            list_modules_cmd(cfg)?;
         }
         ("stop", Some(stop_cli_opts)) => {
             let modules_to_stop = stop_cli_opts
                 .values_of("services")
                 .ok_or_else(|| anyhow!("Expected at least one service"))?
                 .collect();
-            stop_service_cmd(modules_to_stop, cli_config)?;
+            stop_service_cmd(modules_to_stop, cfg)?;
         }
         ("down", Some(_down_cli_opts)) => {
-            down_cmd(cli_config)?;
+            down_cmd(cfg)?;
         }
         ("restart", Some(restart_cli_opts)) => {
             let module_to_restart = restart_cli_opts
                 .value_of("service")
                 .ok_or_else(|| anyhow!("Expected service name"))?;
-            restart_module_cmd(module_to_restart, cli_config)?;
+            restart_module_cmd(module_to_restart, cfg)?;
         }
         ("logs", Some(logs_cli_opts)) => {
             let module_name = logs_cli_opts
@@ -255,7 +257,7 @@ fn invoke_subcommand(
                 LogMode::DEFAULT
             };
 
-            print_logs(module_name, mode, cli_config)?;
+            print_logs(module_name, mode, cfg)?;
         }
         _ => {}
     }

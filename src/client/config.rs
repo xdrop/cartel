@@ -1,4 +1,4 @@
-use crate::client::cli::CliOptions;
+use crate::client::cli::ClientConfig;
 use crate::client::module::{
     Healthcheck, InnerDefinition, ModuleDefinition, ModuleKind,
 };
@@ -17,7 +17,7 @@ const PROJECT_DIR: &str = ".cartel";
 
 /// General persisted client configuration
 #[derive(Deserialize, Debug)]
-pub struct ClientConfig {
+pub struct PersistedConfig {
     /// The port to reach the daemon at.
     pub daemon_port: Option<u16>,
     /// The default directory to use when searching for module definitions.
@@ -100,7 +100,7 @@ fn update_path(o: &mut Option<String>, relative_to: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Discover the given file in the directory tree.
+/// Scans for the given file in the directory tree.
 ///
 /// Tries to discover `file_to_try` in the current directory or any of it's
 /// ancestor directories.
@@ -108,7 +108,10 @@ fn update_path(o: &mut Option<String>, relative_to: &Path) -> Result<()> {
 /// Navigates the directory tree starting at `current_path` and walking
 /// upwards for each failure. The search will stop once a path component
 /// with no parent is encountered.
-fn discover_file(current_path: &Path, file_to_try: &str) -> Option<PathBuf> {
+fn scan_directories_for(
+    current_path: &Path,
+    file_to_try: &str,
+) -> Option<PathBuf> {
     let mut buf = current_path.to_path_buf();
     let mut found = None;
     loop {
@@ -129,64 +132,75 @@ fn discover_file(current_path: &Path, file_to_try: &str) -> Option<PathBuf> {
     found
 }
 
+/// Try to locate file in the given directory.
+fn try_locate_in_dir(dir: &str, file_name: &str) -> Option<PathBuf> {
+    let path = path::from_user_str(dir);
+    if let Some(mut path) = path {
+        path.push(file_name);
+        if path.exists() {
+            return Some(path);
+        }
+    }
+    None
+}
+
+/// Try to locate from the given file path.
+fn try_locate_from_file_path(file_path: &str) -> Option<PathBuf> {
+    let path = PathBuf::from(file_path);
+    if path.exists() {
+        Some(path)
+    } else {
+        None
+    }
+}
+
 /// Attempts to locate the module definitions file.
 ///
 /// Tries to locate the module definition file checking each parent directory,
 /// in order. Returns the file and it's path if found, or returns an error
 /// otherwise.
-pub fn try_locate_file() -> Result<(File, PathBuf)> {
+pub fn locate_module_definitions_file(
+    provided: &Option<String>,
+    default_dir: &Option<String>,
+) -> Option<PathBuf> {
+    if let Some(provided) = provided {
+        return try_locate_from_file_path(provided);
+    };
+
     let cwd =
         env::current_dir().expect("Failed to get current working directory");
-    let module_file = discover_file(cwd.as_path(), "cartel.yaml");
+    let scan_result = scan_directories_for(cwd.as_path(), "cartel.yaml");
 
-    if let Some(module_file) = module_file {
-        if module_file.exists() {
-            return Ok((File::open(module_file.as_path())?, module_file));
-        }
+    if scan_result.is_some() {
+        scan_result
+    } else if let Some(default_dir) = default_dir {
+        try_locate_in_dir(default_dir, "cartel.yaml")
+    } else {
+        None
     }
-    bail!("Failed to locate cartel.yaml in current or ancestor directories")
 }
 
 /// Open the given module definitions file.
 ///
 /// If no file is given, an attempt to locate the file is done instead.
-pub fn open_module_file(file: &Option<String>) -> Result<(File, PathBuf)> {
-    if let Some(path) = file {
-        file_from_str_path(path.as_str())
-    } else {
-        try_locate_file()
-    }
-}
+pub fn open_module_file(
+    file: &Option<String>,
+    default_dir: &Option<String>,
+) -> Result<(File, PathBuf)> {
+    let module_file = locate_module_definitions_file(file, default_dir);
 
-/// Open the given override module definitions file.
-///
-/// If no file is given, an attempt to locate the file is done instead.
-fn open_override_file(
-    mod_def_file: &Path,
-    cli_config: &CliOptions,
-) -> Result<Option<(File, PathBuf)>> {
-    let override_file = locate_override_file(mod_def_file, cli_config);
-    if let Some(file_path) = override_file {
-        let file = File::open(file_path.as_path())
-            .context("Failed to open override file path")?;
-        Ok(Some((file, file_path)))
-    } else {
-        Ok(None)
-    }
-}
-
-pub fn file_from_str_path(file_path: &str) -> Result<(File, PathBuf)> {
-    let path = PathBuf::from(file_path);
-    if path.exists() {
+    if let Some(module_file) = module_file {
         return Ok((
-            File::open(&path)
-                .context("Failed to open given file for reading")?,
-            path,
+            File::open(module_file.as_path())
+                .context("Failed to open file for reading")?,
+            module_file,
         ));
     }
-    bail!("File at {} not found", file_path)
+
+    bail!("Failed to locate module definitions file (cartel.yaml)")
 }
 
+/// Try to find a file with the given name next to file pointed by `path`.
 fn try_find_sibling(path: &Path, file_name: &str) -> Option<PathBuf> {
     let mut buf = path.to_path_buf();
 
@@ -201,11 +215,12 @@ fn try_find_sibling(path: &Path, file_name: &str) -> Option<PathBuf> {
     }
 }
 
+/// Attempt to locate a module definition overrides file.
 fn locate_override_file(
     module_definitions_file: &Path,
-    cli_config: &CliOptions,
+    cfg: &ClientConfig,
 ) -> Option<PathBuf> {
-    if let Some(file_path) = &cli_config.override_file {
+    if let Some(file_path) = &cfg.override_file {
         let path = Path::new(&file_path);
         if path.exists() {
             Some(path.to_path_buf())
@@ -217,6 +232,24 @@ fn locate_override_file(
     }
 }
 
+/// Open the given override module definitions file.
+///
+/// If no file is given, an attempt to locate the file is done instead.
+fn open_override_file(
+    mod_def_file: &Path,
+    cfg: &ClientConfig,
+) -> Result<Option<(File, PathBuf)>> {
+    let override_file = locate_override_file(mod_def_file, cfg);
+    if let Some(file_path) = override_file {
+        let file = File::open(file_path.as_path())
+            .context("Failed to open override file path")?;
+        Ok(Some((file, file_path)))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Parse a module definition file.
 fn parse_module_def_file(
     mut file: File,
     path: &Path,
@@ -236,6 +269,10 @@ fn parse_module_def_file(
     Ok(module_defs)
 }
 
+/// Merge main module definitions with overrides.
+///
+/// In the case of a name clash the override file takes priority when merging.
+/// All other definitions are kept from both files.
 fn merge_module_definitions(
     main: Vec<ModuleDefinition>,
     mut overriden: Vec<ModuleDefinition>,
@@ -259,15 +296,25 @@ fn merge_module_definitions(
     merged
 }
 
+/// Read module definitions from the filesystem.
+///
+/// Reads module definitions by attempting to locate a module definitions file
+/// as well as any potential overrides files. If an override file is found it is
+/// merged with the main module definitions file.
+///
+/// The search for the module definitions file begins at the current directory,
+/// and walks upwards until a file is found. In case of a file not located then
+/// the default directory from the client config is used.
 pub fn read_module_definitions(
-    opts: &CliOptions,
+    cfg: &ClientConfig,
 ) -> Result<Vec<ModuleDefinition>> {
-    let (mod_def_file, path) = open_module_file(&opts.module_file)?;
+    let (mod_def_file, path) =
+        open_module_file(&cfg.module_file, &cfg.default_dir)?;
 
     let module_defs = parse_module_def_file(mod_def_file, path.as_path())?;
 
     if let Some((override_file, override_file_path)) =
-        open_override_file(path.as_path(), opts)?
+        open_override_file(path.as_path(), cfg)?
     {
         let override_module_defs =
             parse_module_def_file(override_file, override_file_path.as_path())
@@ -278,7 +325,8 @@ pub fn read_module_definitions(
     Ok(module_defs)
 }
 
-pub fn read_client_config() -> Result<Option<ClientConfig>> {
+/// Reads the persistent client configuration from the filesystem.
+pub fn read_persisted_config() -> Result<Option<PersistedConfig>> {
     let mut home_dir =
         dirs::home_dir().expect("Failed to locate users home dir");
     home_dir.push(PROJECT_DIR);
@@ -288,7 +336,7 @@ pub fn read_client_config() -> Result<Option<ClientConfig>> {
         let mut buffer = String::new();
         file.read_to_string(&mut buffer)
             .with_context(|| "While reading client config file.")?;
-        let config: ClientConfig = serde_yaml::from_str(&buffer)?;
+        let config: PersistedConfig = serde_yaml::from_str(&buffer)?;
         return Ok(Some(config));
     }
     Ok(None)

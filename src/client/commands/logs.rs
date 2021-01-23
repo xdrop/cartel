@@ -1,4 +1,4 @@
-use crate::client::cli::CliOptions;
+use crate::client::cli::ClientConfig;
 use crate::client::request;
 use anyhow::Result;
 #[cfg(unix)]
@@ -14,9 +14,9 @@ pub enum LogMode {
 pub fn print_logs(
     module_name: &str,
     log_mode: LogMode,
-    cli_config: &CliOptions,
+    cfg: &ClientConfig,
 ) -> Result<()> {
-    let log_file = request::log_info(module_name, &cli_config.daemon_url)?;
+    let log_file = request::log_info(module_name, &cfg.daemon_url)?;
 
     // This might fail on systems like Windows since paths may not be UTF-8
     // encoded there. Since we are using 'less' to page the logs and we don't
@@ -28,9 +28,9 @@ pub fn print_logs(
         .expect("Systems where paths aren't UTF-8 encoded are not supported");
 
     let pager_cmd = match log_mode {
-        LogMode::DEFAULT => &cli_config.default_pager_cmd,
-        LogMode::FOLLOW => &cli_config.follow_pager_cmd,
-        LogMode::FULL => &cli_config.full_pager_cmd,
+        LogMode::DEFAULT => &cfg.default_pager_cmd,
+        LogMode::FOLLOW => &cfg.follow_pager_cmd,
+        LogMode::FULL => &cfg.full_pager_cmd,
     };
 
     #[cfg(unix)]

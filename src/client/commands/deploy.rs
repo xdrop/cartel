@@ -1,4 +1,4 @@
-use crate::client::cli::CliOptions;
+use crate::client::cli::ClientConfig;
 use crate::client::config::read_module_definitions;
 use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, TEXTBOOK, VAN};
 use crate::client::module::{module_names_set, remove_checks};
@@ -32,11 +32,11 @@ impl DeployOptions {
 
 pub fn deploy_cmd(
     modules_to_deploy: Vec<&str>,
-    cli_config: &CliOptions,
+    cfg: &ClientConfig,
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
     tprintstep!("Looking for module definitions...", 1, 5, LOOKING_GLASS);
-    let mut module_defs = read_module_definitions(&cli_config)?;
+    let mut module_defs = read_module_definitions(&cfg)?;
     let checks_map = remove_checks(&mut module_defs);
     let module_names = module_names_set(&module_defs);
 
@@ -48,18 +48,18 @@ pub fn deploy_cmd(
         DependencyGraph::from(&module_defs, &modules_to_deploy);
     let ordered = dependency_graph.dependency_sort()?;
 
-    run_checks(checks_map, &ordered, cli_config)?;
+    run_checks(checks_map, &ordered, cfg)?;
 
     tprintstep!("Deploying...", 4, 5, VAN);
 
     for m in &ordered {
         match m.value.inner {
-            InnerDefinition::Task(ref task) => deploy_task(task, cli_config),
+            InnerDefinition::Task(ref task) => deploy_task(task, cfg),
             InnerDefinition::Service(ref service) => {
                 deploy_and_maybe_wait_service(
                     service,
                     m.marker,
-                    cli_config,
+                    cfg,
                     deploy_opts,
                 )
             }
@@ -83,9 +83,9 @@ pub fn deploy_cmd(
 fn run_checks(
     checks_map: HashMap<String, CheckDefinition>,
     modules: &[&DependencyNode<&ModuleDefinition, ModuleMarker>],
-    cli_config: &CliOptions,
+    cfg: &ClientConfig,
 ) -> Result<()> {
-    if cli_config.skip_checks {
+    if cfg.skip_checks {
         let msg = format!(
             "Running checks... {}",
             style("(Skip)").bold().white().dim()
@@ -147,19 +147,15 @@ fn perform_check(check_def: &CheckDefinition) -> Result<()> {
 fn deploy_and_maybe_wait_service(
     service: &ServiceOrTaskDefinition,
     marker: Option<ModuleMarker>,
-    cli_config: &CliOptions,
+    cfg: &ClientConfig,
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
-    let monitor_handle = deploy_service(service, cli_config, deploy_opts)?;
+    let monitor_handle = deploy_service(service, cfg, deploy_opts)?;
     if let Some(handle) = monitor_handle {
         if marker == Some(ModuleMarker::WaitHealthcheck)
             || service.always_wait_healthcheck
         {
-            wait_until_healthy(
-                service.name.as_str(),
-                handle.as_str(),
-                cli_config,
-            )?;
+            wait_until_healthy(service.name.as_str(), handle.as_str(), cfg)?;
         }
     }
     Ok(())
@@ -167,7 +163,7 @@ fn deploy_and_maybe_wait_service(
 
 fn deploy_service(
     module: &ServiceOrTaskDefinition,
-    cli_config: &CliOptions,
+    cfg: &ClientConfig,
     deploy_opts: &DeployOptions,
 ) -> Result<Option<String>> {
     let message = format!("Deploying {}", style(&module.name).white().bold());
@@ -178,7 +174,7 @@ fn deploy_service(
         let result = request::deploy_module(
             module,
             deploy_opts.force_deploy,
-            &cli_config.daemon_url,
+            &cfg.daemon_url,
         )?;
 
         let deploy_status = if result.deployed {
@@ -196,7 +192,7 @@ fn deploy_service(
 fn wait_until_healthy(
     module_name: &str,
     monitor_handle: &str,
-    cli_config: &CliOptions,
+    cfg: &ClientConfig,
 ) -> Result<()> {
     let message = format!(
         "Waiting {} to be healthy",
@@ -207,7 +203,7 @@ fn wait_until_healthy(
 
     wu.spin_until_status(|| loop {
         let status = style("(Done)").green().bold().to_string();
-        match request::poll_health(monitor_handle, &cli_config.daemon_url)?
+        match request::poll_health(monitor_handle, &cfg.daemon_url)?
             .healthcheck_status
         {
             Some(ApiHealthStatus::Successful) => {
@@ -238,7 +234,7 @@ fn wait_until_healthy(
 
 fn deploy_task(
     module: &ServiceOrTaskDefinition,
-    cli_config: &CliOptions,
+    cfg: &ClientConfig,
 ) -> Result<()> {
     let message =
         format!("Running task {}", style(&module.name).white().bold());
@@ -246,7 +242,7 @@ fn deploy_task(
 
     let mut wu = WaitUntil::new(&spin_opt);
     wu.spin_until_status(|| {
-        let result = request::deploy_task(module, &cli_config.daemon_url)?;
+        let result = request::deploy_task(module, &cfg.daemon_url)?;
         let status = style("(Done)").green().bold().to_string();
         Ok(WaitResult::from(result, status))
     })?;

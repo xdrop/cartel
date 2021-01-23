@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Introduced a new type of healthcheck (`log_line`) which allows for considering a service healthy when a certain line has appeared in its stdout.
 - Introduced a new client configuration file to contain persisted options. 
 - Add `daemon_port` option to allow configuring the daemon port via the client configuration file
+- Add `default_dir` option to allow configuring the default directory to look for module definition files in. Note that this directory is always last in precedence.
 
 ## [0.4.2-alpha] - 2020-01-17
 ### Changed

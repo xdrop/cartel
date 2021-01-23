@@ -1,4 +1,4 @@
-use crate::client::cli::CliOptions;
+use crate::client::cli::ClientConfig;
 use crate::client::request;
 use crate::daemon::api::ApiModuleRunStatus;
 use anyhow::Result;
@@ -9,8 +9,8 @@ use std::io::Write;
 use std::time::Duration;
 use tabwriter::TabWriter;
 
-pub fn list_modules_cmd(cli_config: &CliOptions) -> Result<()> {
-    let module_status = request::list_modules(&cli_config.daemon_url)?;
+pub fn list_modules_cmd(cfg: &ClientConfig) -> Result<()> {
+    let module_status = request::list_modules(&cfg.daemon_url)?;
     let mut tw = TabWriter::new(io::stdout()).minwidth(8);
 
     writeln!(&mut tw, "pid\tname\tstatus\tsince")?;
