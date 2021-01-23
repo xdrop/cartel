@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Changed flag for skipping checks to `-z` and `--no-checks`.
 - Improved the error message when a healthcheck failed due to misconfiguration.
+- Daemon default port changed to `13754` to reduce chance of conflict.
 
 ### Fixed
 - Attempting to stop or restart a module that doesn't exist now returns an appropriate error message.

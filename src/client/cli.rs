@@ -187,7 +187,7 @@ fn cfg(
         follow_pager_cmd,
         default_dir,
         daemon_url: daemon_url
-            .unwrap_or_else(|| String::from("http://localhost:8000/api/v1")),
+            .unwrap_or_else(|| String::from("http://localhost:13754/api/v1")),
     })
 }
 
