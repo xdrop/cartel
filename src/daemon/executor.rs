@@ -133,21 +133,24 @@ impl Executor {
     /// Note: This will not stop dependent modules.
     pub fn stop_module(&mut self, name: &str) -> Result<()> {
         info!("Stopping module: {}", name);
-        if let Some(module) = self.module_map.get_mut(name) {
-            if let Some(process) = &mut module.child {
-                module.status = RunStatus::STOPPED;
-                module.exit_time = epoch_now();
+        match self.module_map.get_mut(name) {
+            Some(module) => {
+                if let Some(process) = &mut module.child {
+                    module.status = RunStatus::STOPPED;
+                    module.exit_time = epoch_now();
 
-                // Signal child process to die
-                match module.module_definition.termination_signal {
-                    TermSignal::KILL => process.kill(),
-                    TermSignal::TERM => process.terminate(),
-                    TermSignal::INT => process.interrupt(),
+                    // Signal child process to die
+                    match module.module_definition.termination_signal {
+                        TermSignal::KILL => process.kill(),
+                        TermSignal::TERM => process.terminate(),
+                        TermSignal::INT => process.interrupt(),
+                    }
+                    process.wait();
                 }
-                process.wait();
+                Ok(())
             }
+            None => Err(DaemonError::NotRunning(name.to_string()).into()),
         }
-        Ok(())
     }
 
     /// Executes a service module, and registers its state.

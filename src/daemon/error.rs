@@ -9,6 +9,11 @@ pub enum DaemonError {
     #[error("Module with name '{0}' not found")]
     NotFound(String),
 
+    /// Represents the case when attempting to stop a module that is not
+    /// running or doesn't exist.
+    #[error("Module with name '{0}' is not running or doesn't exist.")]
+    NotRunning(String),
+
     /// Represents the case some of the module in the given subset of
     /// modules do not exist. For example, trying to deploy a set of modules
     /// where one doesn't exist.

@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Changed flag for skipping checks to `-z` and `--no-checks`.
 
+### Fixed
+- Attempting to stop or restart a module that doesn't exist now returns an appropriate error message.
+
 ### Added
 - Allow forcing deployments to always redeploy using `-f` or `--force`.
 
