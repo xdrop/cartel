@@ -5,12 +5,24 @@ use crate::client::module::{
 use crate::client::validation::validate_modules_unique;
 use crate::path;
 use anyhow::{bail, Context, Result};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::option::Option;
 use std::path::{Path, PathBuf};
+
+const PROJECT_DIR: &str = ".cartel";
+
+/// General persisted client configuration
+#[derive(Deserialize, Debug)]
+pub struct ClientConfig {
+    /// The port to reach the daemon at.
+    pub daemon_port: Option<u16>,
+    /// The default directory to use when searching for module definitions.
+    pub default_dir: Option<String>,
+}
 
 /// Parse one or more modules from the given string.
 ///
@@ -264,4 +276,20 @@ pub fn read_module_definitions(
     }
 
     Ok(module_defs)
+}
+
+pub fn read_client_config() -> Result<Option<ClientConfig>> {
+    let mut home_dir =
+        dirs::home_dir().expect("Failed to locate users home dir");
+    home_dir.push(PROJECT_DIR);
+    home_dir.push("config.yaml");
+
+    if let Ok(mut file) = File::open(home_dir) {
+        let mut buffer = String::new();
+        file.read_to_string(&mut buffer)
+            .with_context(|| "While reading client config file.")?;
+        let config: ClientConfig = serde_yaml::from_str(&buffer)?;
+        return Ok(Some(config));
+    }
+    Ok(None)
 }

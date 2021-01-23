@@ -1,4 +1,5 @@
 use super::commands::*;
+use super::config::{read_client_config, ClientConfig};
 use anyhow::{anyhow, bail, Result};
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::env;
@@ -149,17 +150,28 @@ pub fn cli_app() -> Result<()> {
         )
         .get_matches();
 
-    let cli_config = cli_config(&matches)?;
+    let client_config = read_client_config()?;
+    let cli_config = cli_config(&matches, &client_config)?;
     invoke_subcommand(&matches, &cli_config)?;
     Ok(())
 }
 
-fn cli_config(matches: &ArgMatches) -> Result<CliOptions> {
+fn cli_config(
+    matches: &ArgMatches,
+    client_config: &Option<ClientConfig>,
+) -> Result<CliOptions> {
     let full_pager_cmd = parse_cmd_from_env("CARTEL_FULL_LOG_PAGER", "less")?;
     let default_pager_cmd =
         parse_cmd_from_env("CARTEL_DEFAULT_LOG_PAGER", "tail -f -n 30")?;
     let follow_pager_cmd =
         parse_cmd_from_env("CARTEL_FOLLOW_LOG_PAGER", "less +F")?;
+
+    let daemon_url = match client_config {
+        Some(client_conf) => client_conf
+            .daemon_port
+            .map(|port| format!("http://localhost:{}/api/v1", port)),
+        _ => None,
+    };
 
     Ok(CliOptions {
         verbose: matches.occurrences_of("v"),
@@ -169,8 +181,8 @@ fn cli_config(matches: &ArgMatches) -> Result<CliOptions> {
         default_pager_cmd,
         full_pager_cmd,
         follow_pager_cmd,
-        // TODO: Make config
-        daemon_url: "http://localhost:8000/api/v1".to_string(),
+        daemon_url: daemon_url
+            .unwrap_or(String::from("http://localhost:8000/api/v1")),
     })
 }
 
