@@ -13,7 +13,6 @@ pub struct ClientConfig {
     pub follow_pager_cmd: Vec<String>,
     pub daemon_url: String,
     pub default_dir: Option<String>,
-    pub skip_checks: bool,
 }
 
 pub fn cli_app() -> Result<()> {
@@ -54,12 +53,6 @@ pub fn cli_app() -> Result<()> {
                 .multiple(true)
                 .help("Sets the level of verbosity"),
         )
-        .arg(
-            Arg::with_name("skip_checks")
-                .short("z")
-                .long("no-checks")
-                .help("Disables running checks"),
-        )
         .subcommand(
             SubCommand::with_name("deploy")
                 .about("Deploys a module (and it's dependencies)")
@@ -75,6 +68,18 @@ pub fn cli_app() -> Result<()> {
                         .help("Modules to deploy")
                         .multiple(true)
                         .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("skip_checks")
+                        .short("z")
+                        .long("no-checks")
+                        .help("Disables running checks"),
+                )
+                .arg(
+                    Arg::with_name("skip_healthchecks")
+                        .short("s")
+                        .long("no-healthchecks")
+                        .help("Disables running healthchecks"),
                 ),
         )
         .subcommand(
@@ -179,7 +184,6 @@ fn cfg(
 
     Ok(ClientConfig {
         verbose: matches.occurrences_of("v"),
-        skip_checks: matches.is_present("skip_checks"),
         module_file: matches.value_of("file").map(String::from),
         override_file: matches.value_of("override").map(String::from),
         default_pager_cmd,

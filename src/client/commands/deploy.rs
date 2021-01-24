@@ -21,12 +21,20 @@ use std::time::Duration;
 
 pub struct DeployOptions {
     force_deploy: bool,
+    skip_checks: bool,
+    skip_healthchecks: bool,
 }
 
 impl DeployOptions {
     pub fn from(opts: &ArgMatches) -> DeployOptions {
         let force_deploy = opts.is_present("force");
-        Self { force_deploy }
+        let skip_healthchecks = opts.is_present("skip_healthchecks");
+        let skip_checks = opts.is_present("skip_checks");
+        Self {
+            force_deploy,
+            skip_healthchecks,
+            skip_checks,
+        }
     }
 }
 
@@ -48,7 +56,7 @@ pub fn deploy_cmd(
         DependencyGraph::from(&module_defs, &modules_to_deploy);
     let ordered = dependency_graph.dependency_sort()?;
 
-    run_checks(checks_map, &ordered, cfg)?;
+    run_checks(checks_map, &ordered, deploy_opts)?;
 
     tprintstep!("Deploying...", 4, 5, VAN);
 
@@ -83,9 +91,9 @@ pub fn deploy_cmd(
 fn run_checks(
     checks_map: HashMap<String, CheckDefinition>,
     modules: &[&DependencyNode<&ModuleDefinition, ModuleMarker>],
-    cfg: &ClientConfig,
+    deploy_opts: &DeployOptions,
 ) -> Result<()> {
-    if cfg.skip_checks {
+    if deploy_opts.skip_checks {
         let msg = format!(
             "Running checks... {}",
             style("(Skip)").bold().white().dim()
@@ -152,8 +160,9 @@ fn deploy_and_maybe_wait_service(
 ) -> Result<()> {
     let monitor_handle = deploy_service(service, cfg, deploy_opts)?;
     if let Some(handle) = monitor_handle {
-        if marker == Some(ModuleMarker::WaitHealthcheck)
-            || service.always_wait_healthcheck
+        if (marker == Some(ModuleMarker::WaitHealthcheck)
+            || service.always_wait_healthcheck)
+            && !deploy_opts.skip_healthchecks
         {
             wait_until_healthy(service.name.as_str(), handle.as_str(), cfg)?;
         }

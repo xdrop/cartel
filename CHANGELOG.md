@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Attempting to stop or restart a module that doesn't exist now returns an appropriate error message.
+- Skip checks flag (`-z`) is now under the correct command.
 
 ### Added
 - Allow forcing deployments to always redeploy using `-f` or `--force`.
@@ -19,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Introduced a new client configuration file to contain persisted options. 
 - Add `daemon_port` option to allow configuring the daemon port via the client configuration file
 - Add `default_dir` option to allow configuring the default directory to look for module definition files in. Note that this directory is always last in precedence.
+- Allow skipping healthchecks using `-s` / `--no-healthchecks`.
 
 ## [0.4.2-alpha] - 2020-01-17
 ### Changed
