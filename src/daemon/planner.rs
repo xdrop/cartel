@@ -4,10 +4,11 @@ use crate::daemon::executor::{ModuleStatus, RunStatus};
 use crate::daemon::module::ModuleDefinition;
 pub use crate::daemon::monitor::{Monitor, MonitorHandle, MonitorStatus};
 use anyhow::Result;
+use parking_lot::{Mutex, MutexGuard};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::iter::FromIterator;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 
 pub struct Planner {
     // This effectively serializes deployments, status reads etc. Since we are
@@ -182,7 +183,7 @@ impl Planner {
 
 impl Planner {
     fn executor(&self) -> MutexGuard<Executor> {
-        self.executor.lock().expect("Poisoned lock")
+        self.executor.lock()
     }
 
     fn should_restart(
