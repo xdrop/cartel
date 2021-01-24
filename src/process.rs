@@ -29,7 +29,7 @@ mod implementation {
         /// independently.
         ///
         /// All operations on the returned handle happen on the `pgid` rather
-        /// than the `pid` of the child
+        /// than the `pid` of the child.
         ///
         /// # Arguments
         ///
@@ -73,7 +73,7 @@ mod implementation {
                 Self {
                     child: p,
                     pgid: id
-                        .try_into()
+                        .try_into() // pgid is negative
                         .expect("u32 -> i32 failed in Process::spawn"),
                 }
             })
@@ -95,6 +95,9 @@ mod implementation {
         }
 
         /// Wait for the process group to exit.
+        ///
+        /// This function blocks the calling thread and will only finish once
+        /// the child has exited.
         pub fn wait(&mut self) {
             use nix::sys::wait::*;
 
@@ -111,11 +114,16 @@ mod implementation {
             }
         }
 
+        /// Return the pid of the child process.
         #[inline]
         pub fn id(&self) -> u32 {
             self.child.id()
         }
 
+        /// Attempts to collect the exit status of the child if it has already exited.
+        ///
+        /// This function will not block the calling thread and will only check
+        /// to see if the child process has exited or not.
         #[inline]
         pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
             self.child.try_wait()
