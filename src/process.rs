@@ -3,10 +3,13 @@ pub use self::implementation::Process;
 #[cfg(target_family = "unix")]
 mod implementation {
     use nix::libc;
+    use nix::unistd::*;
     use nix::{self, Error};
     use std::collections::HashMap;
+    use std::convert::TryInto;
     use std::fs::File;
     use std::io::{self, Result};
+    use std::os::unix::process::CommandExt;
     use std::path::Path;
     use std::process::{Child, Command, ExitStatus, Stdio};
 
@@ -18,6 +21,23 @@ mod implementation {
     }
 
     impl Process {
+        /// Executes the command as a child process, returning a handle to it.
+        ///
+        /// Unlike [std::Process], this (Unix specific) implementation will use
+        /// the `setsid` syscall to dissacociate the child process from the
+        /// parents pgid, allowing to signal the process group of the child
+        /// independently.
+        ///
+        /// All operations on the returned handle happen on the `pgid` rather
+        /// than the `pid` of the child
+        ///
+        /// # Arguments
+        ///
+        /// * `cmd` - The command to execute. Must have length of at least one.
+        /// * `env` - The environment variables to create the new process with.
+        /// * `stdout` - A [File] where stdout is written to.
+        /// * `stderr` - A [File] where stderr is written to.
+        /// * `work_dir` - The working directory the process will run in.
         pub fn spawn(
             cmd: &[String],
             env: &HashMap<String, String>,
@@ -25,12 +45,9 @@ mod implementation {
             stderr: File,
             work_dir: Option<&Path>,
         ) -> Result<Self> {
-            use nix::unistd::*;
-            use std::convert::TryInto;
-            use std::os::unix::process::CommandExt;
-
             let (head, tail) =
                 cmd.split_first().expect("Empty command in Process::spawn");
+
             let mut command = Command::new(head);
             command
                 .args(tail)
@@ -50,6 +67,7 @@ mod implementation {
                 command
                     .pre_exec(|| setsid().map_err(from_nix_error).map(|_| ()));
             }
+
             command.spawn().map(|p| {
                 let id = p.id();
                 Self {
@@ -61,21 +79,24 @@ mod implementation {
             })
         }
 
+        /// Sends SIGINT to the pgid of this process.
         pub fn interrupt(&mut self) {
             self.signal_process_group(libc::SIGINT);
         }
 
+        /// Sends SIGTERM to the pgid of this process.
         pub fn terminate(&mut self) {
             self.signal_process_group(libc::SIGTERM);
         }
 
+        /// Sends SIGKILL to the pgid of this process.
         pub fn kill(&mut self) {
             self.signal_process_group(libc::SIGKILL);
         }
 
+        /// Wait for the process group to exit.
         pub fn wait(&mut self) {
             use nix::sys::wait::*;
-            use nix::unistd::Pid;
 
             loop {
                 match waitpid(
@@ -140,7 +161,7 @@ mod implementation {
     /// The Windows implementation is extremely poor and will not do the "right"
     /// thing when it comes to killing a service (the service's subprocesses may
     /// continue to live). This requires an imlementation using JobObjects from
-    /// the Windows API
+    /// the Windows API.
     impl Process {
         pub fn spawn(
             cmd: &[String],
@@ -149,12 +170,9 @@ mod implementation {
             stderr: File,
             work_dir: Option<&Path>,
         ) -> Result<Self> {
-            use nix::unistd::*;
-            use std::convert::TryInto;
-            use std::os::unix::process::CommandExt;
-
             let (head, tail) =
                 cmd.split_first().expect("Empty command in Process::spawn");
+
             let mut command = Command::new(head);
             command
                 .args(tail)
