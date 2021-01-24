@@ -1,10 +1,10 @@
 use super::handlers::*;
-use crate::daemon::executor::RunStatus;
 use crate::daemon::logs::log_file_module;
 use crate::daemon::module::{ModuleDefinition, ModuleKind, TermSignal};
 use crate::daemon::monitor::{
     ExecMonitor, LogLineMonitor, Monitor, MonitorTask,
 };
+use crate::daemon::{executor::RunStatus, monitor::NetMonitor};
 use crate::path;
 use std::path::Path;
 
@@ -45,6 +45,7 @@ pub fn from_service(
                 &log_file_module(&module_definition),
             ))
         }
+        Some(ApiHealthcheck::Net(net)) => Some(net.into()),
         None => None,
     };
 
@@ -80,6 +81,15 @@ impl From<ApiExeHealthcheck> for Monitor {
                 exe.command,
                 exe.working_dir,
             )),
+        }
+    }
+}
+
+impl From<ApiNetworkHealthcheck> for Monitor {
+    fn from(net: ApiNetworkHealthcheck) -> Monitor {
+        Monitor {
+            retries: net.retries,
+            task: MonitorTask::Net(NetMonitor::from(net.hostname, net.port)),
         }
     }
 }

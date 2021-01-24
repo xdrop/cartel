@@ -121,6 +121,7 @@ pub struct ServiceOrTaskDefinition {
 pub enum Healthcheck {
     Exec(ExecutableHealthcheck),
     LogLine(LogLineHealthcheck),
+    Net(NetworkHealthcheck),
 }
 
 #[derive(Debug, Deserialize)]
@@ -142,6 +143,17 @@ pub struct LogLineHealthcheck {
     pub retries: u32,
     /// The regex to attempt to match on a log line.
     pub line_regex: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NetworkHealthcheck {
+    /// Number of retries before the healthcheck is considered failed.
+    #[serde(default = "default_healthcheck_retries")]
+    pub retries: u32,
+    /// The host to try and connect to.
+    pub host: String,
+    /// The port to try and connect to.
+    pub port: u16,
 }
 
 #[derive(Debug, Deserialize)]

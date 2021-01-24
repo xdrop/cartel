@@ -25,6 +25,7 @@ pub struct ApiModuleDefinition {
 pub enum ApiHealthcheck {
     Executable(ApiExeHealthcheck),
     LogLine(ApiLogLineHealthcheck),
+    Net(ApiNetworkHealthcheck),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -38,6 +39,13 @@ pub struct ApiExeHealthcheck {
 pub struct ApiLogLineHealthcheck {
     pub retries: u32,
     pub line_regex: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ApiNetworkHealthcheck {
+    pub retries: u32,
+    pub hostname: String,
+    pub port: u16,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

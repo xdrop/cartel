@@ -9,8 +9,9 @@ use log::{debug, info};
 use std::collections::HashMap;
 use std::process::Stdio;
 use std::sync::Arc;
-use tokio::process;
-use tokio::sync::mpsc;
+use std::time::Duration;
+use tokio::{net::TcpStream, process};
+use tokio::{sync::mpsc, time::timeout};
 
 pub(super) async fn poll_tickr(tx: mpsc::Sender<MonitorCommand>) {
     let mut interval =
@@ -101,6 +102,12 @@ async fn poll_monitors(
                 debug!("Log line monitor result: {:?}", result);
                 results.push((key.to_string(), result));
             }
+            MonitorTask::Net(net_monitor) => {
+                debug!("Polling net monitor: {}", key);
+                let result = poll_net_monitor(&net_monitor).await;
+                debug!("Net monitor result: {:?}", result);
+                results.push((key.to_string(), result));
+            }
         }
     }
     results
@@ -145,4 +152,18 @@ async fn poll_log_line_monitor(
     )?;
 
     Ok(found)
+}
+
+async fn poll_net_monitor(net_monitor: &NetMonitor) -> Result<bool> {
+    let conn_fut = TcpStream::connect(format!(
+        "{}:{}",
+        net_monitor.hostname, net_monitor.port
+    ));
+
+    let result = match timeout(Duration::from_millis(100), conn_fut).await {
+        Ok(future) => future.is_ok(),
+        Err(_) => false,
+    };
+
+    Ok(result)
 }

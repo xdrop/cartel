@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 pub enum MonitorTask {
     Executable(ExecMonitor),
     LogLine(LogLineMonitor),
+    Net(NetMonitor),
 }
 
 #[derive(Debug)]
@@ -19,6 +20,18 @@ pub struct Monitor {
 pub struct ExecMonitor {
     pub command: Vec<String>,
     pub working_dir: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct NetMonitor {
+    pub hostname: String,
+    pub port: u16,
+}
+
+impl NetMonitor {
+    pub fn from(hostname: String, port: u16) -> Self {
+        Self { hostname, port }
+    }
 }
 
 impl ExecMonitor {

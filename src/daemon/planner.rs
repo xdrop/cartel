@@ -12,9 +12,9 @@ use std::sync::Arc;
 
 pub struct Planner {
     // This effectively serializes deployments, status reads etc. Since we are
-    // at most expecting one client interacting with the daemon we are not
-    // expecting contention on this lock. The overhead in both complexity and
-    // performance of other lock-free implementations doesn't feel worth it here.
+    // at most expecting one client interacting with the daemon this lock is not
+    // expected to be contended. The complexity and overhead of other lock-free
+    // implementations doesn't feel worth it here.
     executor: Mutex<Executor>,
     monitor_handle: MonitorHandle,
 }

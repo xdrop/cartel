@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added a new healthcheck of type `net` which allows monitoring the health of a service by trying to obtain a TCP connection. The healthcheck attempts to establish a connection, which upon established will make the healthcheck succeed. On a TCP reset the healthcheck is considered failed and will also time out after 100ms.
 
 ## [0.5.0-beta] - 2020-01-24
 ### Changed
