@@ -76,6 +76,12 @@ pub fn cli_app() -> Result<()> {
                         .help("Disables running checks"),
                 )
                 .arg(
+                    Arg::with_name("only_selected")
+                        .short("o")
+                        .long("only-selected")
+                        .help("Only deploy selected modules (no dependencies)"),
+                )
+                .arg(
                     Arg::with_name("skip_healthchecks")
                         .short("s")
                         .long("no-healthchecks")

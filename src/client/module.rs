@@ -1,4 +1,6 @@
-use crate::dependency::{DependencyEdge, EdgeDirection, WithDependencies};
+use crate::dependency::{
+    DependencyEdge, DependencyNode, EdgeDirection, WithDependencies,
+};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -254,6 +256,20 @@ impl WithDependencies<ModuleMarker> for ServiceOrTaskDefinition {
 
     fn dependencies(&self) -> Vec<DependencyEdge<ModuleMarker>> {
         self.edges()
+    }
+}
+
+impl AsRef<ModuleDefinition>
+    for &DependencyNode<&ModuleDefinition, ModuleMarker>
+{
+    fn as_ref(&self) -> &ModuleDefinition {
+        &self.value
+    }
+}
+
+impl AsRef<ModuleDefinition> for ModuleDefinition {
+    fn as_ref(&self) -> &ModuleDefinition {
+        &self
     }
 }
 

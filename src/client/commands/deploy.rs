@@ -14,14 +14,14 @@ use crate::daemon::api::ApiHealthStatus;
 use crate::dependency::{DependencyGraph, DependencyNode};
 use anyhow::{anyhow, bail, Result};
 use clap::ArgMatches;
-use console::style;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::thread;
 use std::time::Duration;
 
 pub struct DeployOptions {
     force_deploy: bool,
     skip_checks: bool,
+    only_selected: bool,
     skip_healthchecks: bool,
 }
 
@@ -30,10 +30,13 @@ impl DeployOptions {
         let force_deploy = opts.is_present("force");
         let skip_healthchecks = opts.is_present("skip_healthchecks");
         let skip_checks = opts.is_present("skip_checks");
+
+        let only_selected = opts.is_present("only_selected");
         Self {
             force_deploy,
             skip_healthchecks,
             skip_checks,
+            only_selected,
         }
     }
 }
@@ -48,61 +51,55 @@ pub fn deploy_cmd(
     let checks_map = remove_checks(&mut module_defs);
     let module_names = module_names_set(&module_defs);
 
-    tprintstep!("Resolving dependencies...", 2, 5, LINK);
-
     validate_modules_selected(&module_names, &modules_to_deploy)?;
 
-    let dependency_graph =
-        DependencyGraph::from(&module_defs, &modules_to_deploy);
-    let ordered = dependency_graph.dependency_sort()?;
+    let dep_graph: DependencyGraph<_, _>;
 
-    run_checks(checks_map, &ordered, deploy_opts)?;
+    let deployed: Vec<_> = if !deploy_opts.only_selected {
+        tprintstep!("Resolving dependencies...", 2, 5, LINK);
+        dep_graph = DependencyGraph::from(&module_defs, &modules_to_deploy);
+        let sorted = dep_graph.dependency_sort()?;
 
-    tprintstep!("Deploying...", 4, 5, VAN);
+        run_checks(checks_map, &sorted, deploy_opts)?;
 
-    for m in &ordered {
-        match m.value.inner {
-            InnerDefinition::Task(ref task) => deploy_task(task, cfg),
-            InnerDefinition::Service(ref service) => {
-                deploy_and_maybe_wait_service(
-                    service,
-                    m.marker,
-                    cfg,
-                    deploy_opts,
-                )
-            }
-            InnerDefinition::Group(ref group) => {
-                deploy_group(group);
-                Ok(())
-            }
-            InnerDefinition::Check(_) => Ok(()),
-        }?;
-    }
+        tprintstep!("Deploying...", 4, 5, VAN);
+        deploy_with_dependencies(&sorted, cfg, deploy_opts)?;
+        sorted.iter().map(|d| &d.key).collect()
+    } else {
+        let msg = format!("Resolving dependencies... {}", cdim!("(Skip)"));
+        tprintstep!(msg, 2, 5, LINK);
+        let modules_to_deploy_set: HashSet<_> =
+            modules_to_deploy.iter().copied().collect();
 
-    let deploy_txt = format!(
-        "{}: {:?}",
-        style("Deployed modules").bold().green(),
-        &ordered.iter().map(|m| &m.value.name).collect::<Vec<_>>()
-    );
+        let selected: Vec<_> = module_defs
+            .iter()
+            .filter(|m| modules_to_deploy_set.contains(m.name.as_str()))
+            .collect();
+
+        run_checks(checks_map, &selected, deploy_opts)?;
+        tprintstep!("Deploying...", 4, 5, VAN);
+        deploy_without_dependencies(&selected, cfg, deploy_opts)?;
+        selected.iter().map(|m| &m.name).collect()
+    };
+
+    let deploy_txt =
+        format!("{}: {:?}", csuccess!("Deployed modules"), deployed);
     tprintstep!(deploy_txt, 5, 5, SUCCESS);
     Ok(())
 }
 
-fn run_checks(
+fn run_checks<T: AsRef<ModuleDefinition>>(
     checks_map: HashMap<String, CheckDefinition>,
-    modules: &[&DependencyNode<&ModuleDefinition, ModuleMarker>],
+    modules: &[T],
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
     if deploy_opts.skip_checks {
-        let msg = format!(
-            "Running checks... {}",
-            style("(Skip)").bold().white().dim()
-        );
+        let msg = format!("Running checks... {}", cdim!("(Skip)"));
         tprintstep!(msg, 3, 5, TEXTBOOK);
     } else {
         tprintstep!("Running checks...", 3, 5, TEXTBOOK);
         for m in modules {
-            let checks = match &m.value.inner {
+            let checks = match &m.as_ref().inner {
                 InnerDefinition::Group(grp) => grp.checks.as_slice(),
                 InnerDefinition::Service(srvc) => srvc.checks.as_slice(),
                 InnerDefinition::Task(tsk) => tsk.checks.as_slice(),
@@ -122,20 +119,17 @@ fn run_checks(
 }
 
 fn perform_check(check_def: &CheckDefinition) -> Result<()> {
-    let message = format!(
-        "Check {} ({})",
-        style(&check_def.about).white().bold(),
-        check_def.name
-    );
+    let message =
+        format!("Check {} ({})", cbold!(&check_def.about), check_def.name);
     let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
     let mut wu = WaitUntil::new(&spin_opt);
 
     let check_result = wu.spin_until_status(|| {
         let check_result = run_check(check_def)?;
         let status = if check_result.success() {
-            style("(OK)").green().bold()
+            csuccess!("(OK)")
         } else {
-            style("(FAIL)").red().bold()
+            cfail!("(FAIL)")
         };
         Ok(WaitResult::from(check_result, status.to_string()))
     })?;
@@ -144,10 +138,62 @@ fn perform_check(check_def: &CheckDefinition) -> Result<()> {
         bail!(
             "The {} check has failed\n\
             {}: {}",
-            style(&check_def.about).white().bold(),
-            style("Message").white().bold(),
+            cbold!(&check_def.about),
+            cbold!("Message"),
             check_def.help
         )
+    }
+    Ok(())
+}
+
+fn deploy_with_dependencies(
+    sorted: &[&DependencyNode<&ModuleDefinition, ModuleMarker>],
+    cfg: &ClientConfig,
+    deploy_opts: &DeployOptions,
+) -> Result<()> {
+    for m in sorted {
+        match m.value.inner {
+            InnerDefinition::Task(ref task) => deploy_task(task, cfg),
+            InnerDefinition::Service(ref service) => {
+                deploy_and_maybe_wait_service(
+                    service,
+                    m.marker,
+                    cfg,
+                    deploy_opts,
+                )
+            }
+            InnerDefinition::Group(ref group) => {
+                deploy_group(group);
+                Ok(())
+            }
+            InnerDefinition::Check(_) => Ok(()),
+        }?;
+    }
+    Ok(())
+}
+
+fn deploy_without_dependencies(
+    sorted: &[&ModuleDefinition],
+    cfg: &ClientConfig,
+    deploy_opts: &DeployOptions,
+) -> Result<()> {
+    for m in sorted {
+        match m.inner {
+            InnerDefinition::Task(ref task) => deploy_task(task, cfg),
+            InnerDefinition::Service(ref service) => {
+                deploy_and_maybe_wait_service(
+                    service,
+                    Some(ModuleMarker::Instant),
+                    cfg,
+                    deploy_opts,
+                )
+            }
+            InnerDefinition::Group(ref group) => {
+                deploy_group(group);
+                Ok(())
+            }
+            InnerDefinition::Check(_) => Ok(()),
+        }?;
     }
     Ok(())
 }
@@ -175,7 +221,7 @@ fn deploy_service(
     cfg: &ClientConfig,
     deploy_opts: &DeployOptions,
 ) -> Result<Option<String>> {
-    let message = format!("Deploying {}", style(&module.name).white().bold());
+    let message = format!("Deploying {}", cbold!(&module.name));
     let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
 
     let mut wu = WaitUntil::new(&spin_opt);
@@ -187,9 +233,9 @@ fn deploy_service(
         )?;
 
         let deploy_status = if result.deployed {
-            style("(Deployed)").green().bold()
+            csuccess!("(Deployed)")
         } else {
-            style("(Already deployed)").white().dim().bold()
+            cdim!("(Already deployed)")
         };
         Ok(WaitResult::from(result, deploy_status.to_string()))
     })?;
@@ -203,15 +249,12 @@ fn wait_until_healthy(
     monitor_handle: &str,
     cfg: &ClientConfig,
 ) -> Result<()> {
-    let message = format!(
-        "Waiting {} to be healthy",
-        style(module_name).white().bold()
-    );
+    let message = format!("Waiting {} to be healthy", cbold!(module_name));
     let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
     let mut wu = WaitUntil::new(&spin_opt);
 
     wu.spin_until_status(|| loop {
-        let status = style("(Done)").green().bold().to_string();
+        let status = csuccess!("(Done)").to_string();
         match request::poll_health(monitor_handle, &cfg.daemon_url)?
             .healthcheck_status
         {
@@ -245,14 +288,13 @@ fn deploy_task(
     module: &ServiceOrTaskDefinition,
     cfg: &ClientConfig,
 ) -> Result<()> {
-    let message =
-        format!("Running task {}", style(&module.name).white().bold());
+    let message = format!("Running task {}", cbold!(&module.name));
     let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
 
     let mut wu = WaitUntil::new(&spin_opt);
     wu.spin_until_status(|| {
         let result = request::deploy_task(module, &cfg.daemon_url)?;
-        let status = style("(Done)").green().bold().to_string();
+        let status = csuccess!("(Done)").to_string();
         Ok(WaitResult::from(result, status))
     })?;
 
@@ -260,11 +302,11 @@ fn deploy_task(
 }
 
 fn deploy_group(module: &GroupDefinition) {
-    let message = format!("Group {}", style(&module.name).white().bold());
+    let message = format!("Group {}", cbold!(&module.name));
     tiprint!(
         10, // indent level
         "{} {}",
         message,
-        style("(Done)").green().bold()
+        csuccess!("(Done)")
     );
 }

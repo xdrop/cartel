@@ -45,3 +45,27 @@ macro_rules! tprintstep {
         )
     };
 }
+
+macro_rules! cdim {
+    ($message: expr) => {
+        console::style($message).white().dim().bold()
+    };
+}
+
+macro_rules! csuccess {
+    ($message: expr) => {
+        console::style($message).green().bold()
+    };
+}
+
+macro_rules! cfail {
+    ($message: expr) => {
+        console::style($message).red().bold()
+    };
+}
+
+macro_rules! cbold {
+    ($message: expr) => {
+        console::style($message).white().bold()
+    };
+}
