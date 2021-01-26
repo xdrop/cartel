@@ -169,12 +169,12 @@ pub fn locate_module_definitions_file(
 
     let cwd =
         env::current_dir().expect("Failed to get current working directory");
-    let scan_result = scan_directories_for(cwd.as_path(), "cartel.yaml");
+    let scan_result = scan_directories_for(cwd.as_path(), "cartel.yml");
 
     if scan_result.is_some() {
         scan_result
     } else if let Some(default_dir) = default_dir {
-        try_locate_in_dir(default_dir, "cartel.yaml")
+        try_locate_in_dir(default_dir, "cartel.yml")
     } else {
         None
     }
@@ -197,7 +197,7 @@ pub fn open_module_file(
         ));
     }
 
-    bail!("Failed to locate module definitions file (cartel.yaml)")
+    bail!("Failed to locate module definitions file (cartel.yml)")
 }
 
 /// Try to find a file with the given name next to file pointed by `path`.
@@ -228,7 +228,7 @@ fn locate_override_file(
             None
         }
     } else {
-        try_find_sibling(module_definitions_file, "cartel.override.yaml")
+        try_find_sibling(module_definitions_file, "cartel.override.yml")
     }
 }
 
@@ -330,7 +330,7 @@ pub fn read_persisted_config() -> Result<Option<PersistedConfig>> {
     let mut home_dir =
         dirs::home_dir().expect("Failed to locate users home dir");
     home_dir.push(PROJECT_DIR);
-    home_dir.push("config.yaml");
+    home_dir.push("config.yml");
 
     if let Ok(mut file) = File::open(home_dir) {
         let mut buffer = String::new();

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a new healthcheck of type `net` which allows monitoring the health of a service by trying to obtain a TCP connection. The healthcheck attempts to establish a connection, which upon established will make the healthcheck succeed. On a TCP reset the healthcheck is considered failed and will also time out after 100ms.
 - Added a new `-o` option to allow deploying only selected modules and not their dependencies.
 
+### Changed
+- Renamed the module definition file extension from `.yaml` to `.yml`.
+
 ## [0.5.0-beta] - 2020-01-24
 ### Changed
 - Changed flag for skipping checks to `-z` and `--no-checks`.
