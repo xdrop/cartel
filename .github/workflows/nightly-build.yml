@@ -1,0 +1,42 @@
+name: Nightly build
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # run at 2 AM UTC
+  workflow_dispatch:
+    
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-nightly:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get current date
+      id: date
+      run: echo "NIGHTLY_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+    - name: Install latest nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly-2020-12-20
+        override: true
+        components: rustfmt, clippy
+    - uses: Swatinem/rust-cache@v1
+    - name: Build
+      run: cargo build --release --all
+    - name: Upload artifacts (daemon)
+      uses: actions/upload-artifact@v2
+      with:
+        name: cartel-daemon-${{ env.NIGHTLY_DATE }}
+        path: target/release/daemon
+        retention-days: 5
+    - name: Upload artifacts (client)
+      uses: actions/upload-artifact@v2
+      with:
+        name: cartel-${{ env.NIGHTLY_DATE }}
+        path: target/release/client
+        retention-days: 5    
