@@ -23,6 +23,7 @@ pub struct DeployOptions {
     skip_checks: bool,
     only_selected: bool,
     skip_healthchecks: bool,
+    wait: bool,
 }
 
 impl DeployOptions {
@@ -30,6 +31,7 @@ impl DeployOptions {
         let force_deploy = opts.is_present("force");
         let skip_healthchecks = opts.is_present("skip_healthchecks");
         let skip_checks = opts.is_present("skip_checks");
+        let wait = opts.is_present("wait");
 
         let only_selected = opts.is_present("only_selected");
         Self {
@@ -37,6 +39,7 @@ impl DeployOptions {
             skip_healthchecks,
             skip_checks,
             only_selected,
+            wait,
         }
     }
 }
@@ -205,9 +208,10 @@ fn deploy_and_maybe_wait_service(
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
     let monitor_handle = deploy_service(service, cfg, deploy_opts)?;
+    let node_marked = marker == Some(ModuleMarker::WaitHealthcheck);
+
     if let Some(handle) = monitor_handle {
-        if (marker == Some(ModuleMarker::WaitHealthcheck)
-            || service.always_wait_healthcheck)
+        if (node_marked || service.always_wait_healthcheck || deploy_opts.wait)
             && !deploy_opts.skip_healthchecks
         {
             wait_until_healthy(service.name.as_str(), handle.as_str(), cfg)?;

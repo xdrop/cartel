@@ -82,6 +82,13 @@ pub fn cli_app() -> Result<()> {
                         .help("Only deploy selected modules (no dependencies)"),
                 )
                 .arg(
+                    Arg::with_name("wait")
+                        .short("w")
+                        .long("wait")
+                        .conflicts_with("skip_healthchecks")
+                        .help("Waits for all healthchecks to complete"),
+                )
+                .arg(
                     Arg::with_name("skip_healthchecks")
                         .short("s")
                         .long("no-healthchecks")
