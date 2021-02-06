@@ -22,6 +22,7 @@ pub enum InnerDefinition {
     Service(ServiceOrTaskDefinition),
     Check(CheckDefinition),
     Group(GroupDefinition),
+    Shell(ShellDefinition),
 }
 
 /// The type of the module.
@@ -39,6 +40,8 @@ pub enum ModuleKind {
     /// A group is a module which serves as a grouping of other modules
     /// that need to be deployed together.
     Group,
+    /// A shell is a module which allows for opening a shell to some service.
+    Shell,
 }
 
 /// The choice of terminating signal to use when terminating the process.
@@ -73,6 +76,7 @@ impl fmt::Display for ModuleKind {
             Self::Service => write!(f, "Service"),
             Self::Check => write!(f, "Check"),
             Self::Group => write!(f, "Group"),
+            Self::Shell => write!(f, "Shell"),
         }
     }
 }
@@ -116,6 +120,26 @@ pub struct ServiceOrTaskDefinition {
     pub always_wait_healthcheck: bool,
     /// Definition of a healthcheck for the service.
     pub healthcheck: Option<Healthcheck>,
+}
+
+#[derive(Debug, Deserialize)]
+/// A definition of a command which spawns a shell
+pub struct ShellDefinition {
+    #[serde(default = "String::default")]
+    pub name: String,
+    /// The service this shell is for
+    pub service: String,
+    /// The type of the shell. Used to choose between multiple shell options for
+    /// a service.
+    #[serde(rename = "type", default = "String::new")]
+    pub shell_type: String,
+    /// The command used to open the shell.
+    pub command: Vec<String>,
+    /// The environment variables to create the process with.
+    #[serde(default = "HashMap::new")]
+    pub environment: HashMap<String, String>,
+    /// The working directory to execute the shell command in.
+    pub working_dir: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -331,6 +355,7 @@ impl WithDependencies<ModuleMarker> for ModuleDefinition {
             InnerDefinition::Task(task) => task.edges(),
             InnerDefinition::Service(service) => service.edges(),
             InnerDefinition::Check(_) => panic!("Check used as dependency"),
+            InnerDefinition::Shell(_) => panic!("Shell used as dependency"),
         }
     }
 }
@@ -393,4 +418,14 @@ pub fn module_by_name<'a>(
     modules: &'a [ModuleDefinition],
 ) -> Option<&'a ModuleDefinition> {
     modules.iter().find(|m| m.name == name)
+}
+
+pub fn shell_for_service<'a>(
+    service_name: &str,
+    modules: &'a [ModuleDefinition],
+) -> Option<&'a ModuleDefinition> {
+    modules.iter().find(|m| match m.inner {
+        InnerDefinition::Shell(ref shell) => shell.service == service_name,
+        _ => false,
+    })
 }

@@ -107,6 +107,16 @@ pub fn cli_app() -> Result<()> {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("shell")
+                .about("Open a shell for the given service")
+                .visible_alias("sh")
+                .arg(
+                    Arg::with_name("service")
+                        .help("The service to open a shell for")
+                        .takes_value(true),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("ps")
                 .about("Print currently running services"),
         )
@@ -258,6 +268,12 @@ fn invoke_subcommand(matches: &ArgMatches, cfg: &ClientConfig) -> Result<()> {
                 .value_of("service")
                 .ok_or_else(|| anyhow!("Expected service name"))?;
             restart_module_cmd(module_to_restart, cfg)?;
+        }
+        ("shell", Some(shell_cli_opts)) => {
+            let service_name = shell_cli_opts
+                .value_of("service")
+                .ok_or_else(|| anyhow!("Expected service name"))?;
+            open_shell(service_name, cfg)?;
         }
         ("logs", Some(logs_cli_opts)) => {
             let module_name = logs_cli_opts

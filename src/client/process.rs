@@ -1,4 +1,6 @@
-use crate::client::module::{CheckDefinition, ServiceOrTaskDefinition};
+use crate::client::module::{
+    CheckDefinition, ServiceOrTaskDefinition, ShellDefinition,
+};
 use crate::path;
 use anyhow::{Context, Result};
 use std::process::{Command, ExitStatus, Stdio};
@@ -48,4 +50,27 @@ pub fn run_check(check_definition: &CheckDefinition) -> Result<ExitStatus> {
         .wait()?;
 
     Ok(check_result)
+}
+
+pub fn run_shell(shell_definition: &ShellDefinition) -> Result<()> {
+    let working_dir = shell_definition
+        .working_dir
+        .as_deref()
+        .and_then(path::from_user_str);
+
+    let mut cmd = Command::new(&shell_definition.command[0]);
+
+    cmd.args(&shell_definition.command[1..])
+        .envs(&shell_definition.environment);
+
+    if let Some(path) = working_dir {
+        cmd.current_dir(path);
+    }
+    cmd.spawn()
+        .with_context(|| {
+            format!("Unable to start shell for '{}'", shell_definition.service)
+        })?
+        .wait()?;
+
+    Ok(())
 }

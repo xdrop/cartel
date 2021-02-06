@@ -66,6 +66,10 @@ pub fn parse_from_yaml_str(
                 m.kind = ModuleKind::Group;
                 def.name = m.name.clone();
             }
+            InnerDefinition::Shell(def) => {
+                m.kind = ModuleKind::Shell;
+                def.name = format!("{}-service-shell", def.service);
+            }
         }
     }
     Ok(parsed)

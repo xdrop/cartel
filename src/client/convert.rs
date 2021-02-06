@@ -11,6 +11,7 @@ impl From<&ModuleKind> for ApiKind {
             ModuleKind::Task => ApiKind::Task,
             ModuleKind::Check => ApiKind::Task,
             ModuleKind::Group => ApiKind::Task,
+            ModuleKind::Shell => ApiKind::Task,
         }
     }
 }

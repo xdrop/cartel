@@ -170,6 +170,7 @@ fn deploy_with_dependencies(
                 Ok(())
             }
             InnerDefinition::Check(_) => Ok(()),
+            InnerDefinition::Shell(_) => Ok(())
         }?;
     }
     Ok(())
@@ -196,6 +197,7 @@ fn deploy_without_dependencies(
                 Ok(())
             }
             InnerDefinition::Check(_) => Ok(()),
+            InnerDefinition::Shell(_) => Ok(()),
         }?;
     }
     Ok(())
