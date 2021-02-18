@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Renamed the module definition file extension from `.yaml` to `.yml`.
 
+### Fixed
+- Fixed an issue in working directory resolution for shell definitions.
+
 ## [0.5.0-beta] - 2020-01-24
 ### Changed
 - Changed flag for skipping checks to `-z` and `--no-checks`.

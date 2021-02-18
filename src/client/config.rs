@@ -68,6 +68,7 @@ pub fn parse_from_yaml_str(
             }
             InnerDefinition::Shell(def) => {
                 m.kind = ModuleKind::Shell;
+                update_path(&mut def.working_dir, path)?;
                 def.name = format!("{}-service-shell", def.service);
             }
         }
