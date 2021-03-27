@@ -39,6 +39,9 @@ pub(super) async fn liveness_poll_tickr(tx: mpsc::Sender<MonitorCommand>) {
 pub(super) async fn cleanup_tickr(tx: mpsc::Sender<MonitorCommand>) {
     let mut interval =
         tokio::time::interval(tokio::time::Duration::from_secs(300));
+    // Skip the first tick as it is instant
+    interval.tick().await;
+
     loop {
         interval.tick().await;
         tx.send(MonitorCommand::CleanupIdleMonitors)
