@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reworked the healthchecks system into `readiness` and `liveness` probes which can be independently used to check whether a service has started (readiness) and whether the services continues to live (liveness). Previous configuration entry of `healthcheck` has been renamed to `readiness_probe`, and a new module configuration block named `liveness_probe` has been introduced.
 - Added a new option to `ps` to show liveness status.
 - Allow specifying shell type to invoke using `-t`/`--type`, and adding a `type` on a shell definition.
+- Improved error messages when specifying dependencies that don't exist.
 
 ### Changed
 - A service with a failing liveness probe will now always be redeployed.

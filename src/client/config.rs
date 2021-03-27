@@ -1,8 +1,10 @@
-use crate::client::cli::ClientConfig;
 use crate::client::module::{
     InnerDefinition, ModuleDefinition, ModuleKind, Probe,
 };
 use crate::client::validation::validate_modules_unique;
+use crate::client::{
+    cli::ClientConfig, validation::validate_dependencies_exist,
+};
 use crate::path;
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
@@ -270,6 +272,7 @@ fn parse_module_def_file(
             .with_context(|| "Failed to read module definitions")?;
 
     validate_modules_unique(&module_defs)?;
+    validate_dependencies_exist(&module_defs)?;
 
     Ok(module_defs)
 }
