@@ -2,7 +2,14 @@ use super::error::DaemonError;
 use super::logs::log_file_module;
 use super::module::{ModuleDefinition, TermSignal};
 use super::time::epoch_now;
-use crate::process::Process;
+use crate::{
+    daemon::monitor::MonitorType,
+    daemon::{
+        monitor::monitor_key,
+        planner::{Monitor, MonitorHandle},
+    },
+    process::Process,
+};
 
 use anyhow::{Context, Result};
 use log::info;
@@ -15,6 +22,7 @@ use std::sync::Arc;
 
 pub struct Executor {
     module_map: HashMap<String, ModuleStatus>,
+    monitor_handle: MonitorHandle,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -34,6 +42,7 @@ pub struct ModuleStatus {
     pub exit_time: u64,
     pub exit_status: Option<ExitStatus>,
     pub log_file_path: OsString,
+    pub monitor_key: Option<String>,
 
     child: Option<Process>,
 }
@@ -51,15 +60,17 @@ impl ModuleStatus {
             child: None,
             exit_time: 0,
             exit_status: None,
+            monitor_key: None,
             log_file_path: log_file_path.as_os_str().to_os_string(),
         }
     }
 }
 
 impl Executor {
-    pub fn new() -> Executor {
+    pub fn new(monitor_handle: MonitorHandle) -> Executor {
         Executor {
             module_map: HashMap::new(),
+            monitor_handle,
         }
     }
 
@@ -138,6 +149,14 @@ impl Executor {
                     module.status = RunStatus::STOPPED;
                     module.exit_time = epoch_now();
 
+                    // Remove monitor tracking its liveness
+                    if let Some(monitor_key) = &module.monitor_key {
+                        self.monitor_handle.remove_monitor(
+                            monitor_key.clone(),
+                            MonitorType::Liveness,
+                        );
+                    }
+
                     // Signal child process to die
                     match module.module_definition.termination_signal {
                         TermSignal::KILL => process.kill(),
@@ -164,6 +183,7 @@ impl Executor {
 
         let log_file_pathbuf = log_file_module(&module);
         let log_file_path = log_file_pathbuf.as_path();
+        let liveness_probe = self.maybe_create_liveness_probe(&module);
 
         let module_entry = self
             .module_map
@@ -188,6 +208,7 @@ impl Executor {
         module_entry.child = Option::Some(process);
         module_entry.uptime = epoch_now();
         module_entry.module_definition = Arc::clone(&module);
+        module_entry.monitor_key = liveness_probe;
 
         info!(
             "Process ({}) started, for module {}",
@@ -226,6 +247,31 @@ impl Executor {
             .filter(|m| m.status == RunStatus::RUNNING)
     }
 
+    fn maybe_create_liveness_probe(
+        &self,
+        module_def: &ModuleDefinition,
+    ) -> Option<String> {
+        if let Some(probe) = &module_def.liveness_probe {
+            Some(self.create_liveness_probe(&module_def.name, probe.clone()))
+        } else {
+            None
+        }
+    }
+
+    fn create_liveness_probe(
+        &self,
+        module_name: &str,
+        liveness_probe: Monitor,
+    ) -> String {
+        let monitor_key = monitor_key(module_name, &MonitorType::Liveness);
+        self.monitor_handle.new_monitor(
+            monitor_key.clone(),
+            liveness_probe,
+            MonitorType::Liveness,
+        );
+        monitor_key
+    }
+
     pub(super) fn spawn_child(
         command: &str,
         args: &[String],
@@ -258,12 +304,6 @@ impl Executor {
             .try_clone()
             .with_context(|| "Failed to create log file")?;
         Ok((stdout_file, stderr_file))
-    }
-}
-
-impl Default for Executor {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

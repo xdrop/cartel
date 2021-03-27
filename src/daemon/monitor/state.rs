@@ -7,6 +7,7 @@ pub enum MonitorStatus {
     Successful = 0x2,
     RetriesExceeded = 0x3,
     Error = 0x4,
+    Failing = 0x5,
 }
 
 pub struct MonitorState {
@@ -20,6 +21,11 @@ impl MonitorState {
     ) -> Option<MonitorStatus> {
         let map = self.monitor_map.lock();
         map.get(monitor_name).copied()
+    }
+
+    pub(super) fn monitor_statuses(&self) -> HashMap<String, MonitorStatus> {
+        let map = self.monitor_map.lock();
+        map.clone()
     }
 
     pub(super) fn update_states(

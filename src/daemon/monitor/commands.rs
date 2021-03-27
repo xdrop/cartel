@@ -1,13 +1,13 @@
 use std::path::{Path, PathBuf};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MonitorTask {
     Executable(ExecMonitor),
     LogLine(LogLineMonitor),
     Net(NetMonitor),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Monitor {
     /// The number of retries before the monitor is considered failed.
     pub retries: u32,
@@ -16,13 +16,13 @@ pub struct Monitor {
     pub task: MonitorTask,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExecMonitor {
     pub command: Vec<String>,
     pub working_dir: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NetMonitor {
     pub hostname: String,
     pub port: u16,
@@ -43,7 +43,7 @@ impl ExecMonitor {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LogLineMonitor {
     pub line_regex: String,
     pub file_path: PathBuf,
@@ -59,7 +59,22 @@ impl LogLineMonitor {
 }
 
 #[derive(Debug)]
+pub enum MonitorType {
+    Readiness,
+    Liveness,
+}
+
+#[derive(Debug)]
 pub enum MonitorCommand {
-    NewMonitor { key: String, monitor: Monitor },
-    PerformPoll,
+    NewMonitor {
+        key: String,
+        monitor: Monitor,
+        monitor_type: MonitorType,
+    },
+    RemoveMonitor {
+        key: String,
+        monitor_type: MonitorType,
+    },
+    PollReadinessCheck,
+    PollLivenessCheck,
 }

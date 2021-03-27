@@ -85,14 +85,14 @@ pub fn cli_app() -> Result<()> {
                     Arg::with_name("wait")
                         .short("w")
                         .long("wait")
-                        .conflicts_with("skip_healthchecks")
-                        .help("Waits for all healthchecks to complete"),
+                        .conflicts_with("skip_readiness_checks")
+                        .help("Waits for all readiness checks to complete"),
                 )
                 .arg(
-                    Arg::with_name("skip_healthchecks")
+                    Arg::with_name("skip_readiness_checks")
                         .short("s")
-                        .long("no-healthchecks")
-                        .help("Disables running healthchecks"),
+                        .long("no-readiness")
+                        .help("Disables running readiness checks"),
                 ),
         )
         .subcommand(

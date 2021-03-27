@@ -1,7 +1,13 @@
-use crate::client::module::{Healthcheck, ModuleKind, TermSignal};
-use crate::daemon::api::{
-    ApiExeHealthcheck, ApiHealthcheck, ApiKind, ApiLogLineHealthcheck,
-    ApiNetworkHealthcheck, ApiTermSignal,
+use crate::daemon::{
+    api::{
+        ApiExeProbe, ApiKind, ApiLogLineProbe, ApiNetworkProbe, ApiProbe,
+        ApiTermSignal,
+    },
+    planner::MonitorStatus,
+};
+use crate::{
+    client::module::{ModuleKind, Probe, TermSignal},
+    daemon::api::ApiProbeStatus,
 };
 
 impl From<&ModuleKind> for ApiKind {
@@ -26,29 +32,35 @@ impl From<&TermSignal> for ApiTermSignal {
     }
 }
 
-impl From<&Healthcheck> for ApiHealthcheck {
-    fn from(healthcheck: &Healthcheck) -> ApiHealthcheck {
-        match healthcheck {
-            Healthcheck::Exec(exec) => {
-                ApiHealthcheck::Executable(ApiExeHealthcheck {
-                    retries: exec.retries,
-                    command: exec.command.clone(),
-                    working_dir: exec.working_dir.clone(),
-                })
-            }
-            Healthcheck::LogLine(log_line) => {
-                ApiHealthcheck::LogLine(ApiLogLineHealthcheck {
-                    retries: log_line.retries,
-                    line_regex: log_line.line_regex.clone(),
-                })
-            }
-            Healthcheck::Net(net) => {
-                ApiHealthcheck::Net(ApiNetworkHealthcheck {
-                    retries: net.retries,
-                    hostname: net.host.clone(),
-                    port: net.port,
-                })
-            }
+impl From<&MonitorStatus> for ApiProbeStatus {
+    fn from(status: &MonitorStatus) -> Self {
+        match status {
+            MonitorStatus::Error => Self::Error,
+            MonitorStatus::Failing => Self::Failing,
+            MonitorStatus::RetriesExceeded => Self::RetriesExceeded,
+            MonitorStatus::Successful => Self::Successful,
+            MonitorStatus::Pending => Self::Pending,
+        }
+    }
+}
+
+impl From<&Probe> for ApiProbe {
+    fn from(probe: &Probe) -> ApiProbe {
+        match probe {
+            Probe::Exec(exec) => ApiProbe::Executable(ApiExeProbe {
+                retries: exec.retries,
+                command: exec.command.clone(),
+                working_dir: exec.working_dir.clone(),
+            }),
+            Probe::LogLine(log_line) => ApiProbe::LogLine(ApiLogLineProbe {
+                retries: log_line.retries,
+                line_regex: log_line.line_regex.clone(),
+            }),
+            Probe::Net(net) => ApiProbe::Net(ApiNetworkProbe {
+                retries: net.retries,
+                hostname: net.host.clone(),
+                port: net.port,
+            }),
         }
     }
 }

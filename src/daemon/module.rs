@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
+use crate::daemon::planner::Monitor;
+
 /// The type of the module.
 #[derive(Debug, PartialEq)]
 pub enum ModuleKind {
@@ -36,6 +38,7 @@ pub struct ModuleDefinition {
     pub dependencies: Vec<String>,
     pub working_dir: Option<PathBuf>,
     pub termination_signal: TermSignal,
+    pub liveness_probe: Option<Monitor>,
 }
 
 impl Hash for ModuleDefinition {
@@ -61,6 +64,7 @@ impl ModuleDefinition {
         dependencies: Vec<String>,
         working_dir: Option<PathBuf>,
         termination_signal: TermSignal,
+        liveness_probe: Option<Monitor>,
     ) -> ModuleDefinition {
         ModuleDefinition {
             kind,
@@ -71,6 +75,7 @@ impl ModuleDefinition {
             dependencies,
             working_dir,
             termination_signal,
+            liveness_probe,
         }
     }
 }

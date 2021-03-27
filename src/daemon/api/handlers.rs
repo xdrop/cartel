@@ -1,7 +1,7 @@
-use crate::daemon::api::convert::*;
 use crate::daemon::api::engine::CoreState;
 use crate::daemon::api::error::*;
 use crate::daemon::planner::{MonitorStatus, Planner};
+use crate::daemon::{api::convert::*, monitor::MonitorType};
 use rocket::State;
 use rocket_contrib::json::Json;
 use serde::{Deserialize, Serialize};
@@ -17,32 +17,33 @@ pub struct ApiModuleDefinition {
     pub dependencies: Vec<String>,
     pub working_dir: Option<String>,
     pub termination_signal: ApiTermSignal,
-    pub healthcheck: Option<ApiHealthcheck>,
+    pub readiness_probe: Option<ApiProbe>,
+    pub liveness_probe: Option<ApiProbe>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "kind")]
-pub enum ApiHealthcheck {
-    Executable(ApiExeHealthcheck),
-    LogLine(ApiLogLineHealthcheck),
-    Net(ApiNetworkHealthcheck),
+pub enum ApiProbe {
+    Executable(ApiExeProbe),
+    LogLine(ApiLogLineProbe),
+    Net(ApiNetworkProbe),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ApiExeHealthcheck {
+pub struct ApiExeProbe {
     pub retries: u32,
     pub command: Vec<String>,
     pub working_dir: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ApiLogLineHealthcheck {
+pub struct ApiLogLineProbe {
     pub retries: u32,
     pub line_regex: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ApiNetworkHealthcheck {
+pub struct ApiNetworkProbe {
     pub retries: u32,
     pub hostname: String,
     pub port: u16,
@@ -119,6 +120,7 @@ pub struct ApiModuleStatus {
     pub name: String,
     pub pid: u32,
     pub status: ApiModuleRunStatus,
+    pub liveness_status: Option<ApiProbeStatus>,
     pub exit_code: Option<i32>,
     pub time_since_status: u64,
 }
@@ -130,16 +132,17 @@ pub struct ApiLogResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "snake_case")]
-pub enum ApiHealthStatus {
+pub enum ApiProbeStatus {
     Pending,
     Successful,
     RetriesExceeded,
+    Failing,
     Error,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiHealthResponse {
-    pub healthcheck_status: Option<ApiHealthStatus>,
+    pub probe_status: Option<ApiProbeStatus>,
 }
 
 #[allow(clippy::unnecessary_unwrap)]
@@ -157,7 +160,11 @@ pub(crate) fn deploy(
     let deployed = planner.deploy(module_def, command.force)?;
 
     let monitor_key = if deployed && monitor.is_some() {
-        let monitor_key = planner.create_monitor(module_name, monitor.unwrap());
+        let monitor_key = planner.create_monitor(
+            &module_name,
+            monitor.unwrap(),
+            MonitorType::Readiness,
+        );
         Some(monitor_key)
     } else {
         None
@@ -224,6 +231,10 @@ pub(crate) fn status(
             pid: m.pid,
             time_since_status: m.time_since_status,
             exit_code: m.exit_code,
+            liveness_status: match m.liveness_status {
+                Some(ref s) => Some(s.into()),
+                None => None,
+            },
             status: ApiModuleRunStatus::from(m.status),
         })
         .collect();
@@ -241,27 +252,28 @@ pub(crate) fn log(
     Ok(Json(ApiLogResponse { log_file_path }))
 }
 
-#[get("/api/v1/health/<module_name>")]
+#[get("/api/v1/health/<monitor_key>")]
 pub(crate) fn health(
-    module_name: String,
+    monitor_key: String,
     core_state: State<CoreState>,
 ) -> Json<ApiHealthResponse> {
     let status = core_state
         .core
         .planner()
-        .monitor_status(module_name.as_str());
+        .monitor_status(monitor_key.as_str());
 
-    let healthcheck_status = match status {
-        Some(MonitorStatus::Pending) => Some(ApiHealthStatus::Pending),
-        Some(MonitorStatus::Successful) => Some(ApiHealthStatus::Successful),
+    let probe_status = match status {
+        Some(MonitorStatus::Pending) => Some(ApiProbeStatus::Pending),
+        Some(MonitorStatus::Successful) => Some(ApiProbeStatus::Successful),
         Some(MonitorStatus::RetriesExceeded) => {
-            Some(ApiHealthStatus::RetriesExceeded)
+            Some(ApiProbeStatus::RetriesExceeded)
         }
-        Some(MonitorStatus::Error) => Some(ApiHealthStatus::Error),
+        Some(MonitorStatus::Error) => Some(ApiProbeStatus::Error),
+        Some(MonitorStatus::Failing) => Some(ApiProbeStatus::Failing),
         None => None,
     };
 
-    Json(ApiHealthResponse { healthcheck_status })
+    Json(ApiHealthResponse { probe_status })
 }
 
 #[get("/")]

@@ -100,12 +100,12 @@ pub struct ServiceOrTaskDefinition {
     #[serde(default = "Vec::new")]
     /// A list of dependencies of the service / task.
     pub dependencies: Vec<String>,
-    /// A list of tasks to perform after the services healthcheck has passed.
-    /// If the service has no healthcheck then this equivalent to `post`.
+    /// A list of tasks to perform after the services readiness probe has passed.
+    /// If the service has no readiness probes then this equivalent to `post`.
     #[serde(default = "Vec::new")]
     pub post_up: Vec<String>,
     /// A list of tasks to perform after the service has been deployed.
-    /// This will not wait for the healthcheck to complete before starting
+    /// This will not wait for the readiness probe to complete before starting
     /// the task.
     #[serde(default = "Vec::new")]
     pub post: Vec<String>,
@@ -115,11 +115,13 @@ pub struct ServiceOrTaskDefinition {
     /// A list of checks to perform.
     #[serde(default = "Vec::new")]
     pub checks: Vec<String>,
-    /// Set to true for healthcheck to always be waited for completion.
-    #[serde(default = "default_always_wait_healthcheck")]
-    pub always_wait_healthcheck: bool,
-    /// Definition of a healthcheck for the service.
-    pub healthcheck: Option<Healthcheck>,
+    /// Set to true to always await readiness probes to complete
+    #[serde(default = "default_always_await_readiness_probe")]
+    pub always_await_readiness_probe: bool,
+    /// Definition of a readiness probe for the service.
+    pub readiness_probe: Option<Probe>,
+    /// Definition of a liveness probe for the service.
+    pub liveness_probe: Option<Probe>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -144,18 +146,18 @@ pub struct ShellDefinition {
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum Healthcheck {
-    Exec(ExecutableHealthcheck),
-    LogLine(LogLineHealthcheck),
-    Net(NetworkHealthcheck),
+pub enum Probe {
+    Exec(ExecutableProbe),
+    LogLine(LogLineProbe),
+    Net(NetworkProbe),
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ExecutableHealthcheck {
-    /// Number of retries before the healthcheck is considered failed.
-    #[serde(default = "default_healthcheck_retries")]
+pub struct ExecutableProbe {
+    /// Number of retries before the probe is considered failed.
+    #[serde(default = "default_probe_retries")]
     pub retries: u32,
-    /// The command to execute as the healthcheck. Exit code zero is considered
+    /// The command to execute as the probe. Exit code zero is considered
     /// healthy.
     pub command: Vec<String>,
     /// The working directory where the command is performed from.
@@ -163,18 +165,18 @@ pub struct ExecutableHealthcheck {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct LogLineHealthcheck {
-    /// Number of retries before the healthcheck is considered failed.
-    #[serde(default = "default_healthcheck_retries")]
+pub struct LogLineProbe {
+    /// Number of retries before the probe is considered failed.
+    #[serde(default = "default_probe_retries")]
     pub retries: u32,
     /// The regex to attempt to match on a log line.
     pub line_regex: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct NetworkHealthcheck {
-    /// Number of retries before the healthcheck is considered failed.
-    #[serde(default = "default_healthcheck_retries")]
+pub struct NetworkProbe {
+    /// Number of retries before the probe is considered failed.
+    #[serde(default = "default_probe_retries")]
     pub retries: u32,
     /// The host to try and connect to.
     pub host: String,
@@ -223,8 +225,9 @@ impl ServiceOrTaskDefinition {
         working_dir: Option<String>,
         checks: Vec<String>,
         termination_signal: TermSignal,
-        always_wait_healthcheck: bool,
-        healthcheck: Option<Healthcheck>,
+        always_await_readiness_probe: bool,
+        readiness_probe: Option<Probe>,
+        liveness_probe: Option<Probe>,
     ) -> ServiceOrTaskDefinition {
         ServiceOrTaskDefinition {
             name,
@@ -237,8 +240,9 @@ impl ServiceOrTaskDefinition {
             working_dir,
             checks,
             termination_signal,
-            always_wait_healthcheck,
-            healthcheck,
+            always_await_readiness_probe,
+            readiness_probe,
+            liveness_probe,
         }
     }
 }
@@ -258,12 +262,12 @@ impl PartialEq for ModuleDefinition {
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub enum ModuleMarker {
     Instant = 1,
-    WaitHealthcheck = 2,
+    WaitProbe = 2,
 }
 
 impl Default for ModuleMarker {
     fn default() -> Self {
-        Self::WaitHealthcheck
+        Self::WaitProbe
     }
 }
 
@@ -308,7 +312,7 @@ impl EdgeList for GroupDefinition {
             .map(|key| DependencyEdge {
                 edge_ptr: key.clone(),
                 direction: EdgeDirection::To,
-                marker: ModuleMarker::WaitHealthcheck,
+                marker: ModuleMarker::WaitProbe,
             })
             .collect()
     }
@@ -322,12 +326,12 @@ impl EdgeList for ServiceOrTaskDefinition {
             .map(|key| DependencyEdge {
                 edge_ptr: key.clone(),
                 direction: EdgeDirection::To,
-                marker: ModuleMarker::WaitHealthcheck,
+                marker: ModuleMarker::WaitProbe,
             })
             .chain(self.post_up.iter().map(|key| DependencyEdge {
                 edge_ptr: key.clone(),
                 direction: EdgeDirection::From,
-                marker: ModuleMarker::WaitHealthcheck,
+                marker: ModuleMarker::WaitProbe,
             }))
             .chain(self.post.iter().map(|key| DependencyEdge {
                 edge_ptr: key.clone(),
@@ -360,11 +364,11 @@ impl WithDependencies<ModuleMarker> for ModuleDefinition {
     }
 }
 
-fn default_healthcheck_retries() -> u32 {
+fn default_probe_retries() -> u32 {
     5
 }
 
-fn default_always_wait_healthcheck() -> bool {
+fn default_always_await_readiness_probe() -> bool {
     false
 }
 

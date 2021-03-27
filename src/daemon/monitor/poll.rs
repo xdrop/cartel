@@ -13,12 +13,23 @@ use std::time::Duration;
 use tokio::{net::TcpStream, process};
 use tokio::{sync::mpsc, time::timeout};
 
-pub(super) async fn poll_tickr(tx: mpsc::Sender<MonitorCommand>) {
+pub(super) async fn readiness_poll_tickr(tx: mpsc::Sender<MonitorCommand>) {
     let mut interval =
         tokio::time::interval(tokio::time::Duration::from_secs(4));
     loop {
         interval.tick().await;
-        tx.send(MonitorCommand::PerformPoll)
+        tx.send(MonitorCommand::PollReadinessCheck)
+            .await
+            .expect("Failed to transmit to monitor runtime");
+    }
+}
+
+pub(super) async fn liveness_poll_tickr(tx: mpsc::Sender<MonitorCommand>) {
+    let mut interval =
+        tokio::time::interval(tokio::time::Duration::from_secs(10));
+    loop {
+        interval.tick().await;
+        tx.send(MonitorCommand::PollLivenessCheck)
             .await
             .expect("Failed to transmit to monitor runtime");
     }
@@ -29,25 +40,66 @@ pub(super) async fn channel_rx(
     monitor_state: Arc<MonitorState>,
 ) {
     info!("Task spawned");
-    let mut monitor_list: Vec<(String, Monitor)> = vec![];
+    let mut readiness_monitor_list: Vec<(String, Monitor)> = vec![];
+    let mut liveness_monitor_list: Vec<(String, Monitor)> = vec![];
     let mut attempt_count: HashMap<String, u32> = HashMap::new();
 
     while let Some(message) = rx.recv().await {
         match message {
-            MonitorCommand::NewMonitor { key, monitor } => {
+            MonitorCommand::NewMonitor {
+                key,
+                monitor,
+                monitor_type,
+            } => {
                 info!("Registering monitor: {}", key);
-                monitor_list.push((key, monitor));
+                match monitor_type {
+                    MonitorType::Liveness => {
+                        liveness_monitor_list.push((key, monitor))
+                    }
+                    MonitorType::Readiness => {
+                        readiness_monitor_list.push((key, monitor))
+                    }
+                };
             }
-            MonitorCommand::PerformPoll => {
+            MonitorCommand::RemoveMonitor { key, monitor_type } => {
+                info!("Removing monitor: {}", key);
+                match monitor_type {
+                    MonitorType::Liveness => {
+                        if let Some(index) = liveness_monitor_list
+                            .iter()
+                            .position(|(k, _)| key == *k)
+                        {
+                            liveness_monitor_list.swap_remove(index);
+                        }
+                    }
+                    MonitorType::Readiness => {
+                        if let Some(index) = readiness_monitor_list
+                            .iter()
+                            .position(|(k, _)| key == *k)
+                        {
+                            readiness_monitor_list.swap_remove(index);
+                        }
+                    }
+                };
+            }
+            MonitorCommand::PollReadinessCheck => {
+                let results = poll_readiness_check(
+                    &mut readiness_monitor_list,
+                    &mut attempt_count,
+                )
+                .await;
+                monitor_state.update_states(results);
+            }
+            MonitorCommand::PollLivenessCheck => {
                 let results =
-                    perform_poll(&mut monitor_list, &mut attempt_count).await;
+                    poll_liveness_check(&mut liveness_monitor_list).await;
                 monitor_state.update_states(results);
             }
         }
     }
 }
 
-async fn perform_poll(
+async fn poll_readiness_check(
     monitor_list: &mut Vec<(String, Monitor)>,
     attempt_count: &mut HashMap<String, u32>,
 ) -> Vec<(String, MonitorStatus)> {
@@ -79,6 +131,32 @@ async fn perform_poll(
             // If it failed we want to track how many times it's failed
             *attempt_count.get_mut(&key).unwrap() += 1;
             status.push((key, MonitorStatus::Pending));
+        }
+    }
+    status
+}
+
+async fn poll_liveness_check(
+    monitor_list: &mut Vec<(String, Monitor)>,
+) -> Vec<(String, MonitorStatus)> {
+    let poll_results = poll_monitors(&monitor_list).await;
+    let mut status: Vec<(String, MonitorStatus)> = Vec::new();
+
+    for (idx, (key, result)) in poll_results.into_iter().enumerate().rev() {
+        let is_error = result.is_err();
+        let poll_successful = result.unwrap_or(false);
+
+        if is_error {
+            // If the poll errored remove and set status to error
+            monitor_list.swap_remove(idx);
+            status.push((key, MonitorStatus::Error));
+        } else if !poll_successful {
+            // If the poll failed set its status to failing
+            monitor_list.swap_remove(idx);
+            status.push((key, MonitorStatus::Failing));
+        } else {
+            // Otherwise set it as successful
+            status.push((key, MonitorStatus::Successful));
         }
     }
     status

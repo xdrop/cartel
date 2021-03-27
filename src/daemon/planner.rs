@@ -1,8 +1,11 @@
-use crate::daemon::error::DaemonError;
-use crate::daemon::executor::{task_executor, Executor};
 use crate::daemon::executor::{ModuleStatus, RunStatus};
 use crate::daemon::module::ModuleDefinition;
 pub use crate::daemon::monitor::{Monitor, MonitorHandle, MonitorStatus};
+use crate::daemon::{error::DaemonError, monitor::MonitorType};
+use crate::daemon::{
+    executor::{task_executor, Executor},
+    monitor::monitor_key,
+};
 use anyhow::Result;
 use parking_lot::{Mutex, MutexGuard};
 use std::collections::{HashMap, HashSet};
@@ -23,6 +26,7 @@ pub struct PsStatus {
     pub name: String,
     pub pid: u32,
     pub status: RunStatus,
+    pub liveness_status: Option<MonitorStatus>,
     pub exit_code: Option<i32>,
     pub time_since_status: u64,
 }
@@ -30,7 +34,7 @@ pub struct PsStatus {
 impl Planner {
     pub fn new(monitor_handle: MonitorHandle) -> Planner {
         Planner {
-            executor: Mutex::new(Executor::new()),
+            executor: Mutex::new(Executor::new(monitor_handle.clone())),
             monitor_handle,
         }
     }
@@ -116,12 +120,17 @@ impl Planner {
 
     /// Returns a summarized version of each modules status.
     pub fn module_status(&self) -> Vec<PsStatus> {
+        let mut statuses = self.monitor_handle.monitor_statuses();
         self.executor()
             .modules()
             .map(|m| PsStatus {
                 name: m.module_definition.name.clone(),
                 pid: m.pid,
                 status: m.status.clone(),
+                liveness_status: match &m.monitor_key {
+                    Some(key) => statuses.remove(key),
+                    None => None,
+                },
                 exit_code: m.exit_status.and_then(|e| e.code()),
                 time_since_status: match m.status {
                     RunStatus::RUNNING => m.uptime,
@@ -160,10 +169,18 @@ impl Planner {
     /// for a number of times until eventually it gives up.
     ///
     /// The monitors status can be obtained with [monitor_status].
-    pub fn create_monitor(&self, name: String, monitor: Monitor) -> String {
-        let monitor_key = format!("{}-{}", name, uuid::Uuid::new_v4());
-        self.monitor_handle
-            .new_monitor(monitor_key.clone(), monitor);
+    pub fn create_monitor(
+        &self,
+        name: &str,
+        monitor: Monitor,
+        monitor_type: MonitorType,
+    ) -> String {
+        let monitor_key = monitor_key(&name, &monitor_type);
+        self.monitor_handle.new_monitor(
+            monitor_key.clone(),
+            monitor,
+            monitor_type,
+        );
         monitor_key
     }
 

@@ -18,15 +18,17 @@ pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {
         src.dependencies,
         src.working_dir.and_then(path::from_user_string),
         TermSignal::KILL,
+        None,
     )
 }
 
 pub fn from_service(
     mut src: ApiModuleDefinition,
 ) -> (ModuleDefinition, Option<Monitor>) {
-    let healthcheck = src.healthcheck.take();
+    let readiness_probe = src.readiness_probe.take();
+    let liveness_probe = src.liveness_probe.take();
 
-    let module_definition = ModuleDefinition::new(
+    let mut module_definition = ModuleDefinition::new(
         ModuleKind::Service,
         src.name,
         src.command,
@@ -35,21 +37,24 @@ pub fn from_service(
         src.dependencies,
         src.working_dir.and_then(path::from_user_string),
         src.termination_signal.into(),
+        None, // assigned below
     );
 
-    let monitor: Option<Monitor> = match healthcheck {
-        Some(ApiHealthcheck::Executable(exe)) => Some(exe.into()),
-        Some(ApiHealthcheck::LogLine(log_line)) => {
-            Some(from_log_line_healthcheck(
-                log_line,
-                &log_file_module(&module_definition),
-            ))
-        }
-        Some(ApiHealthcheck::Net(net)) => Some(net.into()),
+    let log_file_path = log_file_module(&module_definition);
+
+    let readiness_monitor: Option<Monitor> = match readiness_probe {
+        Some(probe) => Some(from_probe(probe, &log_file_path)),
+        None => None,
+    };
+    let liveness_monitor: Option<Monitor> = match liveness_probe {
+        Some(probe) => Some(from_probe(probe, &log_file_path)),
         None => None,
     };
 
-    (module_definition, monitor)
+    // Only store liveness as readiness only affects the service temporarily
+    module_definition.liveness_probe = liveness_monitor;
+
+    (module_definition, readiness_monitor)
 }
 
 impl From<RunStatus> for ApiModuleRunStatus {
@@ -73,8 +78,16 @@ impl From<ApiTermSignal> for TermSignal {
     }
 }
 
-impl From<ApiExeHealthcheck> for Monitor {
-    fn from(exe: ApiExeHealthcheck) -> Monitor {
+pub fn from_probe(probe: ApiProbe, log_file_path: &Path) -> Monitor {
+    match probe {
+        ApiProbe::Executable(exe) => exe.into(),
+        ApiProbe::LogLine(log) => from_log_line_probe(log, log_file_path),
+        ApiProbe::Net(net) => net.into(),
+    }
+}
+
+impl From<ApiExeProbe> for Monitor {
+    fn from(exe: ApiExeProbe) -> Monitor {
         Monitor {
             retries: exe.retries,
             task: MonitorTask::Executable(ExecMonitor::from(
@@ -85,8 +98,8 @@ impl From<ApiExeHealthcheck> for Monitor {
     }
 }
 
-impl From<ApiNetworkHealthcheck> for Monitor {
-    fn from(net: ApiNetworkHealthcheck) -> Monitor {
+impl From<ApiNetworkProbe> for Monitor {
+    fn from(net: ApiNetworkProbe) -> Monitor {
         Monitor {
             retries: net.retries,
             task: MonitorTask::Net(NetMonitor::from(net.hostname, net.port)),
@@ -94,8 +107,8 @@ impl From<ApiNetworkHealthcheck> for Monitor {
     }
 }
 
-pub fn from_log_line_healthcheck(
-    log_line: ApiLogLineHealthcheck,
+pub fn from_log_line_probe(
+    log_line: ApiLogLineProbe,
     log_file_path: &Path,
 ) -> Monitor {
     Monitor {

@@ -56,10 +56,14 @@ pub fn deploy_module(
             dependencies: module_definition.dependencies.clone(),
             working_dir: module_definition.working_dir.clone(),
             termination_signal: (&module_definition.termination_signal).into(),
-            healthcheck: module_definition
-                .healthcheck
+            readiness_probe: module_definition
+                .readiness_probe
                 .as_ref()
-                .map(|h| h.into()),
+                .map(|p| p.into()),
+            liveness_probe: module_definition
+                .liveness_probe
+                .as_ref()
+                .map(|p| p.into()),
         },
         force: force_deploy,
     };
@@ -90,7 +94,8 @@ pub fn deploy_task(
             dependencies: task_definition.dependencies.clone(),
             working_dir: task_definition.working_dir.clone(),
             termination_signal: ApiTermSignal::KILL,
-            healthcheck: None,
+            readiness_probe: None,
+            liveness_probe: None,
         },
     };
 

@@ -10,7 +10,7 @@ use crate::client::process::run_check;
 use crate::client::progress::{SpinnerOptions, WaitResult, WaitUntil};
 use crate::client::request;
 use crate::client::validation::validate_modules_selected;
-use crate::daemon::api::ApiHealthStatus;
+use crate::daemon::api::ApiProbeStatus;
 use crate::dependency::{DependencyGraph, DependencyNode};
 use anyhow::{anyhow, bail, Result};
 use clap::ArgMatches;
@@ -22,21 +22,21 @@ pub struct DeployOptions {
     force_deploy: bool,
     skip_checks: bool,
     only_selected: bool,
-    skip_healthchecks: bool,
+    skip_readiness_checks: bool,
     wait: bool,
 }
 
 impl DeployOptions {
     pub fn from(opts: &ArgMatches) -> DeployOptions {
         let force_deploy = opts.is_present("force");
-        let skip_healthchecks = opts.is_present("skip_healthchecks");
+        let skip_readiness_checks = opts.is_present("skip_readiness_checks");
         let skip_checks = opts.is_present("skip_checks");
         let wait = opts.is_present("wait");
 
         let only_selected = opts.is_present("only_selected");
         Self {
             force_deploy,
-            skip_healthchecks,
+            skip_readiness_checks,
             skip_checks,
             only_selected,
             wait,
@@ -170,7 +170,7 @@ fn deploy_with_dependencies(
                 Ok(())
             }
             InnerDefinition::Check(_) => Ok(()),
-            InnerDefinition::Shell(_) => Ok(())
+            InnerDefinition::Shell(_) => Ok(()),
         }?;
     }
     Ok(())
@@ -210,11 +210,13 @@ fn deploy_and_maybe_wait_service(
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
     let monitor_handle = deploy_service(service, cfg, deploy_opts)?;
-    let node_marked = marker == Some(ModuleMarker::WaitHealthcheck);
+    let node_marked = marker == Some(ModuleMarker::WaitProbe);
 
     if let Some(handle) = monitor_handle {
-        if (node_marked || service.always_wait_healthcheck || deploy_opts.wait)
-            && !deploy_opts.skip_healthchecks
+        if (node_marked
+            || service.always_await_readiness_probe
+            || deploy_opts.wait)
+            && !deploy_opts.skip_readiness_checks
         {
             wait_until_healthy(service.name.as_str(), handle.as_str(), cfg)?;
         }
@@ -262,26 +264,26 @@ fn wait_until_healthy(
     wu.spin_until_status(|| loop {
         let status = csuccess!("(Done)").to_string();
         match request::poll_health(monitor_handle, &cfg.daemon_url)?
-            .healthcheck_status
+            .probe_status
         {
-            Some(ApiHealthStatus::Successful) => {
+            Some(ApiProbeStatus::Successful) => {
                 break Ok(WaitResult::from((), status))
             }
-            Some(ApiHealthStatus::RetriesExceeded) => {
+            Some(ApiProbeStatus::RetriesExceeded) => {
                 bail!(
-                    "The service did not complete its healthcheck in time.\n\
+                    "The service did not complete its readiness probe checks in time.\n\
                        Check the logs for more details."
                 )
             }
-            Some(ApiHealthStatus::Error) => {
+            Some(ApiProbeStatus::Error) => {
                 bail!(
                     "An error occured while waiting for the service \
-                    healthcheck to complete.\nThis is usually a mistake in \
-                    the healthcheck configuration, ensure the command or \
+                    readiness probe to complete.\nThis is usually a mistake in \
+                    the probe configuration, ensure the command or \
                     condition is correct."
                 )
             }
-            Some(ApiHealthStatus::Pending) | None => {
+            _ => {
                 thread::sleep(Duration::from_secs(2));
             }
         }

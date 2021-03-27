@@ -1,6 +1,6 @@
 use crate::client::cli::ClientConfig;
 use crate::client::module::{
-    Healthcheck, InnerDefinition, ModuleDefinition, ModuleKind,
+    InnerDefinition, ModuleDefinition, ModuleKind, Probe,
 };
 use crate::client::validation::validate_modules_unique;
 use crate::path;
@@ -45,7 +45,7 @@ pub fn parse_from_yaml_str(
                 m.kind = ModuleKind::Service;
                 def.name = m.name.clone();
                 update_path(&mut def.working_dir, path)?;
-                if let Some(Healthcheck::Exec(ref mut exec)) = def.healthcheck {
+                if let Some(Probe::Exec(ref mut exec)) = def.readiness_probe {
                     update_path(&mut exec.working_dir, path)?;
                 }
             }
@@ -53,7 +53,7 @@ pub fn parse_from_yaml_str(
                 m.kind = ModuleKind::Task;
                 def.name = m.name.clone();
                 update_path(&mut def.working_dir, path)?;
-                if let Some(Healthcheck::Exec(ref mut exec)) = def.healthcheck {
+                if let Some(Probe::Exec(ref mut exec)) = def.readiness_probe {
                     update_path(&mut exec.working_dir, path)?;
                 }
             }
