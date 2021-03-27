@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.7.0-beta]
 ### Added
 - Reworked the healthchecks system into `readiness` and `liveness` probes which can be independently used to check whether a service has started (readiness) and whether the services continues to live (liveness). Previous configuration entry of `healthcheck` has been renamed to `readiness_probe`, and a new module configuration block named `liveness_probe` has been introduced.
 - Added a new option to `ps` to show liveness status.
