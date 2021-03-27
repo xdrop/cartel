@@ -1,5 +1,7 @@
 use super::commands::*;
-use super::poll::{channel_rx, liveness_poll_tickr, readiness_poll_tickr};
+use super::poll::{
+    channel_rx, cleanup_tickr, liveness_poll_tickr, readiness_poll_tickr,
+};
 use super::state::{MonitorState, MonitorStatus};
 use anyhow::Result;
 use log::info;
@@ -101,6 +103,7 @@ pub fn spawn_runtime(monitor_state: Arc<MonitorState>) -> MonitorHandle {
     let (tx, rx) = mpsc::channel::<MonitorCommand>(32);
     let tx_readiness = tx.clone();
     let tx_liveness = tx.clone();
+    let tx_cleanup = tx.clone();
     let (handle_tx, handle_rx) = std::sync::mpsc::channel();
     let mst = Arc::clone(&monitor_state);
 
@@ -117,6 +120,8 @@ pub fn spawn_runtime(monitor_state: Arc<MonitorState>) -> MonitorHandle {
         runtime.spawn(async move { readiness_poll_tickr(tx_readiness).await });
         // Spawn the ticking thread for scanning of liveness monitors
         runtime.spawn(async move { liveness_poll_tickr(tx_liveness).await });
+        // Spawn the ticking thread for cleanup of idle monitors
+        runtime.spawn(async move { cleanup_tickr(tx_cleanup).await });
 
         // Continue running until notified to shutdown
         runtime.block_on(async { channel_rx(rx, mst).await });

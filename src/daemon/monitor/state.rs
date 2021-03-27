@@ -38,6 +38,13 @@ impl MonitorState {
         });
     }
 
+    pub(super) fn remove_keys(&self, keys: &[&str]) {
+        let mut map = self.monitor_map.lock();
+        keys.iter().for_each(|key| {
+            map.remove(*key);
+        });
+    }
+
     pub fn new() -> MonitorState {
         MonitorState {
             monitor_map: Mutex::new(HashMap::new()),

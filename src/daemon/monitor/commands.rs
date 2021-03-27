@@ -77,4 +77,5 @@ pub enum MonitorCommand {
     },
     PollReadinessCheck,
     PollLivenessCheck,
+    CleanupIdleMonitors,
 }

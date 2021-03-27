@@ -1,5 +1,6 @@
 use super::commands::*;
 use super::state::{MonitorState, MonitorStatus};
+use crate::daemon::time::epoch_now;
 use anyhow::{anyhow, Result};
 use grep_matcher::Matcher;
 use grep_regex::RegexMatcher;
@@ -35,12 +36,24 @@ pub(super) async fn liveness_poll_tickr(tx: mpsc::Sender<MonitorCommand>) {
     }
 }
 
+pub(super) async fn cleanup_tickr(tx: mpsc::Sender<MonitorCommand>) {
+    let mut interval =
+        tokio::time::interval(tokio::time::Duration::from_secs(300));
+    loop {
+        interval.tick().await;
+        tx.send(MonitorCommand::CleanupIdleMonitors)
+            .await
+            .expect("Failed to transmit to monitor runtime");
+    }
+}
+
 pub(super) async fn channel_rx(
     mut rx: mpsc::Receiver<MonitorCommand>,
     monitor_state: Arc<MonitorState>,
 ) {
     info!("Task spawned");
     let mut readiness_monitor_list: Vec<(String, Monitor)> = vec![];
+    let mut readiness_admission_times: Vec<(String, u64)> = vec![];
     let mut liveness_monitor_list: Vec<(String, Monitor)> = vec![];
     let mut attempt_count: HashMap<String, u32> = HashMap::new();
 
@@ -57,7 +70,8 @@ pub(super) async fn channel_rx(
                         liveness_monitor_list.push((key, monitor))
                     }
                     MonitorType::Readiness => {
-                        readiness_monitor_list.push((key, monitor))
+                        readiness_monitor_list.push((key.clone(), monitor));
+                        readiness_admission_times.push((key, epoch_now()));
                     }
                 };
             }
@@ -94,6 +108,40 @@ pub(super) async fn channel_rx(
                 let results =
                     poll_liveness_check(&mut liveness_monitor_list).await;
                 monitor_state.update_states(results);
+            }
+            MonitorCommand::CleanupIdleMonitors => {
+                info!("Cleaning up idle monitors...");
+                let now = epoch_now();
+
+                // Collect expired indices
+                let expired: Vec<usize> = readiness_admission_times
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, (_, admission_time))| {
+                        let duration = Duration::new(now - admission_time, 0);
+
+                        // Remove if admitted more than 10mins ago
+                        if duration.as_secs() > 600 {
+                            Some(idx)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                // Map them to monitor keys
+                let keys: Vec<_> = expired
+                    .iter()
+                    .map(|idx| readiness_admission_times[*idx].0.as_str())
+                    .collect();
+
+                debug!("For removal: {:?}", keys);
+                monitor_state.remove_keys(&keys);
+
+                // Remove from admission list
+                expired.iter().for_each(|idx| {
+                    readiness_admission_times.swap_remove(*idx);
+                });
             }
         }
     }
