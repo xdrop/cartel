@@ -4,10 +4,14 @@ use crate::client::process::run_shell;
 use crate::client::{cli::ClientConfig, module::shell_for_service};
 use anyhow::{anyhow, bail, Result};
 
-pub fn open_shell(service_name: &str, cfg: &ClientConfig) -> Result<()> {
+pub fn open_shell(
+    service_name: &str,
+    shell_type: Option<&str>,
+    cfg: &ClientConfig,
+) -> Result<()> {
     let module_defs = read_module_definitions(&cfg)?;
-    let module_def =
-        shell_for_service(service_name, &module_defs).ok_or_else(|| {
+    let module_def = shell_for_service(service_name, shell_type, &module_defs)
+        .ok_or_else(|| {
             anyhow!("Failed to find shell for service '{}'", service_name)
         })?;
 

@@ -426,10 +426,14 @@ pub fn module_by_name<'a>(
 
 pub fn shell_for_service<'a>(
     service_name: &str,
+    shell_type: Option<&str>,
     modules: &'a [ModuleDefinition],
 ) -> Option<&'a ModuleDefinition> {
     modules.iter().find(|m| match m.inner {
-        InnerDefinition::Shell(ref shell) => shell.service == service_name,
+        InnerDefinition::Shell(ref shell) => {
+            shell.service == service_name
+                && shell.shell_type == shell_type.unwrap_or("")
+        }
         _ => false,
     })
 }

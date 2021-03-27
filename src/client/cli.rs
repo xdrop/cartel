@@ -111,6 +111,13 @@ pub fn cli_app() -> Result<()> {
                 .about("Open a shell for the given service")
                 .visible_alias("sh")
                 .arg(
+                    Arg::with_name("type")
+                        .short("t")
+                        .long("type")
+                        .help("The shell type to open")
+                        .takes_value(true),
+                )
+                .arg(
                     Arg::with_name("service")
                         .help("The service to open a shell for")
                         .takes_value(true),
@@ -273,7 +280,8 @@ fn invoke_subcommand(matches: &ArgMatches, cfg: &ClientConfig) -> Result<()> {
             let service_name = shell_cli_opts
                 .value_of("service")
                 .ok_or_else(|| anyhow!("Expected service name"))?;
-            open_shell(service_name, cfg)?;
+            let shell_type = shell_cli_opts.value_of("type");
+            open_shell(service_name, shell_type, cfg)?;
         }
         ("logs", Some(logs_cli_opts)) => {
             let module_name = logs_cli_opts
