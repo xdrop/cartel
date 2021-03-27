@@ -25,7 +25,7 @@ signal-hook = "0.2.2"
 rocket = "0.4.6"
 rocket_contrib = "0.4.6"
 serde = { version = "1.0.118", features = ["derive"]}
-serde_yaml = { git = "https://github.com/semtexzv/serde-yaml", branch = "multidoc" }
+serde_yaml = "0.8.17"
 clap = "2.33.3"
 reqwest = { version = "0.10", features = ["blocking", "json"] }
 anyhow = "1.0"

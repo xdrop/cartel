@@ -8,6 +8,7 @@ use crate::client::{
 use crate::path;
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
+use serde_yaml::Value;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
@@ -39,8 +40,12 @@ pub fn parse_from_yaml_str(
     source: &str,
     path: &Path,
 ) -> Result<Vec<ModuleDefinition>> {
-    let mut parsed: Vec<ModuleDefinition> =
-        serde_yaml::from_str_multidoc(source)?;
+    let mut parsed: Vec<ModuleDefinition> = vec![];
+    for document in serde_yaml::Deserializer::from_str(source) {
+        let value = Value::deserialize(document)?;
+        let module: ModuleDefinition = serde_yaml::from_value(value)?;
+        parsed.push(module);
+    }
     for mut m in parsed.iter_mut() {
         match &mut m.inner {
             InnerDefinition::Service(ref mut def) => {
