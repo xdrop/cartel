@@ -58,7 +58,18 @@ impl Planner {
 
         match existing {
             Some(module_status) => {
-                if Self::should_restart(&module_def, module_status) || force {
+                // Collect the liveness status to decide whether to restart
+                let liveness_status = match module_status.monitor_key {
+                    Some(ref key) => self.monitor_status(key),
+                    None => None,
+                };
+
+                if Self::should_restart(
+                    &module_def,
+                    module_status,
+                    liveness_status,
+                ) || force
+                {
                     executor.redeploy_module(Arc::new(module_def))?;
                     Ok(true)
                 } else {
@@ -206,10 +217,16 @@ impl Planner {
     fn should_restart(
         module_def: &ModuleDefinition,
         module_status: &ModuleStatus,
+        liveness_status: Option<MonitorStatus>,
     ) -> bool {
         if module_status.status != RunStatus::RUNNING {
             return true;
         }
+
+        if let Some(MonitorStatus::Failing) = liveness_status {
+            return true;
+        }
+
         let current = module_status.module_definition.as_ref();
         current.command != module_def.command
             || current.environment != module_def.environment

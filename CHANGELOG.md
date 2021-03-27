@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reworked the healthchecks system into `readiness` and `liveness` probes which can be independently used to check whether a service has started (readiness) and whether the services continues to live (liveness). Previous configuration entry of `healthcheck` has been renamed to `readiness_probe`, and a new module configuration block named `liveness_probe` has been introduced.
 - Added a new option to `ps` to show liveness status.
 
+### Changed
+- A service with a failing liveness probe will now always be redeployed.
+
 ## [0.6.0-beta]
 ### Added
 - Added a new healthcheck of type `net` which allows monitoring the health of a service by trying to obtain a TCP connection. The healthcheck attempts to establish a connection, which upon established will make the healthcheck succeed. On a TCP reset the healthcheck is considered failed and will also time out after 100ms.

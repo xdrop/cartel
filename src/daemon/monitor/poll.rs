@@ -26,7 +26,7 @@ pub(super) async fn readiness_poll_tickr(tx: mpsc::Sender<MonitorCommand>) {
 
 pub(super) async fn liveness_poll_tickr(tx: mpsc::Sender<MonitorCommand>) {
     let mut interval =
-        tokio::time::interval(tokio::time::Duration::from_secs(10));
+        tokio::time::interval(tokio::time::Duration::from_secs(5));
     loop {
         interval.tick().await;
         tx.send(MonitorCommand::PollLivenessCheck)
@@ -152,7 +152,6 @@ async fn poll_liveness_check(
             status.push((key, MonitorStatus::Error));
         } else if !poll_successful {
             // If the poll failed set its status to failing
-            monitor_list.swap_remove(idx);
             status.push((key, MonitorStatus::Failing));
         } else {
             // Otherwise set it as successful
