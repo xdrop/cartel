@@ -1,4 +1,6 @@
 pub mod api;
+pub mod bootstrap;
+pub mod cli;
 pub mod core;
 pub mod error;
 pub mod executor;

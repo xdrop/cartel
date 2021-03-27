@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a new option to `ps` to show liveness status.
 - Allow specifying shell type to invoke using `-t`/`--type`, and adding a `type` on a shell definition.
 - Improved error messages when specifying dependencies that don't exist.
+- Improvements to the way the daemon is run to better support shell based environments.
 
 ### Changed
 - A service with a failing liveness probe will now always be redeployed.

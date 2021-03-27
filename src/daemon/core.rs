@@ -1,5 +1,10 @@
-use crate::daemon::monitor::MonitorHandle;
+use crate::daemon::api;
+use crate::daemon::monitor::{self, MonitorHandle};
 use crate::daemon::planner::Planner;
+use crate::daemon::signal;
+
+use std::error::Error;
+use std::sync::Arc;
 
 /// Holds the core daemon state.
 pub struct Core {
@@ -25,4 +30,14 @@ impl Core {
     pub fn planner(&self) -> &Planner {
         &self.planner
     }
+}
+
+/// Start the daemon
+pub fn start_daemon() -> Result<(), Box<dyn Error>> {
+    let monitor = monitor::MonitorState::new();
+    let monitor_handle = monitor::spawn_runtime(Arc::new(monitor));
+    let core = Arc::new(Core::new(monitor_handle));
+    signal::setup_signal_handlers(Arc::clone(&core))?;
+    api::engine::start(&core);
+    Ok(())
 }
