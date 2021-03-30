@@ -120,6 +120,7 @@ pub(super) async fn channel_rx(
                 let expired: Vec<usize> = readiness_admission_times
                     .iter()
                     .enumerate()
+                    .rev()
                     .filter_map(|(idx, (_, admission_time))| {
                         let duration = Duration::new(now - admission_time, 0);
 
