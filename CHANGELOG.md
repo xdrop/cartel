@@ -5,19 +5,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.7.3-beta] - 2021-03-30
 ### Fixed
 - Fixed a panic in the daemon that would cause readiness probes to always fail.
 
-## [0.7.2-beta]
+## [0.7.2-beta] - 2021-03-28
 ### Fixed
 - Fixed an issue where the daemon would be relaunched unnessecarily.
 
-## [0.7.1-beta]
+## [0.7.1-beta] - 2021-03-28
 ### Added
 - Added daemon launcher script for launching the daemon while opening shell terminals.
 
 
-## [0.7.0-beta]
+## [0.7.0-beta] - 2021-03-27
 ### Added
 - Reworked the healthchecks system into `readiness` and `liveness` probes which can be independently used to check whether a service has started (readiness) and whether the services continues to live (liveness). Previous configuration entry of `healthcheck` has been renamed to `readiness_probe`, and a new module configuration block named `liveness_probe` has been introduced.
 - Added a new option to `ps` to show liveness status.
@@ -28,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - A service with a failing liveness probe will now always be redeployed.
 
-## [0.6.0-beta]
+## [0.6.0-beta] - 2021-02-18
 ### Added
 - Added a new healthcheck of type `net` which allows monitoring the health of a service by trying to obtain a TCP connection. The healthcheck attempts to establish a connection, which upon established will make the healthcheck succeed. On a TCP reset the healthcheck is considered failed and will also time out after 100ms.
 - Added a new `-o` option to allow deploying only selected modules and not their dependencies.
@@ -41,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed an issue in working directory resolution for shell definitions.
 
-## [0.5.0-beta] - 2020-01-24
+## [0.5.0-beta] - 2021-01-24
 ### Changed
 - Changed flag for skipping checks to `-z` and `--no-checks`.
 - Improved the error message when a healthcheck failed due to misconfiguration.
@@ -60,11 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `default_dir` option to allow configuring the default directory to look for module definition files in. Note that this directory is always last in precedence.
 - Allow skipping healthchecks using `-s` / `--no-healthchecks`.
 
-## [0.4.2-alpha] - 2020-01-17
+## [0.4.2-alpha] - 2021-01-17
 ### Changed
 - Minor improvements to wait spinners.
 
-## [0.4.1-alpha] - 2020-01-17
+## [0.4.1-alpha] - 2021-01-17
 ### Added
 - Module file can now be discovered on any path ancestral to the path the command was called.
 - Modules can now be overriden with user specific settings with an overrides file (`.override.yaml'`) or using `-o <override_file>`.
@@ -72,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed an issue where healthcheck would always run regardless of dependencies.
 
-## [0.4.0-alpha] - 2020-01-16
+## [0.4.0-alpha] - 2021-01-16
 ### Fixed
 - Print help when no subcommand specified.
 
@@ -82,21 +84,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Introduced two new options `post` and `post_up` to add tasks to be performed _after_ a service has been deployed (`post`) / or has passed its healthcheck (`post_up`) respectively (experimental).
 
-## [0.3.3-alpha] - 2020-01-13
+## [0.3.3-alpha] - 2021-01-13
 ### Fixed
 - Fixed an issue where the paths failed to resolve if `working_dir` was not specified.
 
 ### Added
 - Made retries for a healthcheck configurable via the `retries` property.
 
-## [0.3.2-alpha] - 2020-01-12
+## [0.3.2-alpha] - 2021-01-12
 ### Added
 - Added aliases for most commands (eg. `deploy,d`, `restart,rr`, `run,r`, `stop,s`).
 - Added two new options for logs `--all` and `--follow`.
 - The path to the module definition file can now be specified with `-f` or `--file`.
 
 
-## [0.3.1-alpha] - 2020-01-11
+## [0.3.1-alpha] - 2021-01-11
 ### Added
 - Added the ability for the `stop` command to stop multiple services at once.
 - Added a new `down` command to allow stopping every running service without having to specify names.
@@ -109,13 +111,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Paths within module definitions are now correctly resolved relative to the client rather than the daemon.
 - Fixed an issue where the healthchecks command stdout will be printed on the daemon stdout.
 
-## [0.3.0-alpha] - 2020-01-11
+## [0.3.0-alpha] - 2021-01-11
 ### Added
 - Added a new `Group` declaration to allow for modules whose sole purpose is to group other modules. They can be deployed, specified as a dependency, or have checks just like other modules.
 - Added cleanup for child processes on SIGINT or SIGTERM
 - Services can now define a `healthcheck` section to implement checks which must pass before further dependencies are started (experimental).
 
-## [0.2.2-alpha] - 2020-01-07
+## [0.2.2-alpha] - 2021-01-07
 ### Changed
 - Changed the default pager from `less` to `tail` with a default 30 line output.
 
@@ -125,11 +127,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Allow termination signal to be specified on services using `termination_signal` on the YAML config.
 
-## [0.2.1-alpha] - 2020-01-06
+## [0.2.1-alpha] - 2021-01-06
 ### Fixed
 - Switched to `SIGKILL` as the default kill signal. Fixes a race condition with contention on the log file during restarts.
 
-## [0.2.0-alpha] - 2020-01-05
+## [0.2.0-alpha] - 2021-01-05
 ### Changed
 - Increased the timeout for deploying tasks.
 - Improved error message when trying to view logs of non existant service.
@@ -137,7 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - The daemon will now attempt to also kill descendant processes (rather than only terminating the parent and leaving orphans behind). This is only implemented for Unix based systems and is not foolproof.
 
-## [0.1.2-alpha] - 2020-01-04
+## [0.1.2-alpha] - 2021-01-04
 ### Fixed
 - Fixed a bug that would cause a panic during dependency resolution.
 
@@ -152,10 +154,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a changelog!
 
 
-## [0.1.1-alpha] - 2020-01-03
+## [0.1.1-alpha] - 2021-01-03
 ### Added
 - Added `restart` command line option for restarting services that may have failed to start or are stuck.
 
-## [0.1.0-alpha] - 2020-01-03
+## [0.1.0-alpha] - 2021-01-03
 ### Added
 - Initial version of the project
