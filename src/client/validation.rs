@@ -91,6 +91,16 @@ pub fn validate_dependencies_exist(modules: &[ModuleDefinition]) -> Result<()> {
                 })?;
                 validate_module_names_exist(
                     &module_names,
+                    &svc_or_task.ordered_dependencies,
+                )
+                .with_context(|| {
+                    format!(
+                        "Failed resolving ordered_dependencies of service/task '{}'",
+                        module.name
+                    )
+                })?;
+                validate_module_names_exist(
+                    &module_names,
                     &svc_or_task.post_up,
                 )
                 .with_context(|| {

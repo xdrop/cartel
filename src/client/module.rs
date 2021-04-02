@@ -2,9 +2,12 @@ use crate::dependency::{
     DependencyEdge, DependencyNode, EdgeDirection, WithDependencies,
 };
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::{
+    collections::{HashMap, HashSet},
+    iter,
+};
 
 #[derive(Deserialize, Debug)]
 pub struct ModuleDefinition {
@@ -97,9 +100,13 @@ pub struct ServiceOrTaskDefinition {
     pub environment: HashMap<String, String>,
     /// A custom alternate log file path.
     pub log_file_path: Option<String>,
-    #[serde(default = "Vec::new")]
     /// A list of dependencies of the service / task.
+    #[serde(default = "Vec::new")]
     pub dependencies: Vec<String>,
+    /// A list of dependencies of the service / task that must be performed
+    /// sequentially.
+    #[serde(default = "Vec::new")]
+    pub ordered_dependencies: Vec<String>,
     /// A list of tasks to perform after the services readiness probe has passed.
     /// If the service has no readiness probes then this equivalent to `post`.
     #[serde(default = "Vec::new")]
@@ -220,6 +227,7 @@ impl ServiceOrTaskDefinition {
         environment: HashMap<String, String>,
         log_file_path: Option<String>,
         dependencies: Vec<String>,
+        ordered_dependencies: Vec<String>,
         post_up: Vec<String>,
         post: Vec<String>,
         working_dir: Option<String>,
@@ -235,6 +243,7 @@ impl ServiceOrTaskDefinition {
             environment,
             log_file_path,
             dependencies,
+            ordered_dependencies,
             post_up,
             post,
             working_dir,
@@ -310,7 +319,8 @@ impl EdgeList for GroupDefinition {
         self.dependencies
             .iter()
             .map(|key| DependencyEdge {
-                edge_ptr: key.clone(),
+                edge_src: self.name.clone(),
+                edge_dst: key.clone(),
                 direction: EdgeDirection::To,
                 marker: ModuleMarker::WaitProbe,
             })
@@ -324,17 +334,46 @@ impl EdgeList for ServiceOrTaskDefinition {
             .dependencies
             .iter()
             .map(|key| DependencyEdge {
-                edge_ptr: key.clone(),
+                edge_src: self.key(),
+                edge_dst: key.clone(),
                 direction: EdgeDirection::To,
                 marker: ModuleMarker::WaitProbe,
             })
+            .chain(
+                self.ordered_dependencies
+                    .windows(2)
+                    .map(|window| {
+                        // this sets up an edge to enforce a sequential order
+                        // between dependencies
+                        let in_between = DependencyEdge {
+                            edge_src: window[1].clone(),
+                            edge_dst: window[0].clone(),
+                            direction: EdgeDirection::To,
+                            marker: ModuleMarker::WaitProbe,
+                        };
+                        // this sets up the edge between the main task to the
+                        // dependencies
+                        window
+                            .iter()
+                            .map(|w| DependencyEdge {
+                                edge_src: self.key(),
+                                edge_dst: w.clone(),
+                                direction: EdgeDirection::To,
+                                marker: ModuleMarker::WaitProbe,
+                            })
+                            .chain(iter::once(in_between))
+                    })
+                    .flatten(),
+            )
             .chain(self.post_up.iter().map(|key| DependencyEdge {
-                edge_ptr: key.clone(),
+                edge_src: self.key(),
+                edge_dst: key.clone(),
                 direction: EdgeDirection::From,
                 marker: ModuleMarker::WaitProbe,
             }))
             .chain(self.post.iter().map(|key| DependencyEdge {
-                edge_ptr: key.clone(),
+                edge_src: self.key(),
+                edge_dst: key.clone(),
                 direction: EdgeDirection::From,
                 marker: ModuleMarker::Instant,
             }))
