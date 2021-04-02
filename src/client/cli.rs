@@ -18,8 +18,7 @@ pub struct ClientConfig {
 pub fn cli_app() -> Result<()> {
     let matches = App::new("cartel")
         .version(&crate_version!()[..])
-        .about("Panayiotis P. <xdrop.me@gmail.com>")
-        .about("Development workflow service orhchestrator")
+        .about("Development workflow service orchestrator")
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .arg(
             Arg::with_name("config")

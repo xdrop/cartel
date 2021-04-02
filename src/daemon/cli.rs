@@ -8,8 +8,7 @@ pub struct DaemonCliConfig {
 pub fn cli_app() -> Result<DaemonCliConfig> {
     let matches = App::new("cartel-daemon")
         .version(&crate_version!()[..])
-        .about("Panayiotis P. <xdrop.me@gmail.com>")
-        .about("Development workflow service orhchestrator (daemon)")
+        .about("Development workflow service orchestrator (daemon)")
         .arg(
             Arg::with_name("shell")
                 .short("s")
