@@ -1,5 +1,5 @@
 use crate::dependency::{
-    DependencyEdge, DependencyNode, EdgeDirection, WithDependencies,
+    DependencyEdge, DependencyNode, EdgeDirection, WithDependencies, WithKey,
 };
 use serde::Deserialize;
 use std::fmt;
@@ -283,16 +283,18 @@ impl Default for ModuleMarker {
 impl Eq for ModuleDefinition {}
 
 impl WithDependencies<ModuleMarker> for ServiceOrTaskDefinition {
+    fn dependencies(&self) -> Vec<DependencyEdge<ModuleMarker>> {
+        self.edges()
+    }
+}
+
+impl WithKey for ServiceOrTaskDefinition {
     fn key(&self) -> String {
         self.name.clone()
     }
 
     fn key_ref(&self) -> &str {
         self.name.as_str()
-    }
-
-    fn dependencies(&self) -> Vec<DependencyEdge<ModuleMarker>> {
-        self.edges()
     }
 }
 
@@ -384,14 +386,6 @@ impl EdgeList for ServiceOrTaskDefinition {
 }
 
 impl WithDependencies<ModuleMarker> for ModuleDefinition {
-    fn key(&self) -> String {
-        self.name.clone()
-    }
-
-    fn key_ref(&self) -> &str {
-        self.name.as_str()
-    }
-
     fn dependencies(&self) -> Vec<DependencyEdge<ModuleMarker>> {
         match &self.inner {
             InnerDefinition::Group(group) => group.edges(),
@@ -400,6 +394,16 @@ impl WithDependencies<ModuleMarker> for ModuleDefinition {
             InnerDefinition::Check(_) => panic!("Check used as dependency"),
             InnerDefinition::Shell(_) => panic!("Shell used as dependency"),
         }
+    }
+}
+
+impl WithKey for ModuleDefinition {
+    fn key(&self) -> String {
+        self.name.clone()
+    }
+
+    fn key_ref(&self) -> &str {
+        self.name.as_str()
     }
 }
 

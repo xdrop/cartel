@@ -42,10 +42,13 @@ pub struct DependencyEdge<M: PartialOrd> {
     pub marker: M,
 }
 
-pub trait WithDependencies<M: PartialOrd> {
+pub trait WithDependencies<M: PartialOrd>: WithKey {
+    fn dependencies(&self) -> Vec<DependencyEdge<M>>;
+}
+
+pub trait WithKey {
     fn key(&self) -> String;
     fn key_ref(&self) -> &str;
-    fn dependencies(&self) -> Vec<DependencyEdge<M>>;
 }
 
 impl<T: Copy, M: Copy> Clone for DependencyNode<T, M> {
@@ -98,88 +101,55 @@ where
     /// let graph = DepedencyGraph::from(mod_defs, &vec!["a", "b"]);
     /// let sorted = graph.dependency_sort();
     /// ```
-    pub fn from<'b>(
+    pub fn from(
         src: &'a [T],
-        selected: &'b [&str],
+        selected: &'a [&str],
     ) -> DependencyGraph<'a, T, M> {
-        // Holds the index of each key in Vec<T>
-        let pos_index: HashMap<&str, usize> = src
-            .iter()
-            .enumerate()
-            .map(|(idx, t)| (t.key_ref(), idx))
-            .collect();
+        let (mut arena, selection_indices) =
+            GraphArena::<T, M>::populate(src, selected);
 
-        let mut raw_entries: Vec<DependencyNode<&T, M>> = Vec::new();
-        // Contains the edges of each node as indices in raw_entries
-        let mut edge_map: HashMap<String, Vec<usize>> =
-            src.iter().map(|t| (t.key(), Vec::new())).collect();
-        // Map each node to its index in raw_entries
-        let mut node_map: HashMap<String, usize> = HashMap::new();
-
-        let mut node_list: Vec<usize> = selected
-            .iter()
-            .map(|s| {
-                raw_entries.push_get_idx(Self::new_node(
-                    s.to_string(),
-                    &src[pos_index[s]],
-                    None,
-                ))
-            })
-            .collect();
-
-        let mut node_stack: Vec<usize> = node_list.iter().copied().collect();
+        let mut node_stack: Vec<usize> =
+            selection_indices.iter().copied().collect();
 
         while !node_stack.is_empty() {
             let node_idx = node_stack.pop().unwrap();
 
-            let (node_key, dependencies) = {
-                let node = &raw_entries[node_idx];
-                (node.key.clone(), node.value.dependencies())
-            };
-
-            if node_map.get(&node_key).is_none() {
-                node_map.insert(node_key.clone(), node_idx);
-            }
+            let node = arena.get_by_idx(node_idx);
+            let dependencies = node.value.dependencies();
 
             dependencies.iter().for_each(|edge| {
                 let edge_dst = &edge.edge_dst;
                 let edge_src = &edge.edge_src;
                 let marker = edge.marker;
-                let dep_item = &src[pos_index[edge_dst.as_str()]];
+                let original_node =
+                    arena.get_original_node(edge_dst.as_str(), src);
 
                 // Ensure the node pointed to exists, otherwise create it.
-                let pointed_to_idx = match node_map.get(edge_dst.as_str()) {
-                    Some(idx) => *idx,
-                    None => {
-                        let new_node = Self::new_node(
-                            edge_dst.clone(),
-                            dep_item,
-                            Some(marker),
-                        );
-                        let idx = raw_entries.push_get_idx(new_node);
-                        node_map.insert(edge_dst.clone(), idx);
-                        node_stack.push(idx);
-                        idx
-                    }
-                };
+                let (pointed_to_idx, was_created) =
+                    arena.get_or_create(&edge_dst, original_node, marker);
+
+                if was_created {
+                    // Push it to the stack so we visit its dependencies next
+                    node_stack.push(pointed_to_idx);
+                }
 
                 let (key, idx) = match edge.direction {
                     EdgeDirection::To => (edge_src.as_str(), pointed_to_idx),
                     EdgeDirection::From => {
-                        node_list.push(pointed_to_idx);
+                        arena.push_node_idx(pointed_to_idx);
                         (edge_dst.as_str(), node_idx)
                     }
                 };
 
-                Self::maybe_upgrade_marker(marker, &mut raw_entries[idx]);
-                edge_map.get_mut(key).unwrap().push(idx);
+                Self::maybe_upgrade_marker(marker, arena.get_mut_ref(idx));
+                arena.add_edge(key, idx);
             })
         }
 
-        // Convert the index backed map and list to the actual dependency nodes.
+        let (edge_map, node_list) = arena.dispose();
         DependencyGraph {
-            edge_map: edge_map.from_index_backed(&raw_entries),
-            node_list: node_list.from_index_backed(&raw_entries),
+            edge_map,
+            node_list,
         }
     }
 
@@ -255,6 +225,145 @@ where
             }
         }
         Ok(sorted)
+    }
+}
+
+// Disposable data structure used while building a graph. Holds all items
+// in an arena.
+struct GraphArena<'a, S, M> {
+    /// Holds the edges of each node (their indices).
+    edge_map: HashMap<String, Vec<usize>>,
+    /// Holds the index of each node in the arena.
+    node_map: HashMap<String, usize>,
+    /// Holds a list of all nodes that should be exposed out of the arena.
+    node_list: Vec<usize>,
+    /// Holds the index of each node in the *source* array (not the arena).
+    source_array_index: HashMap<&'a str, usize>,
+    /// Arena holding all dependency nodes.
+    arena: Vec<DependencyNode<&'a S, M>>,
+}
+
+impl<'a, S, M> GraphArena<'a, S, M>
+where
+    S: WithDependencies<M> + Eq + Hash,
+    M: PartialOrd + Copy + Default,
+{
+    /// Get an arena node by index.
+    pub fn get_by_idx(&self, idx: usize) -> &DependencyNode<&S, M> {
+        &self.arena[idx]
+    }
+
+    /// Includes a node in the node list.
+    pub fn push_node_idx(&mut self, idx: usize) {
+        self.node_list.push(idx)
+    }
+
+    /// Gets the original node out of the souce array.
+    pub fn get_original_node(&self, key: &str, source: &'a [S]) -> &'a S {
+        &source[self.source_array_index[key]]
+    }
+
+    /// Adds a new edge to the node with the given key.
+    pub fn add_edge(&mut self, src_key: &str, idx: usize) {
+        self.edge_map.get_mut(src_key).unwrap().push(idx);
+    }
+
+    /// Get a mutable ref for the node at the given index.
+    pub fn get_mut_ref(&mut self, idx: usize) -> &mut DependencyNode<&'a S, M> {
+        &mut self.arena[idx]
+    }
+
+    /// Get or create a node in the arena.
+    pub fn get_or_create(
+        &mut self,
+        key: &str,
+        original_node: &'a S,
+        marker: M,
+    ) -> (usize, bool) {
+        match self.node_map.get(key) {
+            Some(idx) => (*idx, false),
+            None => {
+                let new_node = Self::new_node(
+                    key.to_string(),
+                    original_node,
+                    Some(marker),
+                );
+                let idx = self.arena.push_get_idx(new_node);
+                self.node_map.insert(key.to_string(), idx);
+                (idx, true)
+            }
+        }
+    }
+
+    /// Create the arena and populate it.
+    ///
+    /// Creates the arena and populates it with all nodes from `all_nodes` that
+    /// are part of `selection`. Nodes appearing in dependencies will eventually
+    /// also become part of the graph.
+    pub fn populate(
+        all_nodes: &'a [S],
+        selection: &'a [&str],
+    ) -> (Self, Vec<usize>) {
+        let mut arena = Vec::new();
+        let node_map = HashMap::new();
+
+        // Holds the index of each node in the original container
+        let source_array_index: HashMap<&'a str, usize> = all_nodes
+            .iter()
+            .enumerate()
+            .map(|(idx, t)| (t.key_ref(), idx))
+            .collect();
+
+        // Adds each node in the edge map with an empty Vec as the value.
+        let edge_map =
+            all_nodes.iter().map(|n| (n.key(), Vec::new())).collect();
+
+        // Pushes all items selected in the arena and returns a Vec of their
+        // indices.
+        let selected_node_indices: Vec<usize> = selection
+            .iter()
+            .map(|s| {
+                arena.push_get_idx(Self::new_node(
+                    s.to_string(),
+                    &all_nodes[source_array_index[s]],
+                    None,
+                ))
+            })
+            .collect();
+
+        let node_list = selected_node_indices.iter().copied().collect();
+
+        let graph_arena = Self {
+            source_array_index,
+            arena,
+            node_map,
+            node_list,
+            edge_map,
+        };
+
+        (graph_arena, selected_node_indices)
+    }
+
+    /// Dispose the arena into an edge map and a list of nodes.
+    #[allow(clippy::type_complexity)] // Inherent impls associated types?
+    pub fn dispose(
+        self,
+    ) -> (
+        HashMap<String, Vec<DependencyNode<&'a S, M>>>,
+        Vec<DependencyNode<&'a S, M>>,
+    ) {
+        // Convert the index backed map and list to the actual dependency nodes.
+        let edge_map = self.edge_map.from_index_backed(&self.arena);
+        let node_list = self.node_list.from_index_backed(&self.arena);
+        (edge_map, node_list)
+    }
+
+    fn new_node(
+        key: String,
+        value: &S,
+        marker: Option<M>,
+    ) -> DependencyNode<&S, M> {
+        DependencyNode { key, value, marker }
     }
 }
 
