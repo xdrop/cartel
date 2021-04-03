@@ -182,6 +182,22 @@ where
         DependencyNode { key, value, marker }
     }
 
+    /// Split nodes into groups by their level.
+    fn split_by_level<'l, 's, R: Eq + Hash>(
+        level_info: HashMap<&'l R, NodeMeta>,
+        sorted_nodes: Vec<&'s R>,
+    ) -> Vec<Vec<&'s R>> {
+        let mut groups = Vec::new();
+        for node in sorted_nodes.iter().rev() {
+            let level = level_info.get(node).unwrap().level;
+            if level >= groups.len() as u8 {
+                groups.push(Vec::new());
+            }
+            groups[level as usize].push(*node);
+        }
+        groups
+    }
+
     /// Return a sorted list of dependencies.
     ///
     /// Sorts dependencies so that dependent modules are deployed before the
@@ -226,6 +242,78 @@ where
         }
         Ok(sorted)
     }
+
+    /// Sort dependencies and return in them in groups.
+    ///
+    /// Sorts dependencies into groups so that dependent modules are deployed
+    /// before the modules that depend on them. Each group represents a set of
+    /// dependencies that have no ordering between them. The topological sort is
+    /// performed using modified DFS.
+    pub fn group_sort(&self) -> Result<Vec<Vec<&DependencyNode<&T, M>>>> {
+        let mut sorted = Vec::new();
+        let mut stack: Vec<(bool, &DependencyNode<&T, M>, u8)> = Vec::new();
+        let mut marked: HashMap<_, NodeMeta> = HashMap::new();
+        let mut unmarked: Vec<_> = self.node_list.iter().collect();
+
+        // While we have still nodes unmarked
+        while !unmarked.is_empty() {
+            let to_mark = unmarked.pop().unwrap();
+            stack.push((false, to_mark, 0));
+
+            while !stack.is_empty() {
+                let (is_parent, node, level) = stack.pop().unwrap();
+                let edges = self.edge_map.get(&node.key).unwrap();
+
+                if is_parent {
+                    sorted.push(node);
+                    marked.entry(node).and_modify(|e| {
+                        e.mark = MarkType::PERMANENT;
+                        e.level = level;
+                    });
+                    continue;
+                }
+
+                if let Some(meta) = marked.get_mut(node) {
+                    match meta.mark {
+                        MarkType::PERMANENT => {
+                            if level > meta.level {
+                                meta.level = level;
+
+                                // Propagate new level to connected edges
+                                for edge in edges {
+                                    stack.push((false, edge, level + 1));
+                                }
+                            }
+                            continue;
+                        }
+                        MarkType::TEMPORARY => {
+                            bail!("The graph contains cycles")
+                        }
+                    }
+                }
+
+                marked.insert(node, meta(MarkType::TEMPORARY, level));
+                stack.push((true, node, level));
+
+                for edge in edges {
+                    stack.push((false, edge, level + 1));
+                }
+            }
+        }
+
+        // Sort into groups based on their level.
+        Ok(Self::split_by_level(marked, sorted))
+    }
+}
+
+/// Contains information about each node used in the topological sort.
+struct NodeMeta {
+    mark: MarkType,
+    level: u8,
+}
+
+fn meta(mark: MarkType, level: u8) -> NodeMeta {
+    NodeMeta { mark, level }
 }
 
 // Disposable data structure used while building a graph. Holds all items
@@ -432,7 +520,43 @@ mod test {
     }
 
     #[test]
-    fn test_dependency_graph() {
+    fn test_dependency_graph_sort() {
+        let m1 = make_module("m1", vec!["m3", "m6"], vec![], vec![]);
+        let m2 = make_module("m2", vec![], vec!["m4", "m5"], vec![]);
+        let m3 = make_module("m3", vec!["m7"], vec![], vec!["m9"]);
+        let m4 = make_module("m4", vec!["m7"], vec![], vec![]);
+        let m5 = make_module("m5", vec![], vec![], vec![]);
+        let m6 = make_module("m6", vec![], vec![], vec![]);
+        let m7 = make_module("m7", vec!["m8"], vec![], vec![]);
+        let m8 = make_module("m8", vec![], vec![], vec![]);
+        let m9 = make_module("m9", vec!["m8"], vec![], vec![]);
+        let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8, m9];
+        let selected =
+            vec!["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"];
+
+        let graph = DependencyGraph::from(&modules, &selected);
+        let result: Vec<Vec<&str>> = graph
+            .group_sort()
+            .unwrap()
+            .iter()
+            .map(|g| g.iter().map(|v| &v.value.name[..]).collect::<Vec<_>>())
+            .collect();
+
+        println!("result={:?}", result);
+        assert!(
+            result
+                == vec![
+                    vec!["m1", "m2", "m9"],
+                    vec!["m5", "m6", "m3"],
+                    vec!["m4"],
+                    vec!["m7"],
+                    vec!["m8"]
+                ]
+        );
+    }
+
+    #[test]
+    fn test_dependency_graph_group_sort() {
         let m1 = make_module("m1", vec!["m3", "m6"], vec![], vec![]);
         let m2 = make_module("m2", vec![], vec!["m4", "m5"], vec![]);
         let m3 = make_module("m3", vec!["m7"], vec![], vec!["m9"]);
@@ -467,7 +591,7 @@ mod test {
     }
 
     #[test]
-    fn test_dependency_graph_partial() {
+    fn test_partial_dependency_graph_sort() {
         let m1 = make_module("m1", vec!["m3", "m6"], vec![], vec![]);
         let m2 = make_module("m2", vec!["m4", "m5"], vec![], vec![]);
         let m3 = make_module("m3", vec!["m7"], vec![], vec!["m9"]);
