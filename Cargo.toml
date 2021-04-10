@@ -1,6 +1,6 @@
 [package]
 name = "cartel"
-version = "0.7.3"
+version = "0.7.4"
 authors = ["xdrop <xdrop.me@gmail.com>"]
 edition = "2018"
 
