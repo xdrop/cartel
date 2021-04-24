@@ -186,7 +186,7 @@ where
     fn split_by_level<'l, 's, R: Eq + Hash>(
         level_info: HashMap<&'l R, NodeMeta>,
         sorted_nodes: Vec<&'s R>,
-    ) -> Vec<Vec<&'s R>> {
+    ) -> SortedDeps<'s, R> {
         let mut groups = Vec::new();
         for node in sorted_nodes.iter().rev() {
             let level = level_info.get(node).unwrap().level;
@@ -195,7 +195,10 @@ where
             }
             groups[level as usize].push(*node);
         }
-        groups
+        SortedDeps {
+            groups,
+            flat: sorted_nodes,
+        }
     }
 
     /// Return a sorted list of dependencies.
@@ -249,7 +252,7 @@ where
     /// before the modules that depend on them. Each group represents a set of
     /// dependencies that have no ordering between them. The topological sort is
     /// performed using modified DFS.
-    pub fn group_sort(&self) -> Result<Vec<Vec<&DependencyNode<&T, M>>>> {
+    pub fn group_sort(&self) -> Result<SortedDeps<DependencyNode<&T, M>>> {
         let mut sorted = Vec::new();
         let mut stack: Vec<(bool, &DependencyNode<&T, M>, u8)> = Vec::new();
         let mut marked: HashMap<_, NodeMeta> = HashMap::new();
@@ -304,6 +307,11 @@ where
         // Sort into groups based on their level.
         Ok(Self::split_by_level(marked, sorted))
     }
+}
+
+pub struct SortedDeps<'a, R> {
+    pub groups: Vec<Vec<&'a R>>,
+    pub flat: Vec<&'a R>,
 }
 
 /// Contains information about each node used in the topological sort.
@@ -538,6 +546,7 @@ mod test {
         let result: Vec<Vec<&str>> = graph
             .group_sort()
             .unwrap()
+            .groups
             .iter()
             .map(|g| g.iter().map(|v| &v.value.name[..]).collect::<Vec<_>>())
             .collect();

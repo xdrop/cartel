@@ -1,29 +1,25 @@
 use crate::client::cli::ClientConfig;
+use crate::client::commands::deployer::{Deployer, ModuleToDeploy};
 use crate::client::config::read_module_definitions;
-use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, TEXTBOOK, VAN};
+use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, VAN};
 use crate::client::module::{module_names_set, remove_checks};
-use crate::client::module::{
-    CheckDefinition, GroupDefinition, InnerDefinition, ModuleDefinition,
-    ModuleMarker, ServiceOrTaskDefinition,
-};
-use crate::client::process::run_check;
-use crate::client::progress::{SpinnerOptions, WaitResult, WaitUntil};
-use crate::client::request;
 use crate::client::validation::validate_modules_selected;
-use crate::daemon::api::ApiProbeStatus;
-use crate::dependency::{DependencyGraph, DependencyNode};
-use anyhow::{anyhow, bail, Result};
+use crate::dependency::DependencyGraph;
+use anyhow::{anyhow, Result};
 use clap::ArgMatches;
-use std::collections::{HashMap, HashSet};
-use std::thread;
-use std::time::Duration;
+use crossbeam_queue::ArrayQueue;
+use crossbeam_utils::thread;
+use indicatif::MultiProgress;
+use std::sync::atomic::Ordering;
+use std::{collections::HashSet, sync::atomic::AtomicBool, sync::Arc};
 
 pub struct DeployOptions {
-    force_deploy: bool,
-    skip_checks: bool,
-    only_selected: bool,
-    skip_readiness_checks: bool,
-    wait: bool,
+    pub force_deploy: bool,
+    pub skip_checks: bool,
+    pub only_selected: bool,
+    pub skip_readiness_checks: bool,
+    pub threads: u8,
+    pub wait: bool,
 }
 
 impl DeployOptions {
@@ -32,6 +28,15 @@ impl DeployOptions {
         let skip_readiness_checks = opts.is_present("skip_readiness_checks");
         let skip_checks = opts.is_present("skip_checks");
         let wait = opts.is_present("wait");
+        let serial = opts.is_present("serial");
+        let threads = if serial {
+            1
+        } else {
+            opts.value_of("threads")
+                .unwrap_or("4")
+                .parse::<u8>()
+                .unwrap_or(4)
+        };
 
         let only_selected = opts.is_present("only_selected");
         Self {
@@ -40,6 +45,7 @@ impl DeployOptions {
             skip_checks,
             only_selected,
             wait,
+            threads,
         }
     }
 }
@@ -61,13 +67,18 @@ pub fn deploy_cmd(
     let deployed: Vec<_> = if !deploy_opts.only_selected {
         tprintstep!("Resolving dependencies...", 2, 5, LINK);
         dep_graph = DependencyGraph::from(&module_defs, &modules_to_deploy);
-        let sorted = dep_graph.dependency_sort()?;
+        let sort_result = dep_graph.group_sort()?;
+        let modules_to_deploy: Vec<Vec<ModuleToDeploy>> = sort_result
+            .groups
+            .iter()
+            .map(|grp| grp.iter().map(|m| ModuleToDeploy::from(*m)).collect())
+            .collect();
 
-        run_checks(checks_map, &sorted, deploy_opts)?;
+        Deployer::run_checks(checks_map, &sort_result.flat, deploy_opts)?;
 
         tprintstep!("Deploying...", 4, 5, VAN);
-        deploy_with_dependencies(&sorted, cfg, deploy_opts)?;
-        sorted.iter().map(|d| &d.key).collect()
+        deploy_with_dependencies(&modules_to_deploy, cfg, deploy_opts)?;
+        sort_result.flat.iter().map(|d| &d.key).collect()
     } else {
         let msg = format!("Resolving dependencies... {}", cdim!("(Skip)"));
         tprintstep!(msg, 2, 5, LINK);
@@ -79,9 +90,12 @@ pub fn deploy_cmd(
             .filter(|m| modules_to_deploy_set.contains(m.name.as_str()))
             .collect();
 
-        run_checks(checks_map, &selected, deploy_opts)?;
+        let modules_to_deploy: Vec<ModuleToDeploy> =
+            selected.iter().map(|m| ModuleToDeploy::from(*m)).collect();
+
+        Deployer::run_checks(checks_map, &selected, deploy_opts)?;
         tprintstep!("Deploying...", 4, 5, VAN);
-        deploy_without_dependencies(&selected, cfg, deploy_opts)?;
+        deploy_without_dependencies(&modules_to_deploy, cfg, deploy_opts)?;
         selected.iter().map(|m| &m.name).collect()
     };
 
@@ -91,230 +105,91 @@ pub fn deploy_cmd(
     Ok(())
 }
 
-fn run_checks<T: AsRef<ModuleDefinition>>(
-    checks_map: HashMap<String, CheckDefinition>,
-    modules: &[T],
+fn deploy(
+    modules: &[ModuleToDeploy],
+    cfg: &ClientConfig,
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
-    if deploy_opts.skip_checks {
-        let msg = format!("Running checks... {}", cdim!("(Skip)"));
-        tprintstep!(msg, 3, 5, TEXTBOOK);
-    } else {
-        tprintstep!("Running checks...", 3, 5, TEXTBOOK);
-        for m in modules {
-            let checks = match &m.as_ref().inner {
-                InnerDefinition::Group(grp) => grp.checks.as_slice(),
-                InnerDefinition::Service(srvc) => srvc.checks.as_slice(),
-                InnerDefinition::Task(tsk) => tsk.checks.as_slice(),
-                _ => &[],
-            };
+    let multiprogress = Arc::new(MultiProgress::new());
+    let sync_point = Arc::new(AtomicBool::new(false));
 
-            for check in checks {
-                let check = checks_map
-                    .get(check)
-                    .ok_or_else(|| anyhow!("Check '{}' not defined", check))?;
+    // Maintain a queue of modules that need to be deployed. The queue
+    // will contain the indices of all such modules, and threads will
+    // pick modules off the queue and deploy them.
+    let queue = Arc::new(ArrayQueue::new(256));
+    for idx in 0..modules.len() {
+        queue
+            .push(idx)
+            .expect("Failed to push queue, too many modules");
+    }
 
-                perform_check(check)?;
-            }
+    let result = thread::scope(|s| -> Result<(), Box<anyhow::Error>> {
+        let multiprogress = &multiprogress;
+        let queue = &queue;
+        let modules = &modules;
+        let sync_point = &sync_point;
+        let cfg = &cfg;
+        let deploy_opts = &deploy_opts;
+        let mut worker_threads = vec![];
+
+        for _ in 0..deploy_opts.threads {
+            worker_threads.push(s.spawn(move |_| -> Result<()> {
+                let deployer =
+                    Deployer::new(multiprogress.clone(), queue.clone());
+                deployer.do_work(modules, cfg, deploy_opts)?;
+                Ok(())
+            }));
         }
+
+        let multiprogress_cln = multiprogress.clone();
+        let sync_point_cln = sync_point.clone();
+
+        let progress_sync = std::thread::spawn(move || {
+            // Keep calling .join on the multiprogress handle until all child
+            // threads have exited. This avoids race conditions that can happen
+            // if a .join happened too early and no progress bar were added. The
+            // .join call is blocking so we don't expect to be busy looping on
+            // this.
+            while !sync_point_cln.load(Ordering::SeqCst) {
+                multiprogress_cln.join().unwrap()
+            }
+        });
+
+        for worker_thread in worker_threads {
+            worker_thread.join().unwrap()?;
+        }
+        // Once all the deployer threads have finished we can set the
+        // synchronization point to true, so that the above loop can finish.
+        sync_point.clone().store(true, Ordering::SeqCst);
+        progress_sync
+            .join()
+            .expect("Failed to join progress sync thread");
+        Ok(())
+    });
+
+    if let Err(e) = result.unwrap() {
+        return Err(anyhow!(e));
     }
-    Ok(())
-}
 
-fn perform_check(check_def: &CheckDefinition) -> Result<()> {
-    let message =
-        format!("Check {} ({})", cbold!(&check_def.about), check_def.name);
-    let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
-    let mut wu = WaitUntil::new(&spin_opt);
-
-    let check_result = wu.spin_until_status(|| {
-        let check_result = run_check(check_def)?;
-        let status = if check_result.success() {
-            csuccess!("(OK)")
-        } else {
-            cfail!("(FAIL)")
-        };
-        Ok(WaitResult::from(check_result, status.to_string()))
-    })?;
-
-    if !check_result.success() {
-        bail!(
-            "The {} check has failed\n\
-            {}: {}",
-            cbold!(&check_def.about),
-            cbold!("Message"),
-            check_def.help
-        )
-    }
     Ok(())
 }
 
 fn deploy_with_dependencies(
-    sorted: &[&DependencyNode<&ModuleDefinition, ModuleMarker>],
+    groups: &[Vec<ModuleToDeploy>],
     cfg: &ClientConfig,
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
-    for m in sorted {
-        match m.value.inner {
-            InnerDefinition::Task(ref task) => deploy_task(task, cfg),
-            InnerDefinition::Service(ref service) => {
-                deploy_and_maybe_wait_service(
-                    service,
-                    m.marker,
-                    cfg,
-                    deploy_opts,
-                )
-            }
-            InnerDefinition::Group(ref group) => {
-                deploy_group(group);
-                Ok(())
-            }
-            InnerDefinition::Check(_) => Ok(()),
-            InnerDefinition::Shell(_) => Ok(()),
-        }?;
+    for group in groups {
+        deploy(group, cfg, deploy_opts)?;
     }
     Ok(())
 }
 
 fn deploy_without_dependencies(
-    sorted: &[&ModuleDefinition],
+    sorted: &[ModuleToDeploy],
     cfg: &ClientConfig,
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
-    for m in sorted {
-        match m.inner {
-            InnerDefinition::Task(ref task) => deploy_task(task, cfg),
-            InnerDefinition::Service(ref service) => {
-                deploy_and_maybe_wait_service(
-                    service,
-                    Some(ModuleMarker::Instant),
-                    cfg,
-                    deploy_opts,
-                )
-            }
-            InnerDefinition::Group(ref group) => {
-                deploy_group(group);
-                Ok(())
-            }
-            InnerDefinition::Check(_) => Ok(()),
-            InnerDefinition::Shell(_) => Ok(()),
-        }?;
-    }
+    deploy(sorted, cfg, deploy_opts)?;
     Ok(())
-}
-
-fn deploy_and_maybe_wait_service(
-    service: &ServiceOrTaskDefinition,
-    marker: Option<ModuleMarker>,
-    cfg: &ClientConfig,
-    deploy_opts: &DeployOptions,
-) -> Result<()> {
-    let monitor_handle = deploy_service(service, cfg, deploy_opts)?;
-    let node_marked = marker == Some(ModuleMarker::WaitProbe);
-
-    if let Some(handle) = monitor_handle {
-        if (node_marked
-            || service.always_await_readiness_probe
-            || deploy_opts.wait)
-            && !deploy_opts.skip_readiness_checks
-        {
-            wait_until_healthy(service.name.as_str(), handle.as_str(), cfg)?;
-        }
-    }
-    Ok(())
-}
-
-fn deploy_service(
-    module: &ServiceOrTaskDefinition,
-    cfg: &ClientConfig,
-    deploy_opts: &DeployOptions,
-) -> Result<Option<String>> {
-    let message = format!("Deploying {}", cbold!(&module.name));
-    let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
-
-    let mut wu = WaitUntil::new(&spin_opt);
-    let deploy_result = wu.spin_until_status(|| {
-        let result = request::deploy_module(
-            module,
-            deploy_opts.force_deploy,
-            &cfg.daemon_url,
-        )?;
-
-        let deploy_status = if result.deployed {
-            csuccess!("(Deployed)")
-        } else {
-            cdim!("(Already deployed)")
-        };
-        Ok(WaitResult::from(result, deploy_status.to_string()))
-    })?;
-
-    let monitor_handle = deploy_result.monitor;
-    Ok(monitor_handle)
-}
-
-fn wait_until_healthy(
-    module_name: &str,
-    monitor_handle: &str,
-    cfg: &ClientConfig,
-) -> Result<()> {
-    let message = format!("Waiting {} to be healthy", cbold!(module_name));
-    let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
-    let mut wu = WaitUntil::new(&spin_opt);
-
-    wu.spin_until_status(|| loop {
-        let status = csuccess!("(Done)").to_string();
-        match request::poll_health(monitor_handle, &cfg.daemon_url)?
-            .probe_status
-        {
-            Some(ApiProbeStatus::Successful) => {
-                break Ok(WaitResult::from((), status))
-            }
-            Some(ApiProbeStatus::RetriesExceeded) => {
-                bail!(
-                    "The service did not complete its readiness probe checks in time.\n\
-                       Check the logs for more details."
-                )
-            }
-            Some(ApiProbeStatus::Error) => {
-                bail!(
-                    "An error occured while waiting for the service \
-                    readiness probe to complete.\nThis is usually a mistake in \
-                    the probe configuration, ensure the command or \
-                    condition is correct."
-                )
-            }
-            _ => {
-                thread::sleep(Duration::from_secs(2));
-            }
-        }
-    })?;
-
-    Ok(())
-}
-
-fn deploy_task(
-    module: &ServiceOrTaskDefinition,
-    cfg: &ClientConfig,
-) -> Result<()> {
-    let message = format!("Running task {}", cbold!(&module.name));
-    let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
-
-    let mut wu = WaitUntil::new(&spin_opt);
-    wu.spin_until_status(|| {
-        let result = request::deploy_task(module, &cfg.daemon_url)?;
-        let status = csuccess!("(Done)").to_string();
-        Ok(WaitResult::from(result, status))
-    })?;
-
-    Ok(())
-}
-
-fn deploy_group(module: &GroupDefinition) {
-    let message = format!("Group {}", cbold!(&module.name));
-    tiprint!(
-        10, // indent level
-        "{} {}",
-        message,
-        csuccess!("(Done)")
-    );
 }

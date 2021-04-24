@@ -18,7 +18,7 @@ fn stop_service(service: &str, cfg: &ClientConfig) -> Result<()> {
     let message = format!("Stopping {}", style(service).white().bold());
     let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
 
-    let mut wu = WaitUntil::new(&spin_opt);
+    let wu = WaitUntil::new(&spin_opt);
     wu.spin_until_status(|| {
         let status = style("(Stopped)").white().dim().bold().to_string();
         request::stop_module(service, &cfg.daemon_url)?;

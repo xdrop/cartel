@@ -28,7 +28,7 @@ serde = { version = "1.0.118", features = ["derive"]}
 serde_yaml = "0.8.17"
 clap = "2.33.3"
 reqwest = { version = "0.10", features = ["blocking", "json"] }
-anyhow = "1.0"
+anyhow = "1.0.40"
 thiserror = "1.0"
 indicatif = "0.15.0"
 console = "0.13.0"
@@ -41,3 +41,5 @@ uuid = {version = "0.8.1", features =  ["v4"]}
 grep-searcher = "0.1.7"
 grep-regex = "0.1.8"
 grep-matcher = "0.1.4"
+crossbeam-utils = "0.8.3"
+crossbeam-queue = "0.3"

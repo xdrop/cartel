@@ -88,6 +88,20 @@ pub fn cli_app() -> Result<()> {
                         .help("Waits for all readiness checks to complete"),
                 )
                 .arg(
+                    Arg::with_name("serial")
+                        .short("k")
+                        .long("serial")
+                        .help("Set's parallelism to one, with only one module deployed at a time"),
+                )
+                .arg(
+                    Arg::with_name("threads")
+                        .short("t")
+                        .long("threads")
+                        .conflicts_with("serial")
+                        .takes_value(true)
+                        .help("Set the number of parallel threads to use while deploying"),
+                )
+                .arg(
                     Arg::with_name("skip_readiness_checks")
                         .short("s")
                         .long("no-readiness")

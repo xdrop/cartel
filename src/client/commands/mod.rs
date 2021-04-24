@@ -1,4 +1,6 @@
+mod convert;
 mod deploy;
+mod deployer;
 mod down;
 mod logs;
 mod ps;
