@@ -195,6 +195,9 @@ where
             }
             groups[level as usize].push(*node);
         }
+
+        groups.reverse();
+
         SortedDeps {
             groups,
             flat: sorted_nodes,
@@ -555,11 +558,11 @@ mod test {
         assert!(
             result
                 == vec![
-                    vec!["m1", "m2", "m9"],
-                    vec!["m5", "m6", "m3"],
-                    vec!["m4"],
+                    vec!["m8"],
                     vec!["m7"],
-                    vec!["m8"]
+                    vec!["m4"],
+                    vec!["m5", "m6", "m3"],
+                    vec!["m1", "m2", "m9"],
                 ]
         );
     }

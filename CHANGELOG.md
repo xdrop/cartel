@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for parallel deployment. The `deploy` command will now deploy modules in parallel by default.
 - Added `--threads`/`-t` to control how many threads to use to deploy in parallel. Also, added `--serial`/`-k` to force serial deployment.
 
+### Fixed
+- Fixed an issue where dependencies would be deployed in the wrong order.
+
 ## [0.7.4-beta] - 2021-04-10
 ### Added
 - Added a new `ordered_dependencies` module option for specifying dependencies of a services that need to be run sequentially.
