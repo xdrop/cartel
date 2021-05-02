@@ -63,6 +63,22 @@ pub fn cli_app() -> Result<()> {
                         .long("force"),
                 )
                 .arg(
+                    Arg::with_name("env")
+                        .short("e")
+                        .long("env")
+                        .help("Environment set to activate")
+                        .takes_value(true)
+                        .require_delimiter(true)
+                        .value_delimiter("\0")
+                        .multiple(true)
+                        .long_help(
+                            "Override the env of each service by \
+                            activating environment sets \
+                            with the given name. In case of overlaps, \
+                            priority is given to the last defined.",
+                        ),
+                )
+                .arg(
                     Arg::with_name("modules")
                         .help("Modules to deploy")
                         .multiple(true)
@@ -91,7 +107,7 @@ pub fn cli_app() -> Result<()> {
                     Arg::with_name("serial")
                         .short("k")
                         .long("serial")
-                        .help("Set's parallelism to one, with only one module deployed at a time"),
+                        .help("Deploy one module at a time"),
                 )
                 .arg(
                     Arg::with_name("threads")
@@ -99,7 +115,10 @@ pub fn cli_app() -> Result<()> {
                         .long("threads")
                         .conflicts_with("serial")
                         .takes_value(true)
-                        .help("Set the number of parallel threads to use while deploying"),
+                        .help(
+                            "Set the number of threads \
+                            to use while deploying",
+                        ),
                 )
                 .arg(
                     Arg::with_name("skip_readiness_checks")

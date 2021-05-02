@@ -497,6 +497,7 @@ mod test {
                 name.to_string(),
                 vec!["dummy".to_string()],
                 HashMap::new(),
+                HashMap::new(),
                 None,
                 dependencies.iter().map(|s| s.to_string()).collect(),
                 ordered_dependencies.iter().map(|s| s.to_string()).collect(),

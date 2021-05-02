@@ -98,6 +98,8 @@ pub struct ServiceOrTaskDefinition {
     /// The environment variables to create the process with.
     #[serde(default = "HashMap::new")]
     pub environment: HashMap<String, String>,
+    #[serde(default = "HashMap::new")]
+    pub environment_sets: HashMap<String, HashMap<String, String>>,
     /// A custom alternate log file path.
     pub log_file_path: Option<String>,
     /// A list of dependencies of the service / task.
@@ -225,6 +227,7 @@ impl ServiceOrTaskDefinition {
         name: String,
         command: Vec<String>,
         environment: HashMap<String, String>,
+        environment_sets: HashMap<String, HashMap<String, String>>,
         log_file_path: Option<String>,
         dependencies: Vec<String>,
         ordered_dependencies: Vec<String>,
@@ -241,6 +244,7 @@ impl ServiceOrTaskDefinition {
             name,
             command,
             environment,
+            environment_sets,
             log_file_path,
             dependencies,
             ordered_dependencies,
@@ -444,6 +448,31 @@ pub fn remove_checks(
     }
 
     checks
+}
+
+pub fn activate_environment_sets(
+    active: &[String],
+    modules: &mut Vec<ModuleDefinition>,
+) {
+    for module in modules {
+        if let InnerDefinition::Service(ref mut s) = &mut module.inner {
+            active.iter().for_each(|key| {
+                if s.environment_sets.contains_key(key) {
+                    let env_set = s.environment_sets.get(key).unwrap();
+                    merge_env(&mut s.environment, env_set);
+                }
+            });
+        }
+    }
+}
+
+fn merge_env(
+    base: &mut HashMap<String, String>,
+    delta: &HashMap<String, String>,
+) {
+    for (key, val) in delta.iter() {
+        base.insert(key.clone(), val.clone());
+    }
 }
 
 pub fn filter_services(

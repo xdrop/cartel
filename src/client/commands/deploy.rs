@@ -1,9 +1,9 @@
-use crate::client::cli::ClientConfig;
 use crate::client::commands::deployer::{Deployer, ModuleToDeploy};
 use crate::client::config::read_module_definitions;
 use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, VAN};
 use crate::client::module::{module_names_set, remove_checks};
 use crate::client::validation::validate_modules_selected;
+use crate::client::{cli::ClientConfig, module::activate_environment_sets};
 use crate::dependency::DependencyGraph;
 use anyhow::{anyhow, Result};
 use clap::ArgMatches;
@@ -18,6 +18,7 @@ pub struct DeployOptions {
     pub skip_checks: bool,
     pub only_selected: bool,
     pub skip_readiness_checks: bool,
+    pub active_envs: Vec<String>,
     pub threads: u8,
     pub wait: bool,
 }
@@ -29,6 +30,13 @@ impl DeployOptions {
         let skip_checks = opts.is_present("skip_checks");
         let wait = opts.is_present("wait");
         let serial = opts.is_present("serial");
+
+        let active_envs = if let Some(it) = opts.values_of("env") {
+            it.map(String::from).collect()
+        } else {
+            vec![]
+        };
+
         let threads = if serial {
             1
         } else {
@@ -44,6 +52,7 @@ impl DeployOptions {
             skip_readiness_checks,
             skip_checks,
             only_selected,
+            active_envs,
             wait,
             threads,
         }
@@ -58,6 +67,8 @@ pub fn deploy_cmd(
     tprintstep!("Looking for module definitions...", 1, 5, LOOKING_GLASS);
     let mut module_defs = read_module_definitions(&cfg)?;
     let checks_map = remove_checks(&mut module_defs);
+
+    activate_environment_sets(&deploy_opts.active_envs, &mut module_defs);
     let module_names = module_names_set(&module_defs);
 
     validate_modules_selected(&module_names, &modules_to_deploy)?;
