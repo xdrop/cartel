@@ -111,7 +111,7 @@ impl Deployer {
         deploy_opts: &DeployOptions,
     ) -> Result<Option<String>> {
         let message = format!("Deploying {}", cbold!(&module.name));
-        let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
+        let spin_opt = SpinnerOptions::new(message);
 
         let pb = self.multiprogress.add(ProgressBar::new(std::u64::MAX));
         let wu = WaitUntil::new_multi(&spin_opt, pb);
@@ -141,7 +141,7 @@ impl Deployer {
         cfg: &ClientConfig,
     ) -> Result<()> {
         let message = format!("Waiting {} to be healthy", cbold!(module_name));
-        let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
+        let spin_opt = SpinnerOptions::new(message);
         let pb = self.multiprogress.add(ProgressBar::new(std::u64::MAX));
         let wu = WaitUntil::new_multi(&spin_opt, pb);
 
@@ -182,7 +182,7 @@ impl Deployer {
         cfg: &ClientConfig,
     ) -> Result<()> {
         let message = format!("Running task {}", cbold!(&module.name));
-        let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
+        let spin_opt = SpinnerOptions::new(message);
 
         let pb = self.multiprogress.add(ProgressBar::new(std::u64::MAX));
         let wu = WaitUntil::new_multi(&spin_opt, pb);
@@ -208,7 +208,7 @@ impl Deployer {
     pub fn perform_check(check_def: &CheckDefinition) -> Result<()> {
         let message =
             format!("Check {} ({})", cbold!(&check_def.about), check_def.name);
-        let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
+        let spin_opt = SpinnerOptions::new(message);
         let wu = WaitUntil::new(&spin_opt);
 
         let check_result = wu.spin_until_status(|| {

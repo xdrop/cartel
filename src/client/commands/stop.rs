@@ -16,7 +16,7 @@ pub fn stop_service_cmd(services: Vec<&str>, cfg: &ClientConfig) -> Result<()> {
 
 fn stop_service(service: &str, cfg: &ClientConfig) -> Result<()> {
     let message = format!("Stopping {}", style(service).white().bold());
-    let spin_opt = SpinnerOptions::new(message).clear_on_finish(false);
+    let spin_opt = SpinnerOptions::new(message);
 
     let wu = WaitUntil::new(&spin_opt);
     wu.spin_until_status(|| {

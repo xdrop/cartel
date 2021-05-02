@@ -1,7 +1,5 @@
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::sync::mpsc;
-use std::time::Duration;
 
 #[derive(Clone)]
 pub struct SpinnerOptions {
@@ -9,13 +7,6 @@ pub struct SpinnerOptions {
     pub message: String,
     pub failure_message: String,
     pub step: Option<(u64, u64)>,
-    pub clear_on_finish: Option<bool>,
-}
-
-pub enum SpinnerCmd {
-    ExitWithStatus { status: String },
-    Exit,
-    ExitAndClear,
 }
 
 impl SpinnerOptions {
@@ -27,8 +18,7 @@ impl SpinnerOptions {
     /// ```
     /// use cartel::client::progress::*;
     /// let spin_opts = SpinnerOptions::new(String::from("Waiting..."))
-    ///     .step(1,4)
-    ///     .clear_on_finish(true);
+    ///     .step(1,4);
     /// let wu = WaitUntil::new(&spin_opts);
     /// ```
     pub fn new(message: String) -> SpinnerOptions {
@@ -41,20 +31,12 @@ impl SpinnerOptions {
                 .bold()
                 .to_string(),
             step: None,
-            clear_on_finish: None,
         }
     }
 
     /// Sets the step that this operation is on for.
     pub fn step(mut self, step: u64, of: u64) -> SpinnerOptions {
         self.step = Some((step, of));
-        self
-    }
-
-    /// Sets the clear on finish flag. When set to true the spinner line will be
-    /// erased from the terminal.
-    pub fn clear_on_finish(mut self, clear_on_finish: bool) -> SpinnerOptions {
-        self.clear_on_finish = Some(clear_on_finish);
         self
     }
 
@@ -85,126 +67,62 @@ impl SpinnerOptions {
 /// ```
 pub struct WaitSpin<'a> {
     options: &'a SpinnerOptions,
-    control: Option<mpsc::Sender<SpinnerCmd>>,
-    handle: Option<std::thread::JoinHandle<()>>,
-    clear_on_finish: Option<bool>,
-    pb: Option<ProgressBar>,
+    pb: ProgressBar,
 }
 
 impl<'a> WaitSpin<'a> {
     pub fn new(options: &'a SpinnerOptions) -> WaitSpin {
         WaitSpin {
             options,
-            control: None,
-            handle: None,
-            clear_on_finish: None,
-            pb: None,
+            pb: ProgressBar::new(std::u64::MAX),
         }
     }
 
     pub fn from(options: &'a SpinnerOptions, pb: ProgressBar) -> WaitSpin {
-        WaitSpin {
-            options,
-            control: None,
-            handle: None,
-            clear_on_finish: None,
-            pb: Some(pb),
-        }
+        WaitSpin { options, pb }
     }
 
     /// Start the spinner.
     ///
-    /// This method spins up a new thread to render the spinner on the screen.
     /// The spinner will keep spinning until `stop` is called.
     pub fn start(&mut self) {
         let options = self.options.clone();
-        let pb = self.pb.take();
-        let (tx, rx) = mpsc::channel::<SpinnerCmd>();
 
-        self.control = Some(tx);
-        self.handle = Some(std::thread::spawn(move || {
-            let pb = match pb {
-                Some(pb) => pb,
-                None => ProgressBar::new(std::u64::MAX),
-            };
-            pb.set_style(options.style);
-            if let Some((step, of)) = options.step {
-                pb.set_prefix(&format!("[{}/{}]  ", step, of));
-            } else {
-                pb.set_prefix("     ");
-            };
-            pb.set_message(&options.message);
-
-            loop {
-                match rx.try_recv() {
-                    Ok(SpinnerCmd::ExitWithStatus { status }) => {
-                        pb.finish_with_message(&format!(
-                            "{} {}",
-                            options.message, status
-                        ));
-                        break;
-                    }
-                    Ok(SpinnerCmd::ExitAndClear) => {
-                        pb.finish_and_clear();
-                        break;
-                    }
-                    Ok(SpinnerCmd::Exit) => {
-                        pb.finish();
-                        break;
-                    }
-                    Err(_) => {
-                        pb.inc(1);
-                        std::thread::sleep(Duration::from_millis(100));
-                    }
-                };
-            }
-        }));
+        self.pb.set_style(options.style);
+        if let Some((step, of)) = options.step {
+            self.pb.set_prefix(&format!("[{}/{}]  ", step, of));
+        } else {
+            self.pb.set_prefix("     ");
+        };
+        self.pb.set_message(&options.message);
+        self.pb.enable_steady_tick(100);
     }
 
     /// Stops the spinner.
     pub fn stop(&self) {
-        if let Some(control) = self.control.clone() {
-            control
-                .send(SpinnerCmd::Exit)
-                .expect("Unexpected failure in WaitSpin::stop");
-        }
+        self.pb.finish();
     }
 
     /// Stops the spinner and clears the last line.
     pub fn stop_and_clear(&self) {
-        if let Some(control) = self.control.clone() {
-            control
-                .send(SpinnerCmd::ExitAndClear)
-                .expect("Unexpected failure in WaitSpin::stop_and_clear");
-        }
+        self.pb.finish_and_clear();
     }
 
     /// Stops the spinner and updates the status of the last line.
     pub fn stop_with_status(&mut self, status: String) {
-        if let Some(control) = self.control.clone() {
-            control
-                .send(SpinnerCmd::ExitWithStatus { status })
-                .expect("Unexpected failure in WaitSpin::stop_with_status");
-        }
+        self.pb.finish_with_message(&format!(
+            "{} {}",
+            self.options.message, status
+        ));
     }
 
     /// Stops the spinner and sets the status to error.
     pub fn stop_with_error(&mut self) {
-        let failure_msg = self.options.failure_message.clone();
-        if let Some(control) = self.control.clone() {
-            control
-                .send(SpinnerCmd::ExitWithStatus {
-                    status: failure_msg,
-                })
-                .expect("Unexpected failure in WaitSpin::stop_with_status");
-        }
-    }
-
-    /// Ends the spinner thread.
-    pub fn join(self) {
-        if let Some(handle) = self.handle {
-            handle.join().expect("CLI thread failed");
-        }
+        let status = self.options.failure_message.clone();
+        self.pb.finish_with_message(&format!(
+            "{} {}",
+            self.options.message, status
+        ));
     }
 }
 
@@ -306,12 +224,10 @@ impl<'a> WaitUntil<'a> {
         match wait_result {
             Ok(w) => {
                 self.wait_spin.stop_with_status(w.status);
-                self.wait_spin.join();
                 Ok(w.result)
             }
             Err(e) => {
                 self.wait_spin.stop_with_error();
-                self.wait_spin.join();
                 Err(e)
             }
         }
