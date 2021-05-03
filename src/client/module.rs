@@ -90,7 +90,10 @@ pub struct ServiceOrTaskDefinition {
     #[serde(default = "String::default")]
     pub name: String,
     /// The command used to run the service / task.
+    #[serde(default = "Vec::new")]
     pub command: Vec<String>,
+    /// Alternative to `command`, where a shell executes the given statement.
+    pub shell: Option<String>,
     #[serde(default = "TermSignal::default")]
     /// The termination signal to use when stopping the service.
     /// Can choose between SIGKILL, SIGTERM, SIGINT on Unix systems.
@@ -226,6 +229,7 @@ impl ServiceOrTaskDefinition {
     pub fn new(
         name: String,
         command: Vec<String>,
+        shell: Option<String>,
         environment: HashMap<String, String>,
         environment_sets: HashMap<String, HashMap<String, String>>,
         log_file_path: Option<String>,
@@ -243,6 +247,7 @@ impl ServiceOrTaskDefinition {
         ServiceOrTaskDefinition {
             name,
             command,
+            shell,
             environment,
             environment_sets,
             log_file_path,
@@ -450,23 +455,7 @@ pub fn remove_checks(
     checks
 }
 
-pub fn activate_environment_sets(
-    active: &[String],
-    modules: &mut Vec<ModuleDefinition>,
-) {
-    for module in modules {
-        if let InnerDefinition::Service(ref mut s) = &mut module.inner {
-            active.iter().for_each(|key| {
-                if s.environment_sets.contains_key(key) {
-                    let env_set = s.environment_sets.get(key).unwrap();
-                    merge_env(&mut s.environment, env_set);
-                }
-            });
-        }
-    }
-}
-
-fn merge_env(
+pub fn merge_env(
     base: &mut HashMap<String, String>,
     delta: &HashMap<String, String>,
 ) {

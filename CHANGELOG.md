@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Services can now define `environment_sets` to allow configuring environment variables for a deployment. Using `-e ...`/`--env ...` as extra arguments to `deploy` can activate one or more environment sets.
+- Added a new `shell` option for services and tasks (on the same level as `command`) to make invoking shell commands less verbose.
 
 ## [0.8.0-beta] - 2021-04-24
 ### Added

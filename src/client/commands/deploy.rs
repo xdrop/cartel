@@ -1,9 +1,9 @@
+use crate::client::cli::ClientConfig;
 use crate::client::commands::deployer::{Deployer, ModuleToDeploy};
 use crate::client::config::read_module_definitions;
 use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, VAN};
 use crate::client::module::{module_names_set, remove_checks};
 use crate::client::validation::validate_modules_selected;
-use crate::client::{cli::ClientConfig, module::activate_environment_sets};
 use crate::dependency::DependencyGraph;
 use anyhow::{anyhow, Result};
 use clap::ArgMatches;
@@ -67,8 +67,6 @@ pub fn deploy_cmd(
     tprintstep!("Looking for module definitions...", 1, 5, LOOKING_GLASS);
     let mut module_defs = read_module_definitions(&cfg)?;
     let checks_map = remove_checks(&mut module_defs);
-
-    activate_environment_sets(&deploy_opts.active_envs, &mut module_defs);
     let module_names = module_names_set(&module_defs);
 
     validate_modules_selected(&module_names, &modules_to_deploy)?;

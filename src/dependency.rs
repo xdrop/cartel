@@ -496,6 +496,7 @@ mod test {
             inner: InnerDefinition::Service(ServiceOrTaskDefinition::new(
                 name.to_string(),
                 vec!["dummy".to_string()],
+                None,
                 HashMap::new(),
                 HashMap::new(),
                 None,

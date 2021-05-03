@@ -1,8 +1,11 @@
-use crate::client::module::ServiceOrTaskDefinition;
+use crate::client::{
+    commands::DeployOptions,
+    module::{merge_env, ServiceOrTaskDefinition},
+};
 use crate::daemon::api::*;
 use anyhow::{bail, Result};
 use reqwest::blocking::Client;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use serde::{Deserialize, Serialize};
 
@@ -41,17 +44,46 @@ fn long_timeout_client() -> Client {
         .unwrap()
 }
 
-pub fn deploy_module(
+fn build_command_arg(
     module_definition: &ServiceOrTaskDefinition,
-    force_deploy: bool,
-    daemon_url: &str,
-) -> Result<ApiDeploymentResponse> {
-    let client = reqwest::blocking::Client::new();
-    let command = ApiDeploymentCommand {
+) -> Vec<String> {
+    if module_definition.command.is_empty() {
+        vec![
+            "/bin/bash",
+            "-c",
+            &module_definition.shell.as_ref().unwrap(),
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect()
+    } else {
+        module_definition.command.clone()
+    }
+}
+
+fn build_env_arg(
+    svc: &ServiceOrTaskDefinition,
+    opts: &DeployOptions,
+) -> HashMap<String, String> {
+    let mut base_env = svc.environment.clone();
+    opts.active_envs.iter().for_each(|key| {
+        if svc.environment_sets.contains_key(key) {
+            let env_set = svc.environment_sets.get(key).unwrap();
+            merge_env(&mut base_env, env_set);
+        }
+    });
+    base_env
+}
+
+fn build_deploy_command(
+    module_definition: &ServiceOrTaskDefinition,
+    opts: &DeployOptions,
+) -> ApiDeploymentCommand {
+    ApiDeploymentCommand {
         module_definition: ApiModuleDefinition {
             name: module_definition.name.clone(),
-            command: module_definition.command.clone(),
-            environment: module_definition.environment.clone(),
+            command: build_command_arg(module_definition),
+            environment: build_env_arg(module_definition, opts),
             log_file_path: module_definition.log_file_path.clone(),
             dependencies: module_definition.dependencies.clone(),
             working_dir: module_definition.working_dir.clone(),
@@ -65,8 +97,36 @@ pub fn deploy_module(
                 .as_ref()
                 .map(|p| p.into()),
         },
-        force: force_deploy,
-    };
+        force: opts.force_deploy,
+    }
+}
+
+fn build_task_deploy_command(
+    task_definition: &ServiceOrTaskDefinition,
+    opts: &DeployOptions,
+) -> ApiTaskDeploymentCommand {
+    ApiTaskDeploymentCommand {
+        task_definition: ApiModuleDefinition {
+            name: task_definition.name.clone(),
+            command: build_command_arg(task_definition),
+            environment: build_env_arg(task_definition, opts),
+            log_file_path: task_definition.log_file_path.clone(),
+            dependencies: task_definition.dependencies.clone(),
+            working_dir: task_definition.working_dir.clone(),
+            termination_signal: ApiTermSignal::KILL,
+            readiness_probe: None,
+            liveness_probe: None,
+        },
+    }
+}
+
+pub fn deploy_module(
+    module_definition: &ServiceOrTaskDefinition,
+    deploy_opts: &DeployOptions,
+    daemon_url: &str,
+) -> Result<ApiDeploymentResponse> {
+    let client = reqwest::blocking::Client::new();
+    let command = build_deploy_command(module_definition, deploy_opts);
 
     let deployment_result: DeploymentResponse = client
         .post(&(daemon_url.to_owned() + "/deploy"))
@@ -82,22 +142,11 @@ pub fn deploy_module(
 
 pub fn deploy_task(
     task_definition: &ServiceOrTaskDefinition,
+    deploy_opts: &DeployOptions,
     daemon_url: &str,
 ) -> Result<ApiTaskDeploymentResponse> {
     let client = long_timeout_client();
-    let command = ApiTaskDeploymentCommand {
-        task_definition: ApiModuleDefinition {
-            name: task_definition.name.clone(),
-            command: task_definition.command.clone(),
-            environment: task_definition.environment.clone(),
-            log_file_path: task_definition.log_file_path.clone(),
-            dependencies: task_definition.dependencies.clone(),
-            working_dir: task_definition.working_dir.clone(),
-            termination_signal: ApiTermSignal::KILL,
-            readiness_probe: None,
-            liveness_probe: None,
-        },
-    };
+    let command = build_task_deploy_command(task_definition, deploy_opts);
 
     let deployment_result: TaskDeploymentResponse = client
         .post(&(daemon_url.to_owned() + "/tasks/deploy"))

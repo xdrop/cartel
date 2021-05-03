@@ -1,9 +1,10 @@
-use crate::client::module::{
-    InnerDefinition, ModuleDefinition, ModuleKind, Probe,
-};
 use crate::client::validation::validate_modules_unique;
 use crate::client::{
     cli::ClientConfig, validation::validate_dependencies_exist,
+};
+use crate::client::{
+    module::{InnerDefinition, ModuleDefinition, ModuleKind, Probe},
+    validation::validate_fields,
 };
 use crate::path;
 use anyhow::{bail, Context, Result};
@@ -278,6 +279,7 @@ fn parse_module_def_file(
 
     validate_modules_unique(&module_defs)?;
     validate_dependencies_exist(&module_defs)?;
+    validate_fields(&module_defs)?;
 
     Ok(module_defs)
 }

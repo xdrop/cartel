@@ -53,6 +53,35 @@ pub fn validate_module_names_exist(
     Ok(())
 }
 
+pub fn validate_fields(modules: &[ModuleDefinition]) -> Result<()> {
+    for module in modules {
+        match &module.inner {
+            InnerDefinition::Service(svc_or_task)
+            | InnerDefinition::Task(svc_or_task) => {
+                if svc_or_task.shell.is_some()
+                    && !svc_or_task.command.is_empty()
+                {
+                    bail!(
+                        "Cannot have both a shell and command definition \
+                        for module {}",
+                        svc_or_task.name
+                    );
+                } else if svc_or_task.shell.is_none()
+                    && svc_or_task.command.is_empty()
+                {
+                    bail!(
+                        "Module must define one of 'shell' or 'command' \
+                        {}",
+                        svc_or_task.name
+                    );
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 pub fn validate_dependencies_exist(modules: &[ModuleDefinition]) -> Result<()> {
     let module_names: HashSet<_> =
         modules.iter().map(|m| m.name.clone()).collect();

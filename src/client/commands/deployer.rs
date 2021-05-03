@@ -86,7 +86,9 @@ impl Deployer {
         deploy_opts: &DeployOptions,
     ) -> Result<()> {
         match module.definition.inner {
-            InnerDefinition::Task(ref task) => self.deploy_task(task, cfg),
+            InnerDefinition::Task(ref task) => {
+                self.deploy_task(task, deploy_opts, cfg)
+            }
             InnerDefinition::Service(ref service) => self
                 .deploy_and_maybe_wait_service(
                     service,
@@ -116,11 +118,8 @@ impl Deployer {
         let pb = self.multiprogress.add(ProgressBar::new(std::u64::MAX));
         let wu = WaitUntil::new_multi(&spin_opt, pb);
         let deploy_result = wu.spin_until_status(|| {
-            let result = request::deploy_module(
-                module,
-                deploy_opts.force_deploy,
-                &cfg.daemon_url,
-            )?;
+            let result =
+                request::deploy_module(module, &deploy_opts, &cfg.daemon_url)?;
 
             let deploy_status = if result.deployed {
                 csuccess!("(Deployed)")
@@ -179,6 +178,7 @@ impl Deployer {
     fn deploy_task(
         &self,
         module: &ServiceOrTaskDefinition,
+        deploy_opts: &DeployOptions,
         cfg: &ClientConfig,
     ) -> Result<()> {
         let message = format!("Running task {}", cbold!(&module.name));
@@ -187,7 +187,8 @@ impl Deployer {
         let pb = self.multiprogress.add(ProgressBar::new(std::u64::MAX));
         let wu = WaitUntil::new_multi(&spin_opt, pb);
         wu.spin_until_status(|| {
-            let result = request::deploy_task(module, &cfg.daemon_url)?;
+            let result =
+                request::deploy_task(module, deploy_opts, &cfg.daemon_url)?;
             let status = csuccess!("(Done)").to_string();
             Ok(WaitResult::from(result, status))
         })?;
