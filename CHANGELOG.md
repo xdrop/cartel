@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.8.1-beta] - 2021-05-05
 ### Added
 - Services can now define `environment_sets` to allow configuring environment variables for a deployment. Using `-e ...`/`--env ...` as extra arguments to `deploy` can activate one or more environment sets.
 - Added a new `shell` option for services and tasks (on the same level as `command`) to make invoking shell commands less verbose.
