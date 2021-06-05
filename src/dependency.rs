@@ -1,6 +1,6 @@
 use crate::collections::{FromIndexContainer, FromOwnedIndexContainer, VecExt};
 use anyhow::{bail, Result};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
 pub struct DependencyGraph<'a, T, M>
@@ -20,6 +20,9 @@ pub struct DependencyNode<T, M> {
     pub value: T,
     /// The marker for the node (if it has been marked by an edge). None otherwise.
     pub marker: Option<M>,
+    /// The 'origin' nodes that caused this dependency to be included in the
+    /// dependency graph.
+    pub origin_nodes: HashSet<String>,
 }
 
 pub enum EdgeDirection {
@@ -57,6 +60,7 @@ impl<T: Copy, M: Copy> Clone for DependencyNode<T, M> {
             key: self.key.clone(),
             value: self.value,
             marker: self.marker,
+            origin_nodes: self.origin_nodes.clone(),
         }
     }
 }
@@ -78,6 +82,30 @@ impl<T, M> Eq for DependencyNode<T, M> {}
 enum MarkType {
     PERMANENT,
     TEMPORARY,
+}
+
+#[derive(Debug)]
+struct StackEntry {
+    // The index of the node in the arena
+    node_idx: usize,
+    // The index of the origin node that this node originated from
+    origin_node_idx: usize,
+}
+
+impl StackEntry {
+    pub fn new(idx: usize) -> Self {
+        Self {
+            node_idx: idx,
+            origin_node_idx: idx,
+        }
+    }
+
+    pub fn new_related(idx: usize, origin_idx: usize) -> Self {
+        Self {
+            node_idx: idx,
+            origin_node_idx: origin_idx,
+        }
+    }
 }
 
 /// A dependency graph over type T.
@@ -108,11 +136,15 @@ where
         let (mut arena, selection_indices) =
             GraphArena::<T, M>::populate(src, selected);
 
-        let mut node_stack: Vec<usize> =
-            selection_indices.iter().copied().collect();
+        let mut node_stack: Vec<StackEntry> = selection_indices
+            .iter()
+            .map(|idx| StackEntry::new(*idx))
+            .collect();
 
         while !node_stack.is_empty() {
-            let node_idx = node_stack.pop().unwrap();
+            let node_stack_entry = node_stack.pop().unwrap();
+            let node_idx = node_stack_entry.node_idx;
+            let origin_node_idx = node_stack_entry.origin_node_idx;
 
             let node = arena.get_by_idx(node_idx);
             let dependencies = node.value.dependencies();
@@ -125,12 +157,19 @@ where
                     arena.get_original_node(edge_dst.as_str(), src);
 
                 // Ensure the node pointed to exists, otherwise create it.
-                let (pointed_to_idx, was_created) =
-                    arena.get_or_create(&edge_dst, original_node, marker);
+                let (pointed_to_idx, was_created) = arena.get_or_create(
+                    &edge_dst,
+                    original_node,
+                    origin_node_idx,
+                    marker,
+                );
 
                 if was_created {
                     // Push it to the stack so we visit its dependencies next
-                    node_stack.push(pointed_to_idx);
+                    node_stack.push(StackEntry::new_related(
+                        pointed_to_idx,
+                        origin_node_idx,
+                    ));
                 }
 
                 let (key, idx) = match edge.direction {
@@ -172,14 +211,6 @@ where
                 node.marker = Some(new_marker);
             }
         }
-    }
-
-    fn new_node(
-        key: String,
-        value: &T,
-        marker: Option<M>,
-    ) -> DependencyNode<&T, M> {
-        DependencyNode { key, value, marker }
     }
 
     /// Split nodes into groups by their level.
@@ -354,7 +385,7 @@ where
 
     /// Includes a node in the node list.
     pub fn push_node_idx(&mut self, idx: usize) {
-        self.node_list.push(idx)
+        self.node_list.push(idx);
     }
 
     /// Gets the original node out of the souce array.
@@ -377,15 +408,22 @@ where
         &mut self,
         key: &str,
         original_node: &'a S,
+        origin_idx: usize,
         marker: M,
     ) -> (usize, bool) {
-        match self.node_map.get(key) {
-            Some(idx) => (*idx, false),
+        let origin_key = self.get_by_idx(origin_idx).key.clone();
+        match self.node_map.get(key).copied() {
+            Some(idx) => {
+                let existing = self.get_mut_ref(idx);
+                existing.origin_nodes.insert(origin_key);
+                (idx, false)
+            }
             None => {
                 let new_node = Self::new_node(
                     key.to_string(),
                     original_node,
                     Some(marker),
+                    origin_key,
                 );
                 let idx = self.arena.push_get_idx(new_node);
                 self.node_map.insert(key.to_string(), idx);
@@ -404,7 +442,7 @@ where
         selection: &'a [&str],
     ) -> (Self, Vec<usize>) {
         let mut arena = Vec::new();
-        let node_map = HashMap::new();
+        let mut node_map = HashMap::new();
 
         // Holds the index of each node in the original container
         let source_array_index: HashMap<&'a str, usize> = all_nodes
@@ -422,11 +460,14 @@ where
         let selected_node_indices: Vec<usize> = selection
             .iter()
             .map(|s| {
-                arena.push_get_idx(Self::new_node(
+                let idx = arena.push_get_idx(Self::new_node(
                     s.to_string(),
                     &all_nodes[source_array_index[s]],
                     None,
-                ))
+                    s.to_string(),
+                ));
+                node_map.insert(s.to_string(), idx);
+                idx
             })
             .collect();
 
@@ -461,8 +502,17 @@ where
         key: String,
         value: &S,
         marker: Option<M>,
+        origin: String,
     ) -> DependencyNode<&S, M> {
-        DependencyNode { key, value, marker }
+        let mut origin_nodes = HashSet::new();
+        origin_nodes.insert(origin);
+
+        DependencyNode {
+            key,
+            value,
+            marker,
+            origin_nodes,
+        }
     }
 }
 
@@ -556,7 +606,6 @@ mod test {
             .map(|g| g.iter().map(|v| &v.value.name[..]).collect::<Vec<_>>())
             .collect();
 
-        println!("result={:?}", result);
         assert!(
             result
                 == vec![
