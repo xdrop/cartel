@@ -1,2 +1,5 @@
 /target
+.excluded
+bottle.sh
 cartel.yaml
+cartel.yml
