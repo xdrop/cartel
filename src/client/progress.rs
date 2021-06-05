@@ -90,11 +90,11 @@ impl<'a> WaitSpin<'a> {
 
         self.pb.set_style(options.style);
         if let Some((step, of)) = options.step {
-            self.pb.set_prefix(&format!("[{}/{}]  ", step, of));
+            self.pb.set_prefix(format!("[{}/{}]  ", step, of));
         } else {
             self.pb.set_prefix("     ");
         };
-        self.pb.set_message(&options.message);
+        self.pb.set_message(options.message);
         self.pb.enable_steady_tick(100);
     }
 
@@ -110,7 +110,7 @@ impl<'a> WaitSpin<'a> {
 
     /// Stops the spinner and updates the status of the last line.
     pub fn stop_with_status(&mut self, status: String) {
-        self.pb.finish_with_message(&format!(
+        self.pb.finish_with_message(format!(
             "{} {}",
             self.options.message, status
         ));
@@ -119,7 +119,7 @@ impl<'a> WaitSpin<'a> {
     /// Stops the spinner and sets the status to error.
     pub fn stop_with_error(&mut self) {
         let status = self.options.failure_message.clone();
-        self.pb.finish_with_message(&format!(
+        self.pb.finish_with_message(format!(
             "{} {}",
             self.options.message, status
         ));
