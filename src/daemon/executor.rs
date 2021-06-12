@@ -79,6 +79,17 @@ impl Executor {
         self.module_map.get(name)
     }
 
+    /// Returns module statuses by names (or None if they don't exist).
+    pub fn module_statuses_by_names(
+        &self,
+        names: &[&str],
+    ) -> Vec<Option<&ModuleStatus>> {
+        names
+            .iter()
+            .map(|name| self.module_map.get(*name))
+            .collect()
+    }
+
     /// Returns an iterator to module statuses.
     pub fn modules(&self) -> impl Iterator<Item = &ModuleStatus> {
         self.module_map.values()

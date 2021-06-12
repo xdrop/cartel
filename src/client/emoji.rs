@@ -8,3 +8,5 @@ pub static NOTES: Emoji<'_, '_> = Emoji("📃 ", "");
 pub static TEXTBOOK: Emoji<'_, '_> = Emoji("📗 ", "");
 pub static LINK: Emoji<'_, '_> = Emoji("🔗 ", "");
 pub static VAN: Emoji<'_, '_> = Emoji("🚚 ", "");
+pub static SPIRAL_NOTEBOOK: Emoji<'_, '_> = Emoji("🗒️  ", "");
+pub static YELLOW_NOTEBOOK: Emoji<'_, '_> = Emoji("📒️ ", "");

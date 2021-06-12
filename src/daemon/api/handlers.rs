@@ -9,7 +9,14 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ApiModuleKind {
+    Task,
+    Service,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ApiModuleDefinition {
+    pub kind: ApiModuleKind,
     pub name: String,
     pub command: Vec<String>,
     pub environment: HashMap<String, String>,
@@ -145,6 +152,24 @@ pub struct ApiHealthResponse {
     pub probe_status: Option<ApiProbeStatus>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum ApiPlannedAction {
+    WillRedeploy,
+    WillDeploy,
+    AlreadyDeployed,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ApiGetPlanRequest {
+    pub modules: Vec<ApiModuleDefinition>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ApiGetPlanResponse {
+    pub plan: HashMap<String, ApiPlannedAction>,
+}
+
 #[allow(clippy::unnecessary_unwrap)]
 #[post("/api/v1/deploy", data = "<command>")]
 pub(crate) fn deploy(
@@ -154,7 +179,8 @@ pub(crate) fn deploy(
     let planner = core_state.core.planner();
     let command = command.into_inner();
 
-    let (module_def, monitor) = from_service(command.module_definition);
+    let (module_def, monitor) =
+        from_service_with_monitor(command.module_definition);
     let module_name = module_def.name.clone();
 
     let deployed = planner.deploy(module_def, command.force)?;
@@ -274,6 +300,24 @@ pub(crate) fn health(
     };
 
     Json(ApiHealthResponse { probe_status })
+}
+
+#[post("/api/v1/get_plan", data = "<request>")]
+pub(crate) fn get_plan(
+    request: Json<ApiGetPlanRequest>,
+    core_state: State<CoreState>,
+) -> Json<ApiGetPlanResponse> {
+    let planner = core_state.core.planner();
+    let mut request = request.into_inner();
+
+    let modules: Vec<_> = request
+        .modules
+        .drain(..)
+        .map(from_task_or_service)
+        .collect();
+
+    let plan = planner.get_plan(&modules);
+    Json(plan.into())
 }
 
 #[get("/")]

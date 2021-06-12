@@ -1,9 +1,16 @@
-use crate::client::cli::ClientConfig;
-use crate::client::commands::deployer::{Deployer, ModuleToDeploy};
 use crate::client::config::read_module_definitions;
-use crate::client::emoji::{LINK, LOOKING_GLASS, SUCCESS, VAN};
+use crate::client::emoji::{
+    LINK, LOOKING_GLASS, SPIRAL_NOTEBOOK, SUCCESS, VAN,
+};
 use crate::client::module::{module_names_set, remove_checks};
 use crate::client::validation::validate_modules_selected;
+use crate::client::{
+    cli::ClientConfig, commands::deployer::ModuleDeploymentPlan,
+};
+use crate::client::{
+    commands::deployer::{Deployer, ModuleToDeploy},
+    emoji::TEXTBOOK,
+};
 use crate::dependency::DependencyGraph;
 use anyhow::{anyhow, Result};
 use clap::ArgMatches;
@@ -64,7 +71,7 @@ pub fn deploy_cmd(
     cfg: &ClientConfig,
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
-    tprintstep!("Looking for module definitions...", 1, 5, LOOKING_GLASS);
+    tprintstep!("Looking for module definitions...", 1, 6, LOOKING_GLASS);
     let mut module_defs = read_module_definitions(&cfg)?;
     let checks_map = remove_checks(&mut module_defs);
     let module_names = module_names_set(&module_defs);
@@ -74,7 +81,7 @@ pub fn deploy_cmd(
     let dep_graph: DependencyGraph<_, _>;
 
     let deployed: Vec<_> = if !deploy_opts.only_selected {
-        tprintstep!("Resolving dependencies...", 2, 5, LINK);
+        tprintstep!("Resolving dependencies...", 2, 6, LINK);
         dep_graph = DependencyGraph::from(&module_defs, &modules_to_deploy);
         let sort_result = dep_graph.group_sort()?;
         let modules_to_deploy: Vec<Vec<ModuleToDeploy>> = sort_result
@@ -83,14 +90,28 @@ pub fn deploy_cmd(
             .map(|grp| grp.iter().map(|m| ModuleToDeploy::from(*m)).collect())
             .collect();
 
-        Deployer::run_checks(checks_map, &sort_result.flat, deploy_opts)?;
+        if deploy_opts.skip_checks {
+            let msg = format!("Running checks... {}", cdim!("(Skip)"));
+            tprintstep!(msg, 3, 6, TEXTBOOK);
+        } else {
+            tprintstep!("Running checks...", 3, 6, TEXTBOOK);
+            Deployer::run_checks(checks_map, &sort_result.flat)?;
+        }
 
-        tprintstep!("Deploying...", 4, 5, VAN);
-        deploy_with_dependencies(&modules_to_deploy, cfg, deploy_opts)?;
+        tprintstep!("Obtaining plan...", 4, 6, SPIRAL_NOTEBOOK);
+        let deployment_plan =
+            Deployer::obtain_plan(&sort_result.flat, cfg, deploy_opts)?;
+        tprintstep!("Deploying...", 5, 6, VAN);
+        deploy_with_dependencies(
+            &modules_to_deploy,
+            deployment_plan,
+            cfg,
+            deploy_opts,
+        )?;
         sort_result.flat.iter().map(|d| &d.key).collect()
     } else {
         let msg = format!("Resolving dependencies... {}", cdim!("(Skip)"));
-        tprintstep!(msg, 2, 5, LINK);
+        tprintstep!(msg, 2, 6, LINK);
         let modules_to_deploy_set: HashSet<_> =
             modules_to_deploy.iter().copied().collect();
 
@@ -102,20 +123,29 @@ pub fn deploy_cmd(
         let modules_to_deploy: Vec<ModuleToDeploy> =
             selected.iter().map(|m| ModuleToDeploy::from(*m)).collect();
 
-        Deployer::run_checks(checks_map, &selected, deploy_opts)?;
-        tprintstep!("Deploying...", 4, 5, VAN);
+        if deploy_opts.skip_checks {
+            let msg = format!("Running checks... {}", cdim!("(Skip)"));
+            tprintstep!(msg, 3, 6, TEXTBOOK);
+        } else {
+            tprintstep!("Running checks...", 3, 6, TEXTBOOK);
+            Deployer::run_checks(checks_map, &selected)?;
+        }
+        let msg = format!("Obtaining plan... {}", cdim!("(Skip)"));
+        tprintstep!(msg, 4, 6, SPIRAL_NOTEBOOK);
+        tprintstep!("Deploying...", 5, 6, VAN);
         deploy_without_dependencies(&modules_to_deploy, cfg, deploy_opts)?;
         selected.iter().map(|m| &m.name).collect()
     };
 
     let deploy_txt =
         format!("{}: {:?}", csuccess!("Deployed modules"), deployed);
-    tprintstep!(deploy_txt, 5, 5, SUCCESS);
+    tprintstep!(deploy_txt, 6, 6, SUCCESS);
     Ok(())
 }
 
 fn deploy(
     modules: &[ModuleToDeploy],
+    deployment_plan: Option<Arc<ModuleDeploymentPlan>>,
     cfg: &ClientConfig,
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
@@ -137,14 +167,18 @@ fn deploy(
         let queue = &queue;
         let modules = &modules;
         let sync_point = &sync_point;
+        let deployment_plan = &deployment_plan;
         let cfg = &cfg;
         let deploy_opts = &deploy_opts;
         let mut worker_threads = vec![];
 
         for _ in 0..deploy_opts.threads {
             worker_threads.push(s.spawn(move |_| -> Result<()> {
-                let deployer =
-                    Deployer::new(multiprogress.clone(), queue.clone());
+                let deployer = Deployer::new(
+                    multiprogress.clone(),
+                    queue.clone(),
+                    deployment_plan.clone(),
+                );
                 deployer.do_work(modules, cfg, deploy_opts)?;
                 Ok(())
             }));
@@ -185,11 +219,13 @@ fn deploy(
 
 fn deploy_with_dependencies(
     groups: &[Vec<ModuleToDeploy>],
+    deployment_plan: ModuleDeploymentPlan,
     cfg: &ClientConfig,
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
+    let deployment_plan = Arc::new(deployment_plan);
     for group in groups {
-        deploy(group, cfg, deploy_opts)?;
+        deploy(group, Some(Arc::clone(&deployment_plan)), cfg, deploy_opts)?;
     }
     Ok(())
 }
@@ -199,6 +235,6 @@ fn deploy_without_dependencies(
     cfg: &ClientConfig,
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
-    deploy(sorted, cfg, deploy_opts)?;
+    deploy(sorted, None, cfg, deploy_opts)?;
     Ok(())
 }

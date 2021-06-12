@@ -1,8 +1,11 @@
-use crate::client::emoji::TEXTBOOK;
-use crate::client::module::{
-    CheckDefinition, GroupDefinition, InnerDefinition, ModuleDefinition,
-    ModuleMarker, ServiceOrTaskDefinition,
+use crate::{
+    client::module::{
+        CheckDefinition, GroupDefinition, InnerDefinition, ModuleDefinition,
+        ModuleMarker, ServiceOrTaskDefinition,
+    },
+    daemon::api::{ApiGetPlanResponse, ApiPlannedAction},
 };
+use crate::{client::request::get_plan, dependency::DependencyNode};
 
 use crate::client::process::run_check;
 use crate::client::progress::{SpinnerOptions, WaitResult, WaitUntil};
@@ -20,6 +23,11 @@ use std::time::Duration;
 pub struct Deployer {
     multiprogress: Arc<MultiProgress>,
     queue: Arc<ArrayQueue<usize>>,
+    deployment_plan: Option<Arc<ModuleDeploymentPlan>>,
+}
+
+pub struct ModuleDeploymentPlan {
+    pub should_deploy: HashMap<String, bool>,
 }
 
 pub struct ModuleToDeploy<'a> {
@@ -31,10 +39,12 @@ impl Deployer {
     pub fn new(
         multiprogress: Arc<MultiProgress>,
         queue: Arc<ArrayQueue<usize>>,
+        deployment_plan: Option<Arc<ModuleDeploymentPlan>>,
     ) -> Self {
         Self {
             multiprogress,
             queue,
+            deployment_plan,
         }
     }
 
@@ -186,11 +196,21 @@ impl Deployer {
 
         let pb = self.multiprogress.add(ProgressBar::new(std::u64::MAX));
         let wu = WaitUntil::new_multi(&spin_opt, pb);
+
+        // If none of this tasks services will be deployed then skip deploying
+        // this task also.
+        let skipped_by_plan = !self.should_deploy(module.name.as_str());
         wu.spin_until_status(|| {
+            if skipped_by_plan {
+                return Ok(WaitResult::from(
+                    false,
+                    cdim!("(Skipping)").to_string(),
+                ));
+            }
             let result =
                 request::deploy_task(module, deploy_opts, &cfg.daemon_url)?;
             let status = csuccess!("(Done)").to_string();
-            Ok(WaitResult::from(result, status))
+            Ok(WaitResult::from(result.success, status))
         })?;
 
         Ok(())
@@ -204,6 +224,17 @@ impl Deployer {
             message,
             csuccess!("(Done)")
         );
+    }
+
+    fn should_deploy(&self, module_name: &str) -> bool {
+        if let Some(deployment_plan) = &self.deployment_plan {
+            *deployment_plan
+                .should_deploy
+                .get(module_name)
+                .unwrap_or(&true)
+        } else {
+            true
+        }
     }
 
     pub fn perform_check(check_def: &CheckDefinition) -> Result<()> {
@@ -237,30 +268,73 @@ impl Deployer {
     pub fn run_checks<T: AsRef<ModuleDefinition>>(
         checks_map: HashMap<String, CheckDefinition>,
         modules: &[T],
-        deploy_opts: &DeployOptions,
     ) -> Result<()> {
-        if deploy_opts.skip_checks {
-            let msg = format!("Running checks... {}", cdim!("(Skip)"));
-            tprintstep!(msg, 3, 5, TEXTBOOK);
-        } else {
-            tprintstep!("Running checks...", 3, 5, TEXTBOOK);
-            for m in modules {
-                let checks = match &m.as_ref().inner {
-                    InnerDefinition::Group(grp) => grp.checks.as_slice(),
-                    InnerDefinition::Service(srvc) => srvc.checks.as_slice(),
-                    InnerDefinition::Task(tsk) => tsk.checks.as_slice(),
-                    _ => &[],
-                };
+        for m in modules {
+            let checks = match &m.as_ref().inner {
+                InnerDefinition::Group(grp) => grp.checks.as_slice(),
+                InnerDefinition::Service(srvc) => srvc.checks.as_slice(),
+                InnerDefinition::Task(tsk) => tsk.checks.as_slice(),
+                _ => &[],
+            };
 
-                for check in checks {
-                    let check = checks_map.get(check).ok_or_else(|| {
-                        anyhow!("Check '{}' not defined", check)
-                    })?;
+            for check in checks {
+                let check = checks_map
+                    .get(check)
+                    .ok_or_else(|| anyhow!("Check '{}' not defined", check))?;
 
-                    Self::perform_check(check)?;
-                }
+                Self::perform_check(check)?;
             }
         }
         Ok(())
+    }
+
+    fn is_going_to_deploy(
+        plan_response: &ApiGetPlanResponse,
+        module_name: &str,
+    ) -> bool {
+        match plan_response.plan.get(module_name) {
+            Some(action) => match action {
+                ApiPlannedAction::WillDeploy => true,
+                ApiPlannedAction::WillRedeploy => true,
+                ApiPlannedAction::AlreadyDeployed => false,
+            },
+            None => true,
+        }
+    }
+
+    pub fn obtain_plan(
+        modules: &[&DependencyNode<&ModuleDefinition, ModuleMarker>],
+        cfg: &ClientConfig,
+        deploy_opts: &DeployOptions,
+    ) -> Result<ModuleDeploymentPlan> {
+        let module_defs: Vec<_> = modules.iter().map(|m| m.value).collect();
+        let plan = get_plan(&module_defs, deploy_opts, &cfg.daemon_url)?;
+
+        let should_deploy = modules
+            .iter()
+            .filter_map(|module| match &module.value.inner {
+                InnerDefinition::Service(svc) => {
+                    // This is currently unused (the client will always attempt
+                    // to deploy a service but the daemon will skip if it's
+                    // already deployed). Maybe considering skipping anyway to
+                    // avoid the net request.
+                    let should_deploy =
+                        Self::is_going_to_deploy(&plan, &svc.name);
+                    Some((svc.name.clone(), should_deploy))
+                }
+                InnerDefinition::Task(tsk) => {
+                    // A task should deploy if any of its originating services
+                    // will deploy.
+                    let any_origin_deploys =
+                        module.origin_nodes.iter().any(|origin_node| {
+                            Self::is_going_to_deploy(&plan, &origin_node)
+                        });
+                    Some((tsk.name.clone(), any_origin_deploys))
+                }
+                _ => None,
+            })
+            .collect();
+
+        Ok(ModuleDeploymentPlan { should_deploy })
     }
 }

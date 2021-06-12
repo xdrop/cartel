@@ -31,6 +31,16 @@ pub struct PsStatus {
     pub time_since_status: u64,
 }
 
+pub enum PlannedAction {
+    WillDeploy,
+    WillRedeploy,
+    AlreadyDeployed,
+}
+
+pub struct Plan {
+    pub plan: HashMap<String, PlannedAction>,
+}
+
 impl Planner {
     pub fn new(monitor_handle: MonitorHandle) -> Planner {
         Planner {
@@ -64,7 +74,7 @@ impl Planner {
                     None => None,
                 };
 
-                if Self::should_restart(
+                if Self::should_redeploy(
                     &module_def,
                     module_status,
                     liveness_status,
@@ -153,6 +163,52 @@ impl Planner {
             .collect()
     }
 
+    /// Returns what action will be taken as a result of these modules deployment.
+    ///
+    /// A module will have a planned action of `WillRedeploy` if it is already
+    /// running but in a failed status or with stale configuration.
+    ///
+    /// A module will have a planned action of `WillDeploy` if this is the first
+    /// time it's being deployed.
+    ///
+    /// A module will have a planned action of `AlreadyDeployed` if it is
+    /// already running with the correct configuration and passing it's liveness
+    /// healthcheck.
+    pub fn get_deployment_actions(
+        &self,
+        modules: &[ModuleDefinition],
+    ) -> HashMap<String, PlannedAction> {
+        let executor = self.executor();
+        let module_names: Vec<_> =
+            modules.iter().map(|m| m.name.as_str()).collect();
+        let module_statuses = executor.module_statuses_by_names(&module_names);
+
+        modules
+            .iter()
+            .zip(module_statuses)
+            .map(|(module, status)| match status {
+                Some(module_status) => {
+                    let liveness_status = match module_status.monitor_key {
+                        Some(ref key) => self.monitor_status(key),
+                        None => None,
+                    };
+                    let should_deploy = Self::should_redeploy(
+                        module,
+                        module_status,
+                        liveness_status,
+                    );
+                    let action = if should_deploy {
+                        PlannedAction::WillRedeploy
+                    } else {
+                        PlannedAction::AlreadyDeployed
+                    };
+                    (module.name.clone(), action)
+                }
+                None => (module.name.clone(), PlannedAction::WillDeploy),
+            })
+            .collect()
+    }
+
     /// Collects all dead processes (and updates their status).
     ///
     /// Typically called on SIGCHLD, or via a periodic poll on systems that
@@ -207,6 +263,18 @@ impl Planner {
     pub fn monitor_status(&self, monitor_name: &str) -> Option<MonitorStatus> {
         self.monitor_handle.monitor_status(monitor_name)
     }
+
+    /// Returns the daemons plan (whether it will deploy the given services or
+    /// not).
+    ///
+    /// The planned action for each module (service) can either be `WillDeploy`,
+    /// `WillRedeploy`, `AlreadyDeployed`. See [`self::get_deployment_actions`]
+    /// for more information.
+    pub fn get_plan(&self, modules_to_deploy: &[ModuleDefinition]) -> Plan {
+        Plan {
+            plan: self.get_deployment_actions(modules_to_deploy),
+        }
+    }
 }
 
 impl Planner {
@@ -214,7 +282,7 @@ impl Planner {
         self.executor.lock()
     }
 
-    fn should_restart(
+    fn should_redeploy(
         module_def: &ModuleDefinition,
         module_status: &ModuleStatus,
         liveness_status: Option<MonitorStatus>,

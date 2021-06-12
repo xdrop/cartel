@@ -1,6 +1,9 @@
 use crate::client::{
     commands::DeployOptions,
-    module::{merge_env, ServiceOrTaskDefinition},
+    module::{
+        merge_env, InnerDefinition, ModuleDefinition, ModuleKind,
+        ServiceOrTaskDefinition,
+    },
 };
 use crate::daemon::api::*;
 use anyhow::{bail, Result};
@@ -75,28 +78,54 @@ fn build_env_arg(
     base_env
 }
 
+fn build_svc_module_definition(
+    module_definition: &ServiceOrTaskDefinition,
+    opts: &DeployOptions,
+) -> ApiModuleDefinition {
+    ApiModuleDefinition {
+        kind: ApiModuleKind::Service,
+        name: module_definition.name.clone(),
+        command: build_command_arg(module_definition),
+        environment: build_env_arg(module_definition, opts),
+        log_file_path: module_definition.log_file_path.clone(),
+        dependencies: module_definition.dependencies.clone(),
+        working_dir: module_definition.working_dir.clone(),
+        termination_signal: (&module_definition.termination_signal).into(),
+        readiness_probe: module_definition
+            .readiness_probe
+            .as_ref()
+            .map(|p| p.into()),
+        liveness_probe: module_definition
+            .liveness_probe
+            .as_ref()
+            .map(|p| p.into()),
+    }
+}
+
+fn build_task_module_definition(
+    task_definition: &ServiceOrTaskDefinition,
+    opts: &DeployOptions,
+) -> ApiModuleDefinition {
+    ApiModuleDefinition {
+        kind: ApiModuleKind::Task,
+        name: task_definition.name.clone(),
+        command: build_command_arg(task_definition),
+        environment: build_env_arg(task_definition, opts),
+        log_file_path: task_definition.log_file_path.clone(),
+        dependencies: task_definition.dependencies.clone(),
+        working_dir: task_definition.working_dir.clone(),
+        termination_signal: ApiTermSignal::KILL,
+        readiness_probe: None,
+        liveness_probe: None,
+    }
+}
+
 fn build_deploy_command(
     module_definition: &ServiceOrTaskDefinition,
     opts: &DeployOptions,
 ) -> ApiDeploymentCommand {
     ApiDeploymentCommand {
-        module_definition: ApiModuleDefinition {
-            name: module_definition.name.clone(),
-            command: build_command_arg(module_definition),
-            environment: build_env_arg(module_definition, opts),
-            log_file_path: module_definition.log_file_path.clone(),
-            dependencies: module_definition.dependencies.clone(),
-            working_dir: module_definition.working_dir.clone(),
-            termination_signal: (&module_definition.termination_signal).into(),
-            readiness_probe: module_definition
-                .readiness_probe
-                .as_ref()
-                .map(|p| p.into()),
-            liveness_probe: module_definition
-                .liveness_probe
-                .as_ref()
-                .map(|p| p.into()),
-        },
+        module_definition: build_svc_module_definition(module_definition, opts),
         force: opts.force_deploy,
     }
 }
@@ -106,18 +135,27 @@ fn build_task_deploy_command(
     opts: &DeployOptions,
 ) -> ApiTaskDeploymentCommand {
     ApiTaskDeploymentCommand {
-        task_definition: ApiModuleDefinition {
-            name: task_definition.name.clone(),
-            command: build_command_arg(task_definition),
-            environment: build_env_arg(task_definition, opts),
-            log_file_path: task_definition.log_file_path.clone(),
-            dependencies: task_definition.dependencies.clone(),
-            working_dir: task_definition.working_dir.clone(),
-            termination_signal: ApiTermSignal::KILL,
-            readiness_probe: None,
-            liveness_probe: None,
-        },
+        task_definition: build_task_module_definition(task_definition, opts),
     }
+}
+
+fn build_get_plan_request(
+    modules: &[&ModuleDefinition],
+    opts: &DeployOptions,
+) -> ApiGetPlanRequest {
+    let modules = modules
+        .iter()
+        .filter(|m| m.kind == ModuleKind::Service)
+        .map(|m| match &m.inner {
+            InnerDefinition::Service(svc) => {
+                build_svc_module_definition(&svc, opts)
+            }
+            _ => {
+                unreachable!()
+            }
+        })
+        .collect();
+    ApiGetPlanRequest { modules }
 }
 
 pub fn deploy_module(
@@ -252,4 +290,19 @@ pub fn poll_health(
         .json()?;
 
     Ok(health)
+}
+
+pub fn get_plan(
+    modules: &[&ModuleDefinition],
+    opts: &DeployOptions,
+    daemon_url: &str,
+) -> Result<ApiGetPlanResponse> {
+    let client = reqwest::blocking::Client::new();
+    let request = build_get_plan_request(modules, opts);
+    let get_plan_result = client
+        .post(&(daemon_url.to_owned() + "/get_plan"))
+        .json(&request)
+        .send()?
+        .json()?;
+    Ok(get_plan_result)
 }

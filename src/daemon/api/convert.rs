@@ -1,10 +1,12 @@
 use super::handlers::*;
-use crate::daemon::logs::log_file_module;
 use crate::daemon::module::{ModuleDefinition, ModuleKind, TermSignal};
 use crate::daemon::monitor::{
     ExecMonitor, LogLineMonitor, Monitor, MonitorTask,
 };
 use crate::daemon::{executor::RunStatus, monitor::NetMonitor};
+use crate::daemon::{
+    logs::log_file_module, planner::Plan, planner::PlannedAction,
+};
 use crate::path;
 use std::path::Path;
 
@@ -22,7 +24,7 @@ pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {
     )
 }
 
-pub fn from_service(
+pub fn from_service_with_monitor(
     mut src: ApiModuleDefinition,
 ) -> (ModuleDefinition, Option<Monitor>) {
     let readiness_probe = src.readiness_probe.take();
@@ -57,6 +59,20 @@ pub fn from_service(
     (module_definition, readiness_monitor)
 }
 
+pub fn from_task_or_service(src: ApiModuleDefinition) -> ModuleDefinition {
+    ModuleDefinition::new(
+        src.kind.into(),
+        src.name,
+        src.command,
+        src.environment,
+        src.log_file_path,
+        src.dependencies,
+        src.working_dir.and_then(path::from_user_string),
+        src.termination_signal.into(),
+        None, // assumed not needed in any code using this
+    )
+}
+
 impl From<RunStatus> for ApiModuleRunStatus {
     fn from(r: RunStatus) -> ApiModuleRunStatus {
         match r {
@@ -64,6 +80,33 @@ impl From<RunStatus> for ApiModuleRunStatus {
             RunStatus::STOPPED => ApiModuleRunStatus::STOPPED,
             RunStatus::WAITING => ApiModuleRunStatus::WAITING,
             RunStatus::EXITED => ApiModuleRunStatus::EXITED,
+        }
+    }
+}
+
+impl From<ApiModuleKind> for ModuleKind {
+    fn from(src: ApiModuleKind) -> Self {
+        match src {
+            ApiModuleKind::Service => ModuleKind::Service,
+            ApiModuleKind::Task => ModuleKind::Task,
+        }
+    }
+}
+
+impl From<PlannedAction> for ApiPlannedAction {
+    fn from(src: PlannedAction) -> Self {
+        match src {
+            PlannedAction::WillDeploy => ApiPlannedAction::WillDeploy,
+            PlannedAction::AlreadyDeployed => ApiPlannedAction::AlreadyDeployed,
+            PlannedAction::WillRedeploy => ApiPlannedAction::WillRedeploy,
+        }
+    }
+}
+
+impl From<Plan> for ApiGetPlanResponse {
+    fn from(mut src: Plan) -> Self {
+        ApiGetPlanResponse {
+            plan: src.plan.drain().map(|(k, v)| (k, v.into())).collect(),
         }
     }
 }
