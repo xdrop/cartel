@@ -157,7 +157,14 @@ pub fn cli_app() -> Result<()> {
         )
         .subcommand(
             SubCommand::with_name("ps")
-                .about("Print currently running services"),
+                .about("Print currently running services")
+                .arg(
+                    Arg::with_name("no-color")
+                        .short("n")
+                        .long("no-color")
+                        .help("Disable coloured output")
+                        .takes_value(false),
+                ),
         )
         .subcommand(
             SubCommand::with_name("logs")
@@ -289,8 +296,9 @@ fn invoke_subcommand(matches: &ArgMatches, cfg: &ClientConfig) -> Result<()> {
                 .ok_or_else(|| anyhow!("Expected task name"))?;
             run_task_cmd(task_name, cfg)?;
         }
-        ("ps", Some(_)) => {
-            list_modules_cmd(cfg)?;
+        ("ps", Some(ps_opts)) => {
+            let opts = PsOpts::from(ps_opts);
+            list_modules_cmd(&opts, cfg)?;
         }
         ("stop", Some(stop_cli_opts)) => {
             let modules_to_stop = stop_cli_opts

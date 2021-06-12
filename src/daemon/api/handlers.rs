@@ -102,7 +102,7 @@ pub struct ApiModuleStatusResponse {
     pub status: Vec<ApiModuleStatus>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum ApiModuleRunStatus {
     RUNNING,
     WAITING,
@@ -137,7 +137,7 @@ pub struct ApiLogResponse {
     pub log_file_path: OsString,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum ApiProbeStatus {
     Pending,

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Tasks will now no longer deploy if the service is in a healthy state and running.
 - Allow check definitions to also use the `shell` shortcut (instead of specifying a command).
+- The `ps` command is now coloured by default making failed services more easily stand out. This may be disabled using `-n`/`--no-color`.
 
 ### Fixed
 - Fixed usage of `shell` on tasks when ran with the `run <task>` option.
