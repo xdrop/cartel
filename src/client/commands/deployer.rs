@@ -16,7 +16,7 @@ use anyhow::{anyhow, bail, Result};
 use crossbeam_queue::ArrayQueue;
 use indicatif::MultiProgress;
 use indicatif::ProgressBar;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -269,6 +269,7 @@ impl Deployer {
         checks_map: HashMap<String, CheckDefinition>,
         modules: &[T],
     ) -> Result<()> {
+        let mut already_performed = HashSet::new();
         for m in modules {
             let checks = match &m.as_ref().inner {
                 InnerDefinition::Group(grp) => grp.checks.as_slice(),
@@ -282,7 +283,10 @@ impl Deployer {
                     .get(check)
                     .ok_or_else(|| anyhow!("Check '{}' not defined", check))?;
 
-                Self::perform_check(check)?;
+                if !already_performed.contains(&check.name) {
+                    Self::perform_check(check)?;
+                    already_performed.insert(check.name.clone());
+                }
             }
         }
         Ok(())

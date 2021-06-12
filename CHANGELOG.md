@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed usage of `shell` on tasks when ran with the `run <task>` option.
+- Fixed a bug where the same check would be run twice when include by two different services.
 
 ## [0.8.1-beta] - 2021-05-05
 ### Added
