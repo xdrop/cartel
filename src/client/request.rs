@@ -47,23 +47,6 @@ fn long_timeout_client() -> Client {
         .unwrap()
 }
 
-fn build_command_arg(
-    module_definition: &ServiceOrTaskDefinition,
-) -> Vec<String> {
-    if module_definition.command.is_empty() {
-        vec![
-            "/bin/bash",
-            "-c",
-            &module_definition.shell.as_ref().unwrap(),
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect()
-    } else {
-        module_definition.command.clone()
-    }
-}
-
 fn build_env_arg(
     svc: &ServiceOrTaskDefinition,
     opts: &DeployOptions,
@@ -85,7 +68,7 @@ fn build_svc_module_definition(
     ApiModuleDefinition {
         kind: ApiModuleKind::Service,
         name: module_definition.name.clone(),
-        command: build_command_arg(module_definition),
+        command: module_definition.cmd_line(),
         environment: build_env_arg(module_definition, opts),
         log_file_path: module_definition.log_file_path.clone(),
         dependencies: module_definition.dependencies.clone(),
@@ -109,7 +92,7 @@ fn build_task_module_definition(
     ApiModuleDefinition {
         kind: ApiModuleKind::Task,
         name: task_definition.name.clone(),
-        command: build_command_arg(task_definition),
+        command: task_definition.cmd_line(),
         environment: build_env_arg(task_definition, opts),
         log_file_path: task_definition.log_file_path.clone(),
         dependencies: task_definition.dependencies.clone(),

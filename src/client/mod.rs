@@ -1,6 +1,7 @@
 #[macro_use]
 pub mod terminal;
 pub mod cli;
+pub mod cmd;
 pub mod commands;
 pub mod config;
 pub mod convert;

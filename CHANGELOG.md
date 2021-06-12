@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Tasks will now no longer deploy if the service is in a healthy state and running.
 
+### Fixed
+- Fixed usage of `shell` on tasks when ran with the `run <task>` option.
+
 ## [0.8.1-beta] - 2021-05-05
 ### Added
 - Services can now define `environment_sets` to allow configuring environment variables for a deployment. Using `-e ...`/`--env ...` as extra arguments to `deploy` can activate one or more environment sets.

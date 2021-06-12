@@ -1,5 +1,9 @@
-use crate::dependency::{
-    DependencyEdge, DependencyNode, EdgeDirection, WithDependencies, WithKey,
+use crate::{
+    client::cmd::shell_to_cmd,
+    dependency::{
+        DependencyEdge, DependencyNode, EdgeDirection, WithDependencies,
+        WithKey,
+    },
 };
 use serde::Deserialize;
 use std::fmt;
@@ -261,6 +265,18 @@ impl ServiceOrTaskDefinition {
             always_await_readiness_probe,
             readiness_probe,
             liveness_probe,
+        }
+    }
+
+    /// Get the execution command of this task or service.
+    ///
+    /// If no command was provided then the `shell` field is used to get an
+    /// appropriate command line that invokes a shell.
+    pub fn cmd_line(&self) -> Vec<String> {
+        if self.command.is_empty() {
+            shell_to_cmd(self.shell.as_ref().unwrap())
+        } else {
+            self.command.clone()
         }
     }
 }

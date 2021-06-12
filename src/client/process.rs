@@ -11,10 +11,10 @@ pub fn run_task(task_definition: &ServiceOrTaskDefinition) -> Result<()> {
         .as_deref()
         .and_then(path::from_user_str);
 
-    let mut cmd = Command::new(&task_definition.command[0]);
+    let cmd_line = task_definition.cmd_line();
+    let mut cmd = Command::new(&cmd_line[0]);
 
-    cmd.args(&task_definition.command[1..])
-        .envs(&task_definition.environment);
+    cmd.args(&cmd_line[1..]).envs(&task_definition.environment);
 
     if let Some(path) = working_dir {
         cmd.current_dir(path);
