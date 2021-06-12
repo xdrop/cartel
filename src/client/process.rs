@@ -34,10 +34,10 @@ pub fn run_check(check_definition: &CheckDefinition) -> Result<ExitStatus> {
         .as_deref()
         .and_then(path::from_user_str);
 
-    let mut cmd = Command::new(&check_definition.command[0]);
+    let cmd_line = check_definition.cmd_line();
+    let mut cmd = Command::new(&cmd_line[0]);
 
-    cmd.args(&check_definition.command[1..])
-        .stdout(Stdio::null());
+    cmd.args(&cmd_line[1..]).stdout(Stdio::null());
 
     if let Some(path) = working_dir {
         cmd.current_dir(path);

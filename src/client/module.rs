@@ -220,7 +220,10 @@ pub struct CheckDefinition {
     pub about: String,
     /// The command used to perform the check. The command should exit with code
     /// zero to be considered a pass.
+    #[serde(default = "Vec::new")]
     pub command: Vec<String>,
+    /// Alternative to `command`, where a shell executes the given statement.
+    pub shell: Option<String>,
     /// The working dir to perform the command in.
     pub working_dir: Option<String>,
     /// An detailed error message to display the user instructing how to fix the
@@ -269,6 +272,20 @@ impl ServiceOrTaskDefinition {
     }
 
     /// Get the execution command of this task or service.
+    ///
+    /// If no command was provided then the `shell` field is used to get an
+    /// appropriate command line that invokes a shell.
+    pub fn cmd_line(&self) -> Vec<String> {
+        if self.command.is_empty() {
+            shell_to_cmd(self.shell.as_ref().unwrap())
+        } else {
+            self.command.clone()
+        }
+    }
+}
+
+impl CheckDefinition {
+    /// Get the execution command of this check.
     ///
     /// If no command was provided then the `shell` field is used to get an
     /// appropriate command line that invokes a shell.

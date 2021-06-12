@@ -70,9 +70,24 @@ pub fn validate_fields(modules: &[ModuleDefinition]) -> Result<()> {
                     && svc_or_task.command.is_empty()
                 {
                     bail!(
-                        "Module must define one of 'shell' or 'command' \
+                        "Module must define one of 'shell' or 'command' for \
                         {}",
                         svc_or_task.name
+                    );
+                }
+            }
+            InnerDefinition::Check(check) => {
+                if check.shell.is_some() && !check.command.is_empty() {
+                    bail!(
+                        "Cannot have both a shell and command definition \
+                        for check {}",
+                        check.name
+                    );
+                } else if check.shell.is_none() && check.command.is_empty() {
+                    bail!(
+                        "Module must define one of 'shell' or 'command' for \
+                        {}",
+                        check.name
                     );
                 }
             }
