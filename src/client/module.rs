@@ -328,6 +328,10 @@ impl WithDependencies<ModuleMarker> for ServiceOrTaskDefinition {
     fn dependencies(&self) -> Vec<DependencyEdge<ModuleMarker>> {
         self.edges()
     }
+
+    fn is_group(&self) -> bool {
+        false
+    }
 }
 
 impl WithKey for ServiceOrTaskDefinition {
@@ -436,6 +440,10 @@ impl WithDependencies<ModuleMarker> for ModuleDefinition {
             InnerDefinition::Check(_) => panic!("Check used as dependency"),
             InnerDefinition::Shell(_) => panic!("Shell used as dependency"),
         }
+    }
+
+    fn is_group(&self) -> bool {
+        self.kind == ModuleKind::Group
     }
 }
 
