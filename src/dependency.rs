@@ -47,6 +47,7 @@ pub struct DependencyEdge<M: PartialOrd> {
 
 pub trait WithDependencies<M: PartialOrd>: WithKey {
     fn dependencies(&self) -> Vec<DependencyEdge<M>>;
+    fn is_group(&self) -> bool;
 }
 
 pub trait WithKey {
@@ -144,7 +145,7 @@ where
         while !node_stack.is_empty() {
             let node_stack_entry = node_stack.pop().unwrap();
             let node_idx = node_stack_entry.node_idx;
-            let origin_node_idx = node_stack_entry.origin_node_idx;
+            let mut origin_node_idx = node_stack_entry.origin_node_idx;
 
             let node = arena.get_by_idx(node_idx);
             let dependencies = node.value.dependencies();
@@ -163,6 +164,12 @@ where
                     origin_node_idx,
                     marker,
                 );
+
+                // If we are dealing with a group we want to mark this node as
+                // the parent.
+                if arena.get_by_idx(origin_node_idx).value.is_group() {
+                    origin_node_idx = node_idx;
+                }
 
                 if was_created {
                     // Push it to the stack so we visit its dependencies next
