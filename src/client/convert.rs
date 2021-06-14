@@ -1,6 +1,6 @@
 use crate::daemon::{
     api::{
-        ApiExeProbe, ApiKind, ApiLogLineProbe, ApiNetworkProbe, ApiProbe,
+        ApiExeProbe, ApiLogLineProbe, ApiModuleKind, ApiNetworkProbe, ApiProbe,
         ApiTermSignal,
     },
     planner::MonitorStatus,
@@ -10,14 +10,14 @@ use crate::{
     daemon::api::ApiProbeStatus,
 };
 
-impl From<&ModuleKind> for ApiKind {
-    fn from(kind: &ModuleKind) -> ApiKind {
+impl From<&ModuleKind> for ApiModuleKind {
+    fn from(kind: &ModuleKind) -> ApiModuleKind {
         match kind {
-            ModuleKind::Service => ApiKind::Service,
-            ModuleKind::Task => ApiKind::Task,
-            ModuleKind::Check => ApiKind::Task,
-            ModuleKind::Group => ApiKind::Task,
-            ModuleKind::Shell => ApiKind::Task,
+            ModuleKind::Service => ApiModuleKind::Service,
+            ModuleKind::Task => ApiModuleKind::Task,
+            ModuleKind::Check => ApiModuleKind::Task,
+            ModuleKind::Group => ApiModuleKind::Task,
+            ModuleKind::Shell => ApiModuleKind::Task,
         }
     }
 }

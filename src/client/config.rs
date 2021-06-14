@@ -356,3 +356,22 @@ pub fn read_persisted_config() -> Result<Option<PersistedConfig>> {
     }
     Ok(None)
 }
+
+/// Retrieves a module definition by name.
+///
+/// This causes a full module definitions parse so prefer calling
+/// [`read_module_definitions`] directly if more than one module is required to
+/// be retrieved.
+///
+/// This function will error if no such module can be found.
+pub fn get_module_by_name(
+    name: &str,
+    cfg: &ClientConfig,
+) -> Result<Option<ModuleDefinition>> {
+    let module_defs = read_module_definitions(&cfg)?;
+    let found = module_defs.into_iter().find(|m| m.name == name);
+    match found {
+        Some(module_def) => Ok(Some(module_def)),
+        None => Ok(None),
+    }
+}

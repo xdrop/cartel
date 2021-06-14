@@ -141,6 +141,16 @@ fn build_get_plan_request(
     ApiGetPlanRequest { modules }
 }
 
+fn build_get_log_file_request(
+    module_name: &str,
+    module_kind: &ModuleKind,
+) -> ApiLogFileRequest {
+    ApiLogFileRequest {
+        module_name: module_name.to_string(),
+        module_kind: module_kind.into(),
+    }
+}
+
 pub fn deploy_module(
     module_definition: &ServiceOrTaskDefinition,
     deploy_opts: &DeployOptions,
@@ -249,10 +259,16 @@ pub fn list_modules(daemon_url: &str) -> Result<ApiModuleStatusResponse> {
     Ok(status)
 }
 
-pub fn log_info(module_name: &str, daemon_url: &str) -> Result<ApiLogResponse> {
+pub fn log_file_path(
+    module_name: &str,
+    module_kind: &ModuleKind,
+    daemon_url: &str,
+) -> Result<ApiLogResponse> {
     let client = reqwest::blocking::Client::new();
+    let request = build_get_log_file_request(module_name, module_kind);
     let status: LogInfoResponse = client
-        .get(&(daemon_url.to_owned() + "/log/" + module_name))
+        .post(&(daemon_url.to_owned() + "/log_file"))
+        .json(&request)
         .send()?
         .json()?;
 

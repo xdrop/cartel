@@ -116,11 +116,6 @@ pub enum ApiModuleOperation {
     RESTART,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ApiKind {
-    Task,
-    Service,
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiModuleStatus {
@@ -130,6 +125,12 @@ pub struct ApiModuleStatus {
     pub liveness_status: Option<ApiProbeStatus>,
     pub exit_code: Option<i32>,
     pub time_since_status: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ApiLogFileRequest {
+    pub module_name: String,
+    pub module_kind: ApiModuleKind,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -268,12 +269,16 @@ pub(crate) fn status(
     Ok(Json(ApiModuleStatusResponse { status }))
 }
 
-#[get("/api/v1/log/<module_name>")]
-pub(crate) fn log(
-    module_name: String,
+#[post("/api/v1/log_file", data = "<request>")]
+pub(crate) fn log_file(
+    request: Json<ApiLogFileRequest>,
     core_state: State<CoreState>,
 ) -> ApiResult<ApiLogResponse> {
-    let log_file_path = core_state.core.planner().log_path(&module_name)?;
+    let request = request.into_inner();
+    let log_file_path = core_state
+        .core
+        .planner()
+        .log_path(&request.module_name, &request.module_kind.into())?;
 
     Ok(Json(ApiLogResponse { log_file_path }))
 }

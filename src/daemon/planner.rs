@@ -1,5 +1,6 @@
 use crate::daemon::executor::{ModuleStatus, RunStatus};
-use crate::daemon::module::ModuleDefinition;
+use crate::daemon::logs::log_file_path;
+use crate::daemon::module::{ModuleDefinition, ModuleKind};
 pub use crate::daemon::monitor::{Monitor, MonitorHandle, MonitorStatus};
 use crate::daemon::{error::DaemonError, monitor::MonitorType};
 use crate::daemon::{
@@ -130,12 +131,28 @@ impl Planner {
         self.executor().stop_module(mod_name)
     }
 
+    /// Returns the log path of a module.
+    pub fn log_path(
+        &self,
+        module_name: &str,
+        module_kind: &ModuleKind,
+    ) -> Result<OsString> {
+        match module_kind {
+            ModuleKind::Service => self.log_path_running(module_name),
+            ModuleKind::Task => {
+                Ok(log_file_path(module_name, module_kind).into_os_string())
+            }
+        }
+    }
+
     /// Returns the log path of a running module.
-    pub fn log_path(&self, mod_name: &str) -> Result<OsString> {
+    pub fn log_path_running(&self, module_name: &str) -> Result<OsString> {
         let executor = self.executor();
         executor
-            .module_status_by_name(mod_name)
-            .ok_or_else(|| DaemonError::NotFound(mod_name.to_string()).into())
+            .module_status_by_name(module_name)
+            .ok_or_else(|| {
+                DaemonError::NotFound(module_name.to_string()).into()
+            })
             .map(|m| m.log_file_path.clone())
     }
 

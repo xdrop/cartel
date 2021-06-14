@@ -20,7 +20,8 @@ pub enum DaemonError {
     #[error("Module not found")]
     SubsetNotFound,
 
-    #[error("Task {task_name:?} failed with exit code {code:?}. See {log_file:?} for details")]
+    #[error("Task {task_name:?} failed with exit code {code:?}. Use \"cartel logs {task_name}\" \
+     or view {log_file:?} for more details.")]
     TaskFailed {
         task_name: String,
         code: i32,

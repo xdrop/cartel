@@ -30,7 +30,7 @@ pub fn start(core: &Arc<Core>) {
                 handlers::status,
                 handlers::stop_all,
                 handlers::module_operation,
-                handlers::log,
+                handlers::log_file,
                 handlers::get_plan
             ],
         )
