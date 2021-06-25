@@ -46,6 +46,26 @@ macro_rules! tprintstep {
     };
 }
 
+macro_rules! tprintskipped {
+    ($message:expr,$step:expr,$of:expr,$emoji:expr) => {
+        tprint!(
+            "{} {} {} {}",
+            console::style(concat!(
+                "[",
+                stringify!($step),
+                "/",
+                stringify!($of),
+                "]"
+            ))
+            .bold()
+            .dim(),
+            $emoji,
+            $message,
+            cdim!("(Skip)")
+        )
+    };
+}
+
 macro_rules! cdim {
     ($message: expr) => {
         console::style($message).white().dim().bold()
