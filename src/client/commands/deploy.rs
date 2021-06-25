@@ -2,7 +2,9 @@ use crate::client::config::read_module_definitions;
 use crate::client::emoji::{
     LINK, LOOKING_GLASS, SPIRAL_NOTEBOOK, SUCCESS, VAN,
 };
-use crate::client::module::{module_names_set, remove_checks};
+use crate::client::module::{
+    module_names_set, remove_checks, ModuleDefinition, ModuleMarker,
+};
 use crate::client::validation::validate_modules_selected;
 use crate::client::{
     cli::ClientConfig, commands::deployer::ModuleDeploymentPlan,
@@ -11,7 +13,7 @@ use crate::client::{
     commands::deployer::{Deployer, ModuleToDeploy},
     emoji::TEXTBOOK,
 };
-use crate::dependency::DependencyGraph;
+use crate::dependency::{DependencyGraph, DependencyNode};
 use anyhow::{anyhow, Result};
 use clap::ArgMatches;
 use crossbeam_queue::ArrayQueue;
@@ -78,40 +80,31 @@ pub fn deploy_cmd(
 
     validate_modules_selected(&module_names, &modules_to_deploy)?;
 
-    let dep_graph: DependencyGraph<_, _>;
-
     let deployed: Vec<_> = if !deploy_opts.only_selected {
         tprintstep!("Resolving dependencies...", 2, 6, LINK);
-        dep_graph = DependencyGraph::from(&module_defs, &modules_to_deploy);
-        let sort_result = dep_graph.group_sort()?;
-        let modules_to_deploy: Vec<Vec<ModuleToDeploy>> = sort_result
-            .groups
-            .iter()
-            .map(|grp| grp.iter().map(|m| ModuleToDeploy::from(*m)).collect())
-            .collect();
+        let graph = DependencyGraph::from(&module_defs, &modules_to_deploy);
+        let dependencies = resolve_dependencies(&graph)?;
 
         if deploy_opts.skip_checks {
-            let msg = format!("Running checks... {}", cdim!("(Skip)"));
-            tprintstep!(msg, 3, 6, TEXTBOOK);
+            tprintskipped!("Running checks...", 3, 6, TEXTBOOK);
         } else {
             tprintstep!("Running checks...", 3, 6, TEXTBOOK);
-            Deployer::run_checks(checks_map, &sort_result.flat)?;
+            Deployer::run_checks(checks_map, &dependencies.all)?;
         }
 
         tprintstep!("Obtaining plan...", 4, 6, SPIRAL_NOTEBOOK);
         let deployment_plan =
-            Deployer::obtain_plan(&sort_result.flat, cfg, deploy_opts)?;
+            Deployer::obtain_plan(&dependencies.all, cfg, deploy_opts)?;
         tprintstep!("Deploying...", 5, 6, VAN);
         deploy_with_dependencies(
-            &modules_to_deploy,
+            &dependencies.groupped,
             deployment_plan,
             cfg,
             deploy_opts,
         )?;
-        sort_result.flat.iter().map(|d| &d.key).collect()
+        dependencies.all.iter().map(|d| d.key.clone()).collect()
     } else {
-        let msg = format!("Resolving dependencies... {}", cdim!("(Skip)"));
-        tprintstep!(msg, 2, 6, LINK);
+        tprintskipped!("Resolving dependencies...", 2, 6, LINK);
         let modules_to_deploy_set: HashSet<_> =
             modules_to_deploy.iter().copied().collect();
 
@@ -124,23 +117,41 @@ pub fn deploy_cmd(
             selected.iter().map(|m| ModuleToDeploy::from(*m)).collect();
 
         if deploy_opts.skip_checks {
-            let msg = format!("Running checks... {}", cdim!("(Skip)"));
-            tprintstep!(msg, 3, 6, TEXTBOOK);
+            tprintskipped!("Running checks...", 3, 6, TEXTBOOK);
         } else {
             tprintstep!("Running checks...", 3, 6, TEXTBOOK);
             Deployer::run_checks(checks_map, &selected)?;
         }
-        let msg = format!("Obtaining plan... {}", cdim!("(Skip)"));
-        tprintstep!(msg, 4, 6, SPIRAL_NOTEBOOK);
+        tprintskipped!("Obtaining plan...", 4, 6, SPIRAL_NOTEBOOK);
         tprintstep!("Deploying...", 5, 6, VAN);
         deploy_without_dependencies(&modules_to_deploy, cfg, deploy_opts)?;
-        selected.iter().map(|m| &m.name).collect()
+        selected.iter().map(|m| m.name.clone()).collect()
     };
 
     let deploy_txt =
         format!("{}: {:?}", csuccess!("Deployed modules"), deployed);
     tprintstep!(deploy_txt, 6, 6, SUCCESS);
     Ok(())
+}
+
+struct DeploymentGraph<'a> {
+    groupped: Vec<Vec<ModuleToDeploy<'a>>>,
+    all: Vec<&'a DependencyNode<&'a ModuleDefinition, ModuleMarker>>,
+}
+
+fn resolve_dependencies<'a>(
+    graph: &'a DependencyGraph<ModuleDefinition, ModuleMarker>,
+) -> Result<DeploymentGraph<'a>> {
+    let sort_result = graph.group_sort()?;
+    let groupped: Vec<Vec<_>> = sort_result
+        .groups
+        .iter()
+        .map(|grp| grp.iter().map(|m| ModuleToDeploy::from(*m)).collect())
+        .collect();
+    Ok(DeploymentGraph {
+        groupped,
+        all: sort_result.flat,
+    })
 }
 
 fn deploy(
