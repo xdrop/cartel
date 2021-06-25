@@ -196,10 +196,11 @@ impl Deployer {
 
         let pb = self.multiprogress.add(ProgressBar::new(std::u64::MAX));
         let wu = WaitUntil::new_multi(&spin_opt, pb);
+        let force = deploy_opts.force_deploy;
 
         // If none of this tasks services will be deployed then skip deploying
         // this task also.
-        let skipped_by_plan = !self.should_deploy(module.name.as_str());
+        let skipped_by_plan = !self.should_deploy(module.name.as_str(), force);
         wu.spin_until_status(|| {
             if skipped_by_plan {
                 return Ok(WaitResult::from(
@@ -226,8 +227,10 @@ impl Deployer {
         );
     }
 
-    fn should_deploy(&self, module_name: &str) -> bool {
-        if let Some(deployment_plan) = &self.deployment_plan {
+    fn should_deploy(&self, module_name: &str, force: bool) -> bool {
+        if force {
+            true
+        } else if let Some(deployment_plan) = &self.deployment_plan {
             *deployment_plan
                 .should_deploy
                 .get(module_name)
