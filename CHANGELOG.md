@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The `always_await_readiness_probe` option will now default to `true` instead of `false`.
+
 ## [0.9.3-beta] - 2021-06-25
 ### Fixed
 - Do not skip deployment of any tasks when `--force` is active.

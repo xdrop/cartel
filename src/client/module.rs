@@ -131,7 +131,7 @@ pub struct ServiceOrTaskDefinition {
     /// A list of checks to perform.
     #[serde(default = "Vec::new")]
     pub checks: Vec<String>,
-    /// Set to true to always await readiness probes to complete
+    /// Set to false to disable always waiting readiness probes to complete
     #[serde(default = "default_always_await_readiness_probe")]
     pub always_await_readiness_probe: bool,
     /// Definition of a readiness probe for the service.
@@ -462,7 +462,7 @@ fn default_probe_retries() -> u32 {
 }
 
 fn default_always_await_readiness_probe() -> bool {
-    false
+    true
 }
 
 pub fn module_names(modules: &[ModuleDefinition]) -> Vec<&str> {
