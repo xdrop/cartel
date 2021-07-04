@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.4-beta] - 2021-07-04
+
 ### Changed
 - The `always_await_readiness_probe` option will now default to `true` instead of `false`.
 
