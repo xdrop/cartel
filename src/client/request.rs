@@ -130,7 +130,7 @@ fn build_get_plan_request(
         .filter(|m| m.kind == ModuleKind::Service)
         .map(|m| match &m.inner {
             InnerDefinition::Service(svc) => {
-                build_svc_module_definition(&svc, opts)
+                build_svc_module_definition(svc, opts)
             }
             _ => {
                 unreachable!()

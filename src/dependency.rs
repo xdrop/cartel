@@ -159,7 +159,7 @@ where
 
                 // Ensure the node pointed to exists, otherwise create it.
                 let (pointed_to_idx, was_created) = arena.get_or_create(
-                    &edge_dst,
+                    edge_dst,
                     original_node,
                     origin_node_idx,
                     marker,

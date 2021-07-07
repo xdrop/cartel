@@ -72,7 +72,7 @@ pub fn deploy_cmd(
     deploy_opts: &DeployOptions,
 ) -> Result<()> {
     tprintstep!("Looking for module definitions...", 1, 6, LOOKING_GLASS);
-    let mut module_defs = read_module_definitions(&cfg)?;
+    let mut module_defs = read_module_definitions(cfg)?;
     let checks_map = remove_checks(&mut module_defs);
     let module_names = module_names_set(&module_defs);
 

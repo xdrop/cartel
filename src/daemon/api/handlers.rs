@@ -258,10 +258,7 @@ pub(crate) fn status(
             pid: m.pid,
             time_since_status: m.time_since_status,
             exit_code: m.exit_code,
-            liveness_status: match m.liveness_status {
-                Some(ref s) => Some(s.into()),
-                None => None,
-            },
+            liveness_status: m.liveness_status.as_ref().map(|s| s.into()),
             status: ApiModuleRunStatus::from(m.status),
         })
         .collect();

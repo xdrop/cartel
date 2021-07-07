@@ -376,13 +376,13 @@ impl AsRef<ModuleDefinition>
     for &DependencyNode<&ModuleDefinition, ModuleMarker>
 {
     fn as_ref(&self) -> &ModuleDefinition {
-        &self.value
+        self.value
     }
 }
 
 impl AsRef<ModuleDefinition> for ModuleDefinition {
     fn as_ref(&self) -> &ModuleDefinition {
-        &self
+        self
     }
 }
 

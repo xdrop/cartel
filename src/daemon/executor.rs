@@ -48,7 +48,7 @@ impl ModuleStatus {
         log_file_path: &Path,
     ) -> ModuleStatus {
         ModuleStatus {
-            module_definition: Arc::clone(&module_def),
+            module_definition: Arc::clone(module_def),
             status: RunStatus::WAITING,
             pid: 0,
             uptime: 0,
@@ -257,11 +257,9 @@ impl Executor {
         &self,
         module_def: &ModuleDefinition,
     ) -> Option<String> {
-        if let Some(probe) = &module_def.liveness_probe {
-            Some(self.create_liveness_probe(&module_def.name, probe.clone()))
-        } else {
-            None
-        }
+        module_def.liveness_probe.as_ref().map(|probe| {
+            self.create_liveness_probe(&module_def.name, probe.clone())
+        })
     }
 
     fn create_liveness_probe(
@@ -330,7 +328,7 @@ pub mod task_executor {
         task_definition: &ModuleDefinition,
     ) -> Result<ExitStatus> {
         assert!(task_definition.kind == ModuleKind::Task);
-        let log_file_pathbuf = log_file_module(&task_definition);
+        let log_file_pathbuf = log_file_module(task_definition);
         let log_file_path = log_file_pathbuf.as_path();
 
         let (stdout_file, stderr_file) =

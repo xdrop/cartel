@@ -43,14 +43,10 @@ pub fn from_service_with_monitor(
 
     let log_file_path = log_file_module(&module_definition);
 
-    let readiness_monitor: Option<Monitor> = match readiness_probe {
-        Some(probe) => Some(from_probe(probe, &log_file_path)),
-        None => None,
-    };
-    let liveness_monitor: Option<Monitor> = match liveness_probe {
-        Some(probe) => Some(from_probe(probe, &log_file_path)),
-        None => None,
-    };
+    let readiness_monitor: Option<Monitor> =
+        readiness_probe.map(|probe| from_probe(probe, &log_file_path));
+    let liveness_monitor: Option<Monitor> =
+        liveness_probe.map(|probe| from_probe(probe, &log_file_path));
 
     // Only store liveness as readiness only affects the service temporarily
     module_definition.liveness_probe = liveness_monitor;

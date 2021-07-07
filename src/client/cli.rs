@@ -17,7 +17,7 @@ pub struct ClientConfig {
 
 pub fn cli_app() -> Result<()> {
     let matches = App::new("cartel")
-        .version(&crate_version!()[..])
+        .version(crate_version!())
         .about("Development workflow service orchestrator")
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .arg(

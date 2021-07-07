@@ -7,7 +7,7 @@ pub struct DaemonCliConfig {
 
 pub fn cli_app() -> Result<DaemonCliConfig> {
     let matches = App::new("cartel-daemon")
-        .version(&crate_version!()[..])
+        .version(crate_version!())
         .about("Development workflow service orchestrator (daemon)")
         .arg(
             Arg::with_name("shell")

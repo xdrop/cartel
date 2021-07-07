@@ -128,7 +128,7 @@ impl Deployer {
         let wu = WaitUntil::new_multi(&spin_opt, pb);
         let deploy_result = wu.spin_until_status(|| {
             let result =
-                request::deploy_module(module, &deploy_opts, &cfg.daemon_url)?;
+                request::deploy_module(module, deploy_opts, &cfg.daemon_url)?;
 
             let deploy_status = if result.deployed {
                 csuccess!("(Deployed)")
@@ -333,7 +333,7 @@ impl Deployer {
                     // will deploy.
                     let any_origin_deploys =
                         module.origin_nodes.iter().any(|origin_node| {
-                            Self::is_going_to_deploy(&plan, &origin_node)
+                            Self::is_going_to_deploy(&plan, origin_node)
                         });
                     Some((tsk.name.clone(), any_origin_deploys))
                 }

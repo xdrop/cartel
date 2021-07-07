@@ -367,7 +367,7 @@ pub fn get_module_by_name(
     name: &str,
     cfg: &ClientConfig,
 ) -> Result<Option<ModuleDefinition>> {
-    let module_defs = read_module_definitions(&cfg)?;
+    let module_defs = read_module_definitions(cfg)?;
     let found = module_defs.into_iter().find(|m| m.name == name);
     match found {
         Some(module_def) => Ok(Some(module_def)),

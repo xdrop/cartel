@@ -157,7 +157,7 @@ async fn poll_readiness_check(
     monitor_list: &mut Vec<(String, Monitor)>,
     attempt_count: &mut HashMap<String, u32>,
 ) -> Vec<(String, MonitorStatus)> {
-    let poll_results = poll_monitors(&monitor_list).await;
+    let poll_results = poll_monitors(monitor_list).await;
     let mut status: Vec<(String, MonitorStatus)> = Vec::new();
 
     for (idx, (key, result)) in poll_results.into_iter().enumerate().rev() {
@@ -193,7 +193,7 @@ async fn poll_readiness_check(
 async fn poll_liveness_check(
     monitor_list: &mut Vec<(String, Monitor)>,
 ) -> Vec<(String, MonitorStatus)> {
-    let poll_results = poll_monitors(&monitor_list).await;
+    let poll_results = poll_monitors(monitor_list).await;
     let mut status: Vec<(String, MonitorStatus)> = Vec::new();
 
     for (idx, (key, result)) in poll_results.into_iter().enumerate().rev() {
@@ -223,19 +223,19 @@ async fn poll_monitors(
         match &monitor.task {
             MonitorTask::Executable(exe_monitor) => {
                 debug!("Polling exe monitor: {}", key);
-                let result = poll_exe_monitor(&exe_monitor).await;
+                let result = poll_exe_monitor(exe_monitor).await;
                 debug!("Exe monitor result: {:?}", result);
                 results.push((key.to_string(), result));
             }
             MonitorTask::LogLine(log_line_monitor) => {
                 debug!("Polling log line monitor: {}", key);
-                let result = poll_log_line_monitor(&log_line_monitor).await;
+                let result = poll_log_line_monitor(log_line_monitor).await;
                 debug!("Log line monitor result: {:?}", result);
                 results.push((key.to_string(), result));
             }
             MonitorTask::Net(net_monitor) => {
                 debug!("Polling net monitor: {}", key);
-                let result = poll_net_monitor(&net_monitor).await;
+                let result = poll_net_monitor(net_monitor).await;
                 debug!("Net monitor result: {:?}", result);
                 results.push((key.to_string(), result));
             }

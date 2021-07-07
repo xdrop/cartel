@@ -258,7 +258,7 @@ impl Planner {
         monitor: Monitor,
         monitor_type: MonitorType,
     ) -> String {
-        let monitor_key = monitor_key(&name, &monitor_type);
+        let monitor_key = monitor_key(name, &monitor_type);
         self.monitor_handle.new_monitor(
             monitor_key.clone(),
             monitor,

@@ -20,7 +20,7 @@ pub fn validate_modules_selected(
     module_names: &HashSet<&str>,
     to_validate: &[&str],
 ) -> Result<()> {
-    let non_existant = non_existant_modules(&module_names, &to_validate);
+    let non_existant = non_existant_modules(module_names, to_validate);
     if !non_existant.is_empty() {
         bail!("The following modules do not exist: {:?}", non_existant)
     }

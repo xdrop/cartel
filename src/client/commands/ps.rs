@@ -94,7 +94,6 @@ pub fn list_modules_cmd(ps_opts: &PsOpts, cfg: &ClientConfig) -> Result<()> {
 
         let liveness_status = mod_status
             .liveness_status
-            .clone()
             .unwrap_or(ApiProbeStatus::Successful);
 
         writeln!(
