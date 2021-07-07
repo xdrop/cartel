@@ -223,6 +223,14 @@ pub fn cli_app() -> Result<()> {
                         .takes_value(true),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("daemon")
+                .about("Control the daemon")
+                .subcommand(
+                    SubCommand::with_name("restart")
+                        .about("Restart the daemon"),
+                ),
+        )
         .get_matches();
 
     let persisted_config = read_persisted_config()?;
@@ -339,6 +347,9 @@ fn invoke_subcommand(matches: &ArgMatches, cfg: &ClientConfig) -> Result<()> {
             };
 
             print_logs(module_name, mode, cfg)?;
+        }
+        ("daemon", _) => {
+            restart_daemon()?;
         }
         _ => {}
     }

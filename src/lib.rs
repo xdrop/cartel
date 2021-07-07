@@ -11,4 +11,5 @@ pub mod daemon;
 pub mod dependency;
 pub mod path;
 pub mod process;
+pub mod shell;
 pub mod thread_control;

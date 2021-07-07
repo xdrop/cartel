@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Allow executable probe and shell definitions to also use the `shell` shortcut (instead of specifying a command).
+- Add `restart daemon` shortcut for restarting the daemon
 
 ### Fixed
 - Supress output of `stderr` from checks
