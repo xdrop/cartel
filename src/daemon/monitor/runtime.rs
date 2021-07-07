@@ -1,8 +1,8 @@
-use super::commands::*;
-use super::poll::{
+use crate::daemon::monitor::commands::*;
+use crate::daemon::monitor::poll::{
     channel_rx, cleanup_tickr, liveness_poll_tickr, readiness_poll_tickr,
 };
-use super::state::{MonitorState, MonitorStatus};
+use crate::daemon::monitor::state::{MonitorState, MonitorStatus};
 use anyhow::Result;
 use log::info;
 use std::collections::HashMap;

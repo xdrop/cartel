@@ -1,9 +1,9 @@
-use super::error::DaemonError;
-use super::logs::log_file_module;
-use super::module::{ModuleDefinition, TermSignal};
-use super::time::epoch_now;
+use crate::daemon::error::DaemonError;
+use crate::daemon::logs::log_file_module;
+use crate::daemon::module::{ModuleDefinition, TermSignal};
 use crate::daemon::monitor::{monitor_key, MonitorType};
 use crate::daemon::planner::{Monitor, MonitorHandle};
+use crate::daemon::time::epoch_now;
 use crate::process::Process;
 
 use anyhow::{Context, Result};

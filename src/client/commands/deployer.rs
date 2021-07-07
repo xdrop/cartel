@@ -1,17 +1,17 @@
+use crate::client::cli::ClientConfig;
+use crate::client::commands::DeployOptions;
 use crate::client::module::{
     CheckDefinition, GroupDefinition, InnerDefinition, ModuleDefinition,
     ModuleMarker, ServiceOrTaskDefinition,
 };
-use crate::client::request::get_plan;
-use crate::daemon::api::{ApiGetPlanResponse, ApiPlannedAction};
-use crate::dependency::DependencyNode;
-
-use crate::client::cli::ClientConfig;
-use crate::client::commands::DeployOptions;
 use crate::client::process::run_check;
 use crate::client::progress::{SpinnerOptions, WaitResult, WaitUntil};
 use crate::client::request;
-use crate::daemon::api::ApiProbeStatus;
+use crate::client::request::get_plan;
+use crate::daemon::api::{
+    ApiGetPlanResponse, ApiPlannedAction, ApiProbeStatus,
+};
+use crate::dependency::DependencyNode;
 use anyhow::{anyhow, bail, Result};
 use crossbeam_queue::ArrayQueue;
 use indicatif::{MultiProgress, ProgressBar};
