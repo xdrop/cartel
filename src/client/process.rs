@@ -37,7 +37,9 @@ pub fn run_check(check_definition: &CheckDefinition) -> Result<ExitStatus> {
     let cmd_line = check_definition.cmd_line();
     let mut cmd = Command::new(&cmd_line[0]);
 
-    cmd.args(&cmd_line[1..]).stdout(Stdio::null());
+    cmd.args(&cmd_line[1..])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
 
     if let Some(path) = working_dir {
         cmd.current_dir(path);
