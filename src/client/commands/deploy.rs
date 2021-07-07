@@ -1,26 +1,24 @@
+use crate::client::cli::ClientConfig;
+use crate::client::commands::deployer::{
+    Deployer, ModuleDeploymentPlan, ModuleToDeploy,
+};
 use crate::client::config::read_module_definitions;
 use crate::client::emoji::{
-    LINK, LOOKING_GLASS, SPIRAL_NOTEBOOK, SUCCESS, VAN,
+    LINK, LOOKING_GLASS, SPIRAL_NOTEBOOK, SUCCESS, TEXTBOOK, VAN,
 };
 use crate::client::module::{
     module_names_set, remove_checks, ModuleDefinition, ModuleMarker,
 };
 use crate::client::validation::validate_modules_selected;
-use crate::client::{
-    cli::ClientConfig, commands::deployer::ModuleDeploymentPlan,
-};
-use crate::client::{
-    commands::deployer::{Deployer, ModuleToDeploy},
-    emoji::TEXTBOOK,
-};
 use crate::dependency::{DependencyGraph, DependencyNode};
 use anyhow::{anyhow, Result};
 use clap::ArgMatches;
 use crossbeam_queue::ArrayQueue;
 use crossbeam_utils::thread;
 use indicatif::MultiProgress;
-use std::sync::atomic::Ordering;
-use std::{collections::HashSet, sync::atomic::AtomicBool, sync::Arc};
+use std::collections::HashSet;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 pub struct DeployOptions {
     pub force_deploy: bool,

@@ -1,12 +1,11 @@
 use super::handlers::*;
+use crate::daemon::executor::RunStatus;
+use crate::daemon::logs::log_file_module;
 use crate::daemon::module::{ModuleDefinition, ModuleKind, TermSignal};
 use crate::daemon::monitor::{
-    ExecMonitor, LogLineMonitor, Monitor, MonitorTask,
+    ExecMonitor, LogLineMonitor, Monitor, MonitorTask, NetMonitor,
 };
-use crate::daemon::{executor::RunStatus, monitor::NetMonitor};
-use crate::daemon::{
-    logs::log_file_module, planner::Plan, planner::PlannedAction,
-};
+use crate::daemon::planner::{Plan, PlannedAction};
 use crate::path;
 use std::path::Path;
 

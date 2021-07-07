@@ -1,7 +1,6 @@
-use crate::daemon::api;
 use crate::daemon::monitor::{self, MonitorHandle};
 use crate::daemon::planner::Planner;
-use crate::daemon::signal;
+use crate::daemon::{api, signal};
 
 use std::error::Error;
 use std::sync::Arc;

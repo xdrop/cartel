@@ -1,21 +1,20 @@
-use crate::{
-    client::module::{
-        CheckDefinition, GroupDefinition, InnerDefinition, ModuleDefinition,
-        ModuleMarker, ServiceOrTaskDefinition,
-    },
-    daemon::api::{ApiGetPlanResponse, ApiPlannedAction},
+use crate::client::module::{
+    CheckDefinition, GroupDefinition, InnerDefinition, ModuleDefinition,
+    ModuleMarker, ServiceOrTaskDefinition,
 };
-use crate::{client::request::get_plan, dependency::DependencyNode};
+use crate::client::request::get_plan;
+use crate::daemon::api::{ApiGetPlanResponse, ApiPlannedAction};
+use crate::dependency::DependencyNode;
 
+use crate::client::cli::ClientConfig;
+use crate::client::commands::DeployOptions;
 use crate::client::process::run_check;
 use crate::client::progress::{SpinnerOptions, WaitResult, WaitUntil};
 use crate::client::request;
-use crate::client::{cli::ClientConfig, commands::DeployOptions};
 use crate::daemon::api::ApiProbeStatus;
 use anyhow::{anyhow, bail, Result};
 use crossbeam_queue::ArrayQueue;
-use indicatif::MultiProgress;
-use indicatif::ProgressBar;
+use indicatif::{MultiProgress, ProgressBar};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;

@@ -11,8 +11,10 @@ use std::collections::HashMap;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::{net::TcpStream, process};
-use tokio::{sync::mpsc, time::timeout};
+use tokio::net::TcpStream;
+use tokio::process;
+use tokio::sync::mpsc;
+use tokio::time::timeout;
 
 pub(super) async fn readiness_poll_tickr(tx: mpsc::Sender<MonitorCommand>) {
     let mut interval =

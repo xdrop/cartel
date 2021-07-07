@@ -1,14 +1,9 @@
-use crate::daemon::{
-    api::{
-        ApiExeProbe, ApiLogLineProbe, ApiModuleKind, ApiNetworkProbe, ApiProbe,
-        ApiTermSignal,
-    },
-    planner::MonitorStatus,
+use crate::client::module::{ModuleKind, Probe, TermSignal};
+use crate::daemon::api::{
+    ApiExeProbe, ApiLogLineProbe, ApiModuleKind, ApiNetworkProbe, ApiProbe,
+    ApiProbeStatus, ApiTermSignal,
 };
-use crate::{
-    client::module::{ModuleKind, Probe, TermSignal},
-    daemon::api::ApiProbeStatus,
-};
+use crate::daemon::planner::MonitorStatus;
 
 impl From<&ModuleKind> for ApiModuleKind {
     fn from(kind: &ModuleKind) -> ApiModuleKind {

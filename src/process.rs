@@ -2,9 +2,8 @@ pub use self::implementation::Process;
 
 #[cfg(target_family = "unix")]
 mod implementation {
-    use nix::libc;
     use nix::unistd::*;
-    use nix::{self, Error};
+    use nix::{self, libc, Error};
     use std::collections::HashMap;
     use std::convert::TryInto;
     use std::fs::File;

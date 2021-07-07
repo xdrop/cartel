@@ -1,17 +1,11 @@
-use crate::{
-    client::cmd::shell_to_cmd,
-    dependency::{
-        DependencyEdge, DependencyNode, EdgeDirection, WithDependencies,
-        WithKey,
-    },
+use crate::client::cmd::shell_to_cmd;
+use crate::dependency::{
+    DependencyEdge, DependencyNode, EdgeDirection, WithDependencies, WithKey,
 };
 use serde::Deserialize;
-use std::fmt;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
-use std::{
-    collections::{HashMap, HashSet},
-    iter,
-};
+use std::{fmt, iter};
 
 #[derive(Deserialize, Debug)]
 pub struct ModuleDefinition {

@@ -2,14 +2,9 @@ use super::error::DaemonError;
 use super::logs::log_file_module;
 use super::module::{ModuleDefinition, TermSignal};
 use super::time::epoch_now;
-use crate::{
-    daemon::monitor::MonitorType,
-    daemon::{
-        monitor::monitor_key,
-        planner::{Monitor, MonitorHandle},
-    },
-    process::Process,
-};
+use crate::daemon::monitor::{monitor_key, MonitorType};
+use crate::daemon::planner::{Monitor, MonitorHandle};
+use crate::process::Process;
 
 use anyhow::{Context, Result};
 use log::info;

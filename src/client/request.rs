@@ -1,14 +1,13 @@
-use crate::client::{
-    commands::DeployOptions,
-    module::{
-        merge_env, InnerDefinition, ModuleDefinition, ModuleKind,
-        ServiceOrTaskDefinition,
-    },
+use crate::client::commands::DeployOptions;
+use crate::client::module::{
+    merge_env, InnerDefinition, ModuleDefinition, ModuleKind,
+    ServiceOrTaskDefinition,
 };
 use crate::daemon::api::*;
 use anyhow::{bail, Result};
 use reqwest::blocking::Client;
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 

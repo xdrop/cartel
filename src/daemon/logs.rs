@@ -1,5 +1,4 @@
-use crate::daemon::module::ModuleDefinition;
-use crate::daemon::module::ModuleKind;
+use crate::daemon::module::{ModuleDefinition, ModuleKind};
 use dirs::home_dir;
 use std::fs;
 use std::path::PathBuf;

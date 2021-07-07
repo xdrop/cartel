@@ -1,6 +1,7 @@
 use crate::daemon::Core;
 use log::info;
-use signal_hook::{iterator::Signals, SIGCHLD, SIGINT, SIGTERM};
+use signal_hook::iterator::Signals;
+use signal_hook::{SIGCHLD, SIGINT, SIGTERM};
 use std::error::Error;
 use std::sync::Arc;
 

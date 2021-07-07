@@ -5,8 +5,9 @@ use super::poll::{
 use super::state::{MonitorState, MonitorStatus};
 use anyhow::Result;
 use log::info;
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::thread;
-use std::{collections::HashMap, sync::Arc};
 use tokio::runtime::{self, Handle, Runtime};
 use tokio::sync::mpsc;
 

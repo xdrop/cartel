@@ -1,10 +1,6 @@
-use crate::{
-    client::{
-        commands::deployer::ModuleToDeploy,
-        module::{ModuleDefinition, ModuleMarker},
-    },
-    dependency::DependencyNode,
-};
+use crate::client::commands::deployer::ModuleToDeploy;
+use crate::client::module::{ModuleDefinition, ModuleMarker};
+use crate::dependency::DependencyNode;
 
 impl<'a> From<&'a DependencyNode<&ModuleDefinition, ModuleMarker>>
     for ModuleToDeploy<'a>

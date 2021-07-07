@@ -1,7 +1,8 @@
+use crate::daemon::api::convert::*;
 use crate::daemon::api::engine::CoreState;
 use crate::daemon::api::error::*;
+use crate::daemon::monitor::MonitorType;
 use crate::daemon::planner::{MonitorStatus, Planner};
-use crate::daemon::{api::convert::*, monitor::MonitorType};
 use rocket::State;
 use rocket_contrib::json::Json;
 use serde::{Deserialize, Serialize};
@@ -115,7 +116,6 @@ pub enum ApiModuleOperation {
     STOP,
     RESTART,
 }
-
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiModuleStatus {

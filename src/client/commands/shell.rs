@@ -1,7 +1,7 @@
+use crate::client::cli::ClientConfig;
 use crate::client::config::read_module_definitions;
-use crate::client::module::InnerDefinition;
+use crate::client::module::{shell_for_service, InnerDefinition};
 use crate::client::process::run_shell;
-use crate::client::{cli::ClientConfig, module::shell_for_service};
 use anyhow::{anyhow, bail, Result};
 
 pub fn open_shell(

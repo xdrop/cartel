@@ -1,10 +1,9 @@
-use crate::client::validation::validate_modules_unique;
-use crate::client::{
-    cli::ClientConfig, validation::validate_dependencies_exist,
+use crate::client::cli::ClientConfig;
+use crate::client::module::{
+    InnerDefinition, ModuleDefinition, ModuleKind, Probe,
 };
-use crate::client::{
-    module::{InnerDefinition, ModuleDefinition, ModuleKind, Probe},
-    validation::validate_fields,
+use crate::client::validation::{
+    validate_dependencies_exist, validate_fields, validate_modules_unique,
 };
 use crate::path;
 use anyhow::{bail, Context, Result};
