@@ -1,4 +1,4 @@
-use crate::client::module::{InnerDefinition, ModuleDefinition};
+use crate::client::module::{InnerDefinition, ModuleDefinition, Probe};
 use anyhow::{bail, Context, Result};
 use std::collections::HashSet;
 
@@ -62,7 +62,7 @@ pub fn validate_fields(modules: &[ModuleDefinition]) -> Result<()> {
                     && !svc_or_task.command.is_empty()
                 {
                     bail!(
-                        "Cannot have both a shell and command definition \
+                        "Cannot have both a 'shell' and 'command' definition \
                         for module {}",
                         svc_or_task.name
                     );
@@ -75,11 +75,43 @@ pub fn validate_fields(modules: &[ModuleDefinition]) -> Result<()> {
                         svc_or_task.name
                     );
                 }
+                if let Some(Probe::Exec(probe)) = &svc_or_task.liveness_probe {
+                    if probe.shell.is_some() && !probe.command.is_empty() {
+                        bail!(
+                            "Executable liveness probe for {} \
+                            cannot have both 'shell' and 'command'",
+                            svc_or_task.name
+                        );
+                    }
+                    if probe.shell.is_none() && probe.command.is_empty() {
+                        bail!(
+                            "Executable liveness probe for {} \
+                            must define one of 'shell' or 'command'",
+                            svc_or_task.name
+                        );
+                    }
+                }
+                if let Some(Probe::Exec(probe)) = &svc_or_task.readiness_probe {
+                    if probe.shell.is_some() && !probe.command.is_empty() {
+                        bail!(
+                            "Executable readiness probe for {} \
+                            cannot have both 'shell' and 'command'",
+                            svc_or_task.name
+                        );
+                    }
+                    if probe.shell.is_none() && probe.command.is_empty() {
+                        bail!(
+                            "Executable readiness probe for {} \
+                            must define one of 'shell' or 'command'",
+                            svc_or_task.name
+                        );
+                    }
+                }
             }
             InnerDefinition::Check(check) => {
                 if check.shell.is_some() && !check.command.is_empty() {
                     bail!(
-                        "Cannot have both a shell and command definition \
+                        "Cannot have both a 'shell' and 'command' definition \
                         for check {}",
                         check.name
                     );
@@ -88,6 +120,21 @@ pub fn validate_fields(modules: &[ModuleDefinition]) -> Result<()> {
                         "Module must define one of 'shell' or 'command' for \
                         {}",
                         check.name
+                    );
+                }
+            }
+            InnerDefinition::Shell(shell) => {
+                if shell.shell.is_some() && !shell.command.is_empty() {
+                    bail!(
+                        "Cannot have both a 'shell' and 'command' definition \
+                        for shell {}",
+                        shell.name
+                    );
+                } else if shell.shell.is_none() && shell.command.is_empty() {
+                    bail!(
+                        "Module must define one of 'shell' or 'command' for \
+                        {}",
+                        shell.name
                     );
                 }
             }

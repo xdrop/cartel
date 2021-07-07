@@ -22,9 +22,9 @@
       - [Windows](#windows)
   - [Reference manual](#reference-manual)
     - [Service definition](#service-definition)
-      - [Example:](#example)
+      - [Example](#example)
     - [Task definition](#task-definition)
-      - [Example:](#example-1)
+      - [Example](#example-1)
     - [Shell definition](#shell-definition)
       - [Example](#example-2)
     - [Group definition](#group-definition)
@@ -37,6 +37,7 @@
       - [Executable probe](#executable-probe)
       - [Log line probe](#log-line-probe)
       
+
 ## Features
 While `cartel` is still in development it has a feature set rich enough to cover most use-cases.
 
@@ -177,6 +178,9 @@ Windows is not supported.
 ## Reference manual
 
 ### Service definition
+
+Use `Service` for running long running processes that can be started, stopped and managed by the daemon.
+
 | Property | Description | Values | Example |
 | -------- | ----------- | ------ | ------- |
 | kind | Type of the module. Use `Service` for services. | Service | `Service`
@@ -196,7 +200,7 @@ Windows is not supported.
 | readiness_probe | A probe to run with which to determine if the service is healthy. This is used when deploying to wait for the service to come up. | Probe | [Readiness & Liveness Probes](#readiness-and-liveness-probes)
 | liveness_probe | A probe to run with which to determine if the service is healthy. This is used **after** the service has been deployed to monitor its ongoing health status. This affects things like `cartel ps` and skipping deploying a module if it is already in the correct state and has a passing liveness probe. | Probe | [Readiness & Liveness Probes](#readiness-and-liveness-probes)
 
-#### Example:
+#### Example
 ```
 kind: Service
 name: backend
@@ -225,6 +229,9 @@ post_up: ["backend:refresh_cache"]
 ```
 
 ### Task definition
+
+Use `Task` for short lived processes used to perform some temporary operation or setup.
+
 | Property | Description | Values | Example |
 | -------- | ----------- | ------ | ------- |
 | kind | Type of the module. Use `Task` for tasks. | Task | `Task`
@@ -235,7 +242,7 @@ post_up: ["backend:refresh_cache"]
 | log_file_path | Path to the log file where stdout and stderr is written. | String | `/tmp/my_service.log`
 | working_dir | The working directory all commands and paths are relative to. Relative directories are allowed and they are relative to the location of the `cartel.yml` file. | String | `./services/my-service`
 
-#### Example:
+#### Example
 
 ```
 kind: Task
@@ -247,12 +254,16 @@ working_dir: ./api/backend
 ```
 
 ### Shell definition
+
+Use `Shell` to define a shortcut for getting a REPL shell for some service.
+
 | Property | Description | Values | Example |
 | -------- | ----------- | ------ | ------- |
 | kind | Type of the module. Use `Shell` for shells. | `Shell` | `Shell`
 | name | The name of the shell. Only **unique** names allowed. | String| `backend:shell`
 | service | The service this shell is for. This has to match the module name of a service and is **required**. It is what `cartel shell` uses to determine which shell to open. | String | `myservicename`
 | command | A command with which to launch the shell. This has to be an array of the path to the program and its arguments. This does not invoke a shell so things like pipes (`\|`) and other shell operators will not work unless explicitly run within a shell (eg. in `bash -c`). | String[] | `["bash", "-c", "echo hi"]`
+| shell | A shell command with which to launch the shell. Unlike `command` this is a cmd line string which is evaluated in a shell context (`bash`). Only **one of** `command`/`shell` must be present. | String | `python3 $(get-shell)`
 | shell_type | The type of the shell. Used to choose between multiple shell options for a service.| String | `ipython`
 | environment | The environment variables to pass to the shell | Map[String, String] | `HOST: localhost` <br/> `PORT: 8921`
 | working_dir | The working directory all commands and paths are relative to. Relative directories are allowed and they are relative to the location of the `cartel.yml` file. | String | `./services/my-service`
@@ -269,6 +280,9 @@ working_dir: ./api/backend
 ```
 
 ### Group definition
+
+Use `Group` for groupping sets of dependencies that need to be deployed together.
+
 | Property | Description | Values | Example |
 | -------- | ----------- | ------ | ------- |
 | kind | Type of the module. Use `Group` for groups. | Group | `Group`
@@ -289,6 +303,9 @@ dependencies:
 ```
 
 ### Check definition
+
+Use `Check` to enforce a condition before a service is run (eg. to ensure some local configuration has been performed on the system).
+
 | Property | Description | Values | Example |
 | -------- | ----------- | ------ | ------- |
 | kind | Type of the module. Use `Check` for checks. | Check | `Check`
@@ -382,6 +399,8 @@ readiness_probe:
     retries: 10
     # The command to execute as the probe. Exit code zero is considered healthy.
     command: ["bash", "-c", "exit 0"]
+    # Alternatively execute a command in a shell instead of a command array
+    shell: exit 0
     # The working directory where the command is performed from.
     working_dir: ./my_service
 ```

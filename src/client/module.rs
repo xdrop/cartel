@@ -146,7 +146,10 @@ pub struct ShellDefinition {
     #[serde(rename = "type", default = "String::new")]
     pub shell_type: String,
     /// The command used to open the shell.
+    #[serde(default = "Vec::new")]
     pub command: Vec<String>,
+    /// Alternative to `command`, where a shell executes the given statement.
+    pub shell: Option<String>,
     /// The environment variables to create the process with.
     #[serde(default = "HashMap::new")]
     pub environment: HashMap<String, String>,
@@ -169,7 +172,10 @@ pub struct ExecutableProbe {
     pub retries: u32,
     /// The command to execute as the probe. Exit code zero is considered
     /// healthy.
+    #[serde(default = "Vec::new")]
     pub command: Vec<String>,
+    /// Alternative to `command`, where a shell executes the given statement.
+    pub shell: Option<String>,
     /// The working directory where the command is performed from.
     pub working_dir: Option<String>,
 }
@@ -280,6 +286,34 @@ impl ServiceOrTaskDefinition {
 
 impl CheckDefinition {
     /// Get the execution command of this check.
+    ///
+    /// If no command was provided then the `shell` field is used to get an
+    /// appropriate command line that invokes a shell.
+    pub fn cmd_line(&self) -> Vec<String> {
+        if self.command.is_empty() {
+            shell_to_cmd(self.shell.as_ref().unwrap())
+        } else {
+            self.command.clone()
+        }
+    }
+}
+
+impl ExecutableProbe {
+    /// Get the execution command of this probe.
+    ///
+    /// If no command was provided then the `shell` field is used to get an
+    /// appropriate command line that invokes a shell.
+    pub fn cmd_line(&self) -> Vec<String> {
+        if self.command.is_empty() {
+            shell_to_cmd(self.shell.as_ref().unwrap())
+        } else {
+            self.command.clone()
+        }
+    }
+}
+
+impl ShellDefinition {
+    /// Get the execution command of this shell.
     ///
     /// If no command was provided then the `shell` field is used to get an
     /// appropriate command line that invokes a shell.

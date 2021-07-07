@@ -60,10 +60,10 @@ pub fn run_shell(shell_definition: &ShellDefinition) -> Result<()> {
         .as_deref()
         .and_then(path::from_user_str);
 
-    let mut cmd = Command::new(&shell_definition.command[0]);
+    let cmd_line = shell_definition.cmd_line();
+    let mut cmd = Command::new(&cmd_line[0]);
 
-    cmd.args(&shell_definition.command[1..])
-        .envs(&shell_definition.environment);
+    cmd.args(&cmd_line[1..]).envs(&shell_definition.environment);
 
     if let Some(path) = working_dir {
         cmd.current_dir(path);

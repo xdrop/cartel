@@ -44,7 +44,7 @@ impl From<&Probe> for ApiProbe {
         match probe {
             Probe::Exec(exec) => ApiProbe::Executable(ApiExeProbe {
                 retries: exec.retries,
-                command: exec.command.clone(),
+                command: exec.cmd_line(),
                 working_dir: exec.working_dir.clone(),
             }),
             Probe::LogLine(log_line) => ApiProbe::LogLine(ApiLogLineProbe {
