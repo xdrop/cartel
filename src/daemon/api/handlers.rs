@@ -181,7 +181,7 @@ pub(crate) fn deploy(
     let command = command.into_inner();
 
     let (module_def, monitor) =
-        from_service_with_monitor(command.module_definition);
+        from_service_with_monitor(command.module_definition)?;
     let module_name = module_def.name.clone();
 
     let deployed = planner.deploy(module_def, command.force)?;

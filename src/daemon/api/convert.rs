@@ -7,6 +7,7 @@ use crate::daemon::monitor::{
 };
 use crate::daemon::planner::{Plan, PlannedAction};
 use crate::path;
+use anyhow::Result;
 use std::path::Path;
 
 pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {
@@ -25,7 +26,7 @@ pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {
 
 pub fn from_service_with_monitor(
     mut src: ApiModuleDefinition,
-) -> (ModuleDefinition, Option<Monitor>) {
+) -> Result<(ModuleDefinition, Option<Monitor>)> {
     let readiness_probe = src.readiness_probe.take();
     let liveness_probe = src.liveness_probe.take();
 
@@ -41,7 +42,7 @@ pub fn from_service_with_monitor(
         None, // assigned below
     );
 
-    let log_file_path = log_file_module(&module_definition);
+    let log_file_path = log_file_module(&module_definition)?;
 
     let readiness_monitor: Option<Monitor> =
         readiness_probe.map(|probe| from_probe(probe, &log_file_path));
@@ -51,7 +52,7 @@ pub fn from_service_with_monitor(
     // Only store liveness as readiness only affects the service temporarily
     module_definition.liveness_probe = liveness_monitor;
 
-    (module_definition, readiness_monitor)
+    Ok((module_definition, readiness_monitor))
 }
 
 pub fn from_task_or_service(src: ApiModuleDefinition) -> ModuleDefinition {

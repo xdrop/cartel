@@ -187,7 +187,7 @@ impl Executor {
     pub fn run_module(&mut self, module: Arc<ModuleDefinition>) -> Result<()> {
         info!("Executing module: {}", module.name);
 
-        let log_file_pathbuf = log_file_module(&module);
+        let log_file_pathbuf = log_file_module(&module)?;
         let log_file_path = log_file_pathbuf.as_path();
         let liveness_probe = self.maybe_create_liveness_probe(&module);
 
@@ -328,7 +328,7 @@ pub mod task_executor {
         task_definition: &ModuleDefinition,
     ) -> Result<ExitStatus> {
         assert!(task_definition.kind == ModuleKind::Task);
-        let log_file_pathbuf = log_file_module(task_definition);
+        let log_file_pathbuf = log_file_module(task_definition)?;
         let log_file_path = log_file_pathbuf.as_path();
 
         let (stdout_file, stderr_file) =

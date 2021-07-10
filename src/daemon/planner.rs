@@ -139,7 +139,7 @@ impl Planner {
         match module_kind {
             ModuleKind::Service => self.log_path_running(module_name),
             ModuleKind::Task => {
-                Ok(log_file_path(module_name, module_kind).into_os_string())
+                Ok(log_file_path(module_name, module_kind)?.into_os_string())
             }
         }
     }
