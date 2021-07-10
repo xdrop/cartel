@@ -15,7 +15,7 @@ pub fn restart_daemon() -> Result<()> {
     let cmd_line = vec![
         active_shell.as_str(),
         "-c",
-        "pkill -i cartel-daemon && cartel-daemon &",
+        "pkill -i cartel-daemon; cartel-daemon &",
     ];
 
     let mut cmd = Command::new(&cmd_line[0]);
