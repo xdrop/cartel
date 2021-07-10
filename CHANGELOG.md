@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.10.0-beta] - 2021-07-10
 ### Added
 - Allow services to specify services / tasks that should always be deployed "after" them, but should not constitute a direct dependency.
 - Checks can now define a `suggested_fix` section with a command that can be run, should users choose to, in order to fix the issue the check tests for.
