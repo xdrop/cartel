@@ -36,6 +36,7 @@
       - [Net probe](#net-probe)
       - [Executable probe](#executable-probe)
       - [Log line probe](#log-line-probe)
+  - [Suggested fix for checks](#suggested-fix-for-checks)
       
 
 ## Features
@@ -187,19 +188,19 @@ Use `Service` for running long running processes that can be started, stopped an
 | name | The name of the service. Only **unique** names allowed. | String| `backend`
 | command | A command with which to launch the service. This has to be an array of the path to the program and its arguments. This does not invoke a shell so things like pipes (`\|`) and other shell operators will not work unless explicitly run within a shell (eg. in `bash -c`). The `shell` option described below will always run the command in a shell and should be preferred if use of shell features is required. | String[] | `["bash", "-c", "echo hi"]`
 | shell | A shell command with which to launch the service. Unlike `command` this is a cmd line string which is evaluated in a shell context (`bash`). Only **one of** `command`/`shell` must be present. | String | `echo "This support shell operations" > myfile`
-| termination_signal | The termination signal to use when stopping the service (for UNIX based OS). Use `KILL` for `SIGKILL`, `TERM` for `SIGTERM`, and `INT` for `SIGINT` | KILL \| TERM \| INT | `"KILL"`
-| environment | The environment variables to pass to the service | Map[String, String] | `HOST: localhost` <br/> `PORT: 8921`
-| environment_sets | Sets of environment variables that can be toggled on or off. See example for more details. | Map[String, Map[String, String]] | [Environment Sets](#environment-sets)
-| log_file_path | Path to the log file where stdout and stderr is written. | String | `/tmp/my_service.log`
-| dependencies | A list of module names that have to be deployed _before_ this service runs. | String[] | `["task-a", "service-a"]`
-| ordered_dependencies | Same as `dependencies` but each dependency also depends on the previous one. For example in the case of `[a,b,c]` the dependencies are deployed in the following order: `a` then `b` then `c`. This guarantee is not provided by `dependencies`. Ordered dependencies can co-exist with dependencies.| String[] | `["task-a", "service-a"]`
-| after | A service or task that should always be deployed _after_ this service, but not a strict dependency of this service | String[] | `["task-a", "service-a"]`
-| post | A list of tasks to perform after the service has been deployed. | String[] | `["task-a", "task-b"]`
-| post_up | A list of tasks to perform after the service has been deployed **and** had its readiness probe pass. | String[] | `["task-a", "task-b"]`
-| working_dir | The working directory all commands and paths are relative to. Relative directories are allowed and they are relative to the location of the `cartel.yml` file. | String | `./services/my-service`
-| checks | A list of checks to perform before the service is allowed to run. | String[] | `["check-a", "check-b"]`
-| readiness_probe | A probe to run with which to determine if the service is healthy. This is used when deploying to wait for the service to come up. | Probe | [Readiness & Liveness Probes](#readiness-and-liveness-probes)
-| liveness_probe | A probe to run with which to determine if the service is healthy. This is used **after** the service has been deployed to monitor its ongoing health status. This affects things like `cartel ps` and skipping deploying a module if it is already in the correct state and has a passing liveness probe. | Probe | [Readiness & Liveness Probes](#readiness-and-liveness-probes)
+| termination_signal | The termination signal to use when stopping the service (for UNIX based OS). Use `KILL` for `SIGKILL`, `TERM` for `SIGTERM`, and `INT` for `SIGINT`. (Optional) | KILL \| TERM \| INT | `"KILL"`
+| environment | The environment variables to pass to the service. (Optional) | Map[String, String] | `HOST: localhost` <br/> `PORT: 8921`
+| environment_sets | Sets of environment variables that can be toggled on or off. See example for more details. (Optional) | Map[String, Map[String, String]] | [Environment Sets](#environment-sets)
+| log_file_path | Path to the log file where stdout and stderr is written. (Optional) | String | `/tmp/my_service.log`
+| dependencies | A list of module names that have to be deployed _before_ this service runs. (Optional) | String[] | `["task-a", "service-a"]`
+| ordered_dependencies | Same as `dependencies` but each dependency also depends on the previous one. For example in the case of `[a,b,c]` the dependencies are deployed in the following order: `a` then `b` then `c`. This guarantee is not provided by `dependencies`. Ordered dependencies can co-exist with dependencies. (Optional)| String[] | `["task-a", "service-a"]`
+| after | A service or task that should always be deployed _after_ this service, but not a strict dependency of this service. (Optional) | String[] | `["task-a", "service-a"]`
+| post | A list of tasks to perform after the service has been deployed. (Optional) | String[] | `["task-a", "task-b"]`
+| post_up | A list of tasks to perform after the service has been deployed **and** had its readiness probe pass. (Optional) | String[] | `["task-a", "task-b"]`
+| working_dir | The working directory all commands and paths are relative to. Relative directories are allowed and they are relative to the location of the `cartel.yml` file. (Optional) | String | `./services/my-service`
+| checks | A list of checks to perform before the service is allowed to run. (Optional) | String[] | `["check-a", "check-b"]`
+| readiness_probe | A probe to run with which to determine if the service is healthy. This is used when deploying to wait for the service to come up. (Optional) | Probe | [Readiness & Liveness Probes](#readiness-and-liveness-probes)
+| liveness_probe | A probe to run with which to determine if the service is healthy. This is used **after** the service has been deployed to monitor its ongoing health status. This affects things like `cartel ps` and skipping deploying a module if it is already in the correct state and has a passing liveness probe. (Optional) | Probe | [Readiness & Liveness Probes](#readiness-and-liveness-probes)
 
 #### Example
 ```
@@ -239,9 +240,9 @@ Use `Task` for short lived processes used to perform some temporary operation or
 | name | The name of the task. Only **unique** names allowed. | String| `backend:run-migrations`
 | command | A command with which to launch the task. This has to be an array of the path to the program and its arguments. This does not invoke a shell so things like pipes (`\|`) and other shell operators will not work unless explicitly run within a shell (eg. in `bash -c`). The `shell` option described below will always run the command in a shell and should be preferred if use of shell features is required. | String[] | `["bash", "-c", "echo hi"]`
 | shell | A shell command with which to launch the task. Unlike `command` this is a cmd line string which is evaluated in a shell context (`bash`). Only **one of** `command`/`shell` must be present. | String | `echo "This support shell operations" > myfile`
-| environment | The environment variables to pass to the task | Map[String, String] | `HOST: localhost` <br/> `PORT: 8921`
-| log_file_path | Path to the log file where stdout and stderr is written. | String | `/tmp/my_service.log`
-| working_dir | The working directory all commands and paths are relative to. Relative directories are allowed and they are relative to the location of the `cartel.yml` file. | String | `./services/my-service`
+| environment | The environment variables to pass to the task. (Optional) | Map[String, String] | `HOST: localhost` <br/> `PORT: 8921`
+| log_file_path | Path to the log file where stdout and stderr is written. (Optional) | String | `/tmp/my_service.log`
+| working_dir | The working directory all commands and paths are relative to.  Relative directories are allowed and they are relative to the location of the `cartel.yml` file. (Optional) | String | `./services/my-service`
 
 #### Example
 
@@ -266,8 +267,8 @@ Use `Shell` to define a shortcut for getting a REPL shell for some service.
 | command | A command with which to launch the shell. This has to be an array of the path to the program and its arguments. This does not invoke a shell so things like pipes (`\|`) and other shell operators will not work unless explicitly run within a shell (eg. in `bash -c`). | String[] | `["bash", "-c", "echo hi"]`
 | shell | A shell command with which to launch the shell. Unlike `command` this is a cmd line string which is evaluated in a shell context (`bash`). Only **one of** `command`/`shell` must be present. | String | `python3 $(get-shell)`
 | shell_type | The type of the shell. Used to choose between multiple shell options for a service.| String | `ipython`
-| environment | The environment variables to pass to the shell | Map[String, String] | `HOST: localhost` <br/> `PORT: 8921`
-| working_dir | The working directory all commands and paths are relative to. Relative directories are allowed and they are relative to the location of the `cartel.yml` file. | String | `./services/my-service`
+| environment | The environment variables to pass to the shell. (Optional) | Map[String, String] | `HOST: localhost` <br/> `PORT: 8921`
+| working_dir | The working directory all commands and paths are relative to. Relative directories are allowed and they are relative to the location of the `cartel.yml` file. (Optional) | String | `./services/my-service`
 
 
 #### Example
@@ -289,7 +290,7 @@ Use `Group` for groupping sets of dependencies that need to be deployed together
 | kind | Type of the module. Use `Group` for groups. | Group | `Group`
 | name | The name of the group. Only **unique** names allowed. | String| `groupname`
 | dependencies | A list of module names that consist this group. When the group is deployed all these dependencies are deployed. | String[] | `["task-a", "service-a"]`
-| checks | A list of checks to perform before the group is allowed to run. | String[] | `["check-a", "check-b"]`
+| checks | A list of checks to perform before the group is allowed to run. (Optional) | String[] | `["check-a", "check-b"]`
 
 #### Example
 
@@ -314,8 +315,9 @@ Use `Check` to enforce a condition before a service is run (eg. to ensure some l
 | about | A human readable short description of the task. | String| `checks host file for postgres`
 | command | A command with which to launch the check. This has to be an array of the path to the program and its arguments. This does not invoke a shell so things like pipes (`\|`) and other shell operators will not work unless explicitly run within a shell (eg. in `bash -c`). The `shell` option described below will always run the command in a shell and should be preferred if use of shell features is required. **The check is only successful if this command exits with zero-code** | String[] | `["bash", "-c", "check-something \|\| exit 1"]`
 | shell | A shell command with which to launch the check. Unlike `command` this is a cmd line string which is evaluated in a shell context (`bash`). Only **one of** `command`/`shell` must be present. **The check is only successful if this command exits with zero-code** | String | `check-something \|\| exit 1`
-| working_dir | The working directory all commands and paths are relative to. Relative directories are allowed and they are relative to the location of the `cartel.yml` file. | String | `./services/my-service`
 | help | An detailed error message to display the user instructing how to fix the issue the check is concerned with. | String | `Instructional text`
+| suggested_fix | A command that the user will get asked to run, that can fix the issue this check tests for. (Optional) | SuggestedFix | [Suggested Fix](#suggested-fix-for-checks)
+| working_dir | The working directory all commands and paths are relative to. Relative directories are allowed and they are relative to the location of the `cartel.yml` file. (Optional) | String | `./services/my-service`
 
 #### Example
 
@@ -327,6 +329,9 @@ shell: cat /etc/hosts | grep postgres
 help: |+
   The following entry is missing from your hosts file:
     127.0.0.1 postgres
+suggested_fix:
+  shell: cat fixed > /tmp/fixed
+  message: Details about how this is going to be fixed
 ```
 
 ### Environment sets
@@ -419,3 +424,19 @@ readiness_probe:
     line_regex: Listening...
 ```
 
+
+## Suggested fix for checks
+
+A **suggested fix** may be defined for a check that a user may optionally apply.
+
+```
+suggested_fix:
+  # The command to execute to fix the issue.
+  command: ["bash", "-c", "echo example"]
+  # Alternatively execute a command in a shell instead of a command array.
+  shell: echo example
+  # A message explaining to the user what the fix will do.
+  message: Will add `127.0.0.1` to your /etc/hosts file.
+  # The working directory where the command is performed from.
+  working_dir: ./my_service
+```

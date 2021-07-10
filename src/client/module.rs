@@ -228,11 +228,26 @@ pub struct CheckDefinition {
     pub command: Vec<String>,
     /// Alternative to `command`, where a shell executes the given statement.
     pub shell: Option<String>,
+    /// An optional suggested fix for this check.
+    pub suggested_fix: Option<SuggestedFixDefinition>,
     /// The working dir to perform the command in.
     pub working_dir: Option<String>,
     /// An detailed error message to display the user instructing how to fix the
     /// issue the check is concerned with.
     pub help: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SuggestedFixDefinition {
+    /// A message shown to the user before the choose to accept the fix.
+    pub message: String,
+    /// The command used to fix the check.
+    #[serde(default = "Vec::new")]
+    pub command: Vec<String>,
+    /// Alternative to `command`, where a shell executes the given statement.
+    pub shell: Option<String>,
+    /// The working directory where the command is performed from.
+    pub working_dir: Option<String>,
 }
 
 impl ServiceOrTaskDefinition {
@@ -292,6 +307,20 @@ impl ServiceOrTaskDefinition {
 
 impl CheckDefinition {
     /// Get the execution command of this check.
+    ///
+    /// If no command was provided then the `shell` field is used to get an
+    /// appropriate command line that invokes a shell.
+    pub fn cmd_line(&self) -> Vec<String> {
+        if self.command.is_empty() {
+            shell_to_cmd(self.shell.as_ref().unwrap())
+        } else {
+            self.command.clone()
+        }
+    }
+}
+
+impl SuggestedFixDefinition {
+    /// Get the execution command of this suggested fix.
     ///
     /// If no command was provided then the `shell` field is used to get an
     /// appropriate command line that invokes a shell.

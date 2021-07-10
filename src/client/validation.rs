@@ -122,6 +122,21 @@ pub fn validate_fields(modules: &[ModuleDefinition]) -> Result<()> {
                         check.name
                     );
                 }
+                if let Some(fix) = &check.suggested_fix {
+                    if fix.shell.is_some() && !fix.command.is_empty() {
+                        bail!(
+                        "Cannot have both a 'shell' and 'command' definition \
+                        in suggested fix for check {}",
+                        check.name
+                    );
+                    } else if fix.shell.is_none() && fix.command.is_empty() {
+                        bail!(
+                        "Suggested fix must define one of 'shell' or 'command' for check \
+                        {}",
+                        check.name
+                    );
+                    }
+                }
             }
             InnerDefinition::Shell(shell) => {
                 if shell.shell.is_some() && !shell.command.is_empty() {

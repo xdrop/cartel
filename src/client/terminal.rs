@@ -15,7 +15,7 @@ macro_rules! tiprint {
 #[macro_export]
 macro_rules! teprint {
     ( $x:expr ) => {
-        println!("{} {:?}", console::style("Error:").bold().red(), $x);
+        println!("{} {:}", console::style("Error:").bold().red(), $x);
     };
 }
 
@@ -23,6 +23,21 @@ macro_rules! teprint {
 macro_rules! texit {
     ($x:expr) => {{
         teprint!($x);
+        std::process::exit(1);
+    }};
+}
+
+#[macro_export]
+macro_rules! teprinterr {
+    ( $x:expr ) => {
+        println!("{} {:}", console::style("Error:").bold().red(), $x);
+    };
+}
+
+#[macro_export]
+macro_rules! texiterr {
+    ($x:expr) => {{
+        teprinterr!($x);
         std::process::exit(1);
     }};
 }

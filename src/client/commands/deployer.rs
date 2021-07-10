@@ -1,10 +1,11 @@
 use crate::client::cli::ClientConfig;
 use crate::client::commands::DeployOptions;
+use crate::client::emoji::{HOUR_GLASS, SUCCESS, YELLOW_NOTEBOOK};
 use crate::client::module::{
     CheckDefinition, GroupDefinition, InnerDefinition, ModuleDefinition,
-    ModuleMarker, ServiceOrTaskDefinition,
+    ModuleMarker, ServiceOrTaskDefinition, SuggestedFixDefinition,
 };
-use crate::client::process::run_check;
+use crate::client::process::{apply_suggested_fix, run_check};
 use crate::client::progress::{SpinnerOptions, WaitResult, WaitUntil};
 use crate::client::request;
 use crate::client::request::get_plan;
@@ -18,6 +19,7 @@ use indicatif::{MultiProgress, ProgressBar};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
+use text_io::read;
 
 pub struct Deployer {
     multiprogress: Arc<MultiProgress>,
@@ -256,15 +258,64 @@ impl Deployer {
         })?;
 
         if !check_result.success() {
-            bail!(
-                "The {} check has failed\n\
-            {}: {}",
-                cbold!(&check_def.about),
-                cbold!("Message"),
-                check_def.help
-            )
+            if let Some(suggested_fix) = &check_def.suggested_fix {
+                Self::ask_to_apply_suggested_fix(check_def, suggested_fix);
+            } else {
+                bail!(
+                    "The {} check has failed\n\
+                    {}: {}",
+                    cbold!(&check_def.about),
+                    cbold!("Message"),
+                    check_def.help
+                )
+            }
         }
         Ok(())
+    }
+
+    fn ask_to_apply_suggested_fix(
+        check_def: &CheckDefinition,
+        suggested_fix: &SuggestedFixDefinition,
+    ) -> () {
+        tprint!(
+            "{} The {} check has failed\n\
+                    {}: {}\n",
+            cfail!("Error:"),
+            cbold!(&check_def.about),
+            cbold!("Message"),
+            check_def.help
+        );
+
+        tprint!(
+            "{} There is a suggested fix available. \n{} {}\n\n\
+                    {} (y/n)",
+            YELLOW_NOTEBOOK,
+            cbold!("Fix details:"),
+            suggested_fix.message,
+            cbold!("Would you like to apply it?"),
+        );
+        loop {
+            let line: String = read!("{}\n");
+            if line.to_lowercase() == "y" {
+                tprint!("{} {}", HOUR_GLASS, cbold!("Applying..."));
+                if apply_suggested_fix(suggested_fix).is_ok() {
+                    tprint!(
+                        "{} {}",
+                        SUCCESS,
+                        format!(
+                            "{} {}",
+                            csuccess!("Fix applied for:"),
+                            cbold!(&check_def.about)
+                        )
+                    );
+                } else {
+                    texit!("Suggested fix failed to apply");
+                }
+                break;
+            } else if line.to_lowercase() == "n" {
+                texit!("Resolve the check manually and try again.");
+            }
+        }
     }
 
     pub fn run_checks<T: AsRef<ModuleDefinition>>(

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Allow services to specify services / tasks that should always be deployed "after" them, but should not constitute a direct dependency.
+- Checks can now define a `suggested_fix` section with a command that can be run, should users choose to, in order to fix the issue the check tests for.
 
 ### Changed
 - `daemon restart` will start the daemon if it is not running
