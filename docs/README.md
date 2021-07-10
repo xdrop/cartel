@@ -193,6 +193,7 @@ Use `Service` for running long running processes that can be started, stopped an
 | log_file_path | Path to the log file where stdout and stderr is written. | String | `/tmp/my_service.log`
 | dependencies | A list of module names that have to be deployed _before_ this service runs. | String[] | `["task-a", "service-a"]`
 | ordered_dependencies | Same as `dependencies` but each dependency also depends on the previous one. For example in the case of `[a,b,c]` the dependencies are deployed in the following order: `a` then `b` then `c`. This guarantee is not provided by `dependencies`. Ordered dependencies can co-exist with dependencies.| String[] | `["task-a", "service-a"]`
+| after | A service or task that should always be deployed _after_ this service, but not a strict dependency of this service | String[] | `["task-a", "service-a"]`
 | post | A list of tasks to perform after the service has been deployed. | String[] | `["task-a", "task-b"]`
 | post_up | A list of tasks to perform after the service has been deployed **and** had its readiness probe pass. | String[] | `["task-a", "task-b"]`
 | working_dir | The working directory all commands and paths are relative to. Relative directories are allowed and they are relative to the location of the `cartel.yml` file. | String | `./services/my-service`

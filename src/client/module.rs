@@ -106,10 +106,14 @@ pub struct ServiceOrTaskDefinition {
     /// A list of dependencies of the service / task.
     #[serde(default = "Vec::new")]
     pub dependencies: Vec<String>,
-    /// A list of dependencies of the service / task that must be performed
+    /// A list of dependencies of the service / task that must be deployed
     /// sequentially.
     #[serde(default = "Vec::new")]
     pub ordered_dependencies: Vec<String>,
+    /// A list of dependencies of the service / task that must be deployed
+    /// _after_ this service/task deploys.
+    #[serde(default = "Vec::new")]
+    pub after: Vec<String>,
     /// A list of tasks to perform after the services readiness probe has passed.
     /// If the service has no readiness probes then this equivalent to `post`.
     #[serde(default = "Vec::new")]
@@ -242,6 +246,7 @@ impl ServiceOrTaskDefinition {
         log_file_path: Option<String>,
         dependencies: Vec<String>,
         ordered_dependencies: Vec<String>,
+        after: Vec<String>,
         post_up: Vec<String>,
         post: Vec<String>,
         working_dir: Option<String>,
@@ -260,6 +265,7 @@ impl ServiceOrTaskDefinition {
             log_file_path,
             dependencies,
             ordered_dependencies,
+            after,
             post_up,
             post,
             working_dir,
@@ -397,6 +403,7 @@ impl EdgeList for GroupDefinition {
             .map(|key| DependencyEdge {
                 edge_src: self.name.clone(),
                 edge_dst: key.clone(),
+                is_weak: false,
                 direction: EdgeDirection::To,
                 marker: ModuleMarker::WaitProbe,
             })
@@ -412,6 +419,7 @@ impl EdgeList for ServiceOrTaskDefinition {
             .map(|key| DependencyEdge {
                 edge_src: self.key(),
                 edge_dst: key.clone(),
+                is_weak: false,
                 direction: EdgeDirection::To,
                 marker: ModuleMarker::WaitProbe,
             })
@@ -424,6 +432,7 @@ impl EdgeList for ServiceOrTaskDefinition {
                         let in_between = DependencyEdge {
                             edge_src: window[1].clone(),
                             edge_dst: window[0].clone(),
+                            is_weak: false,
                             direction: EdgeDirection::To,
                             marker: ModuleMarker::WaitProbe,
                         };
@@ -434,6 +443,7 @@ impl EdgeList for ServiceOrTaskDefinition {
                             .map(|w| DependencyEdge {
                                 edge_src: self.key(),
                                 edge_dst: w.clone(),
+                                is_weak: false,
                                 direction: EdgeDirection::To,
                                 marker: ModuleMarker::WaitProbe,
                             })
@@ -441,15 +451,24 @@ impl EdgeList for ServiceOrTaskDefinition {
                     })
                     .flatten(),
             )
+            .chain(self.after.iter().map(|key| DependencyEdge {
+                edge_src: self.key(),
+                edge_dst: key.clone(),
+                is_weak: true,
+                direction: EdgeDirection::To,
+                marker: ModuleMarker::WaitProbe,
+            }))
             .chain(self.post_up.iter().map(|key| DependencyEdge {
                 edge_src: self.key(),
                 edge_dst: key.clone(),
+                is_weak: false,
                 direction: EdgeDirection::From,
                 marker: ModuleMarker::WaitProbe,
             }))
             .chain(self.post.iter().map(|key| DependencyEdge {
                 edge_src: self.key(),
                 edge_dst: key.clone(),
+                is_weak: false,
                 direction: EdgeDirection::From,
                 marker: ModuleMarker::Instant,
             }))

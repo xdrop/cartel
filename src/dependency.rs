@@ -23,6 +23,9 @@ pub struct DependencyNode<T, M> {
     /// The 'origin' nodes that caused this dependency to be included in the
     /// dependency graph.
     pub origin_nodes: HashSet<String>,
+    /// Whether this node is "weak". A is_weak node should only be included in the
+    /// final graph if a dependency of at least one strong node.
+    pub is_weak: bool,
 }
 
 pub enum EdgeDirection {
@@ -43,6 +46,14 @@ pub struct DependencyEdge<M: PartialOrd> {
     /// multiple edges may be pointing to the same node with potentially
     /// different markers, the marker type must implement [PartialOrd].
     pub marker: M,
+    /// Whether this edge is "weak". A weak edge would not cause the target node
+    /// to appear in the graph, but if the target node is already present then a
+    /// link is enforced between them.
+    ///
+    /// This is used to constrain a node to be always ordered after another, but
+    /// not become a dependency in the graph unless it is also a direct
+    /// dependency of some other node.
+    pub is_weak: bool,
 }
 
 pub trait WithDependencies<M: PartialOrd>: WithKey {
@@ -60,6 +71,7 @@ impl<T: Copy, M: Copy> Clone for DependencyNode<T, M> {
         DependencyNode {
             key: self.key.clone(),
             value: self.value,
+            is_weak: self.is_weak,
             marker: self.marker,
             origin_nodes: self.origin_nodes.clone(),
         }
@@ -162,6 +174,7 @@ where
                     edge_dst,
                     original_node,
                     origin_node_idx,
+                    edge.is_weak,
                     marker,
                 );
 
@@ -171,8 +184,9 @@ where
                     origin_node_idx = node_idx;
                 }
 
-                if was_created {
+                if was_created && !edge.is_weak {
                     // Push it to the stack so we visit its dependencies next
+                    // (unless it is a weak node in which case we want to skip)
                     node_stack.push(StackEntry::new_related(
                         pointed_to_idx,
                         origin_node_idx,
@@ -261,6 +275,11 @@ where
             while !stack.is_empty() {
                 let (is_parent, node) = stack.pop().unwrap();
 
+                if node.is_weak {
+                    // Weak nodes are not to be included in the final output.
+                    continue;
+                }
+
                 if is_parent {
                     sorted.push(node);
                     marked.entry(node).and_modify(|e| *e = MarkType::PERMANENT);
@@ -306,6 +325,12 @@ where
 
             while !stack.is_empty() {
                 let (is_parent, node, level) = stack.pop().unwrap();
+
+                if node.is_weak {
+                    // Weak nodes are not to be included in the final output.
+                    continue;
+                }
+
                 let edges = self.edge_map.get(&node.key).unwrap();
 
                 if is_parent {
@@ -416,12 +441,18 @@ where
         key: &str,
         original_node: &'a S,
         origin_idx: usize,
+        is_weak: bool,
         marker: M,
     ) -> (usize, bool) {
         let origin_key = self.get_by_idx(origin_idx).key.clone();
         match self.node_map.get(key).copied() {
             Some(idx) => {
                 let existing = self.get_mut_ref(idx);
+                // If this node was weak but got referenced by a non-weak edge,
+                // upgrade this node to strong.
+                if existing.is_weak && !is_weak {
+                    existing.is_weak = false;
+                };
                 existing.origin_nodes.insert(origin_key);
                 (idx, false)
             }
@@ -429,6 +460,7 @@ where
                 let new_node = Self::new_node(
                     key.to_string(),
                     original_node,
+                    is_weak,
                     Some(marker),
                     origin_key,
                 );
@@ -470,6 +502,7 @@ where
                 let idx = arena.push_get_idx(Self::new_node(
                     s.to_string(),
                     &all_nodes[source_array_index[s]],
+                    false,
                     None,
                     s.to_string(),
                 ));
@@ -508,6 +541,7 @@ where
     fn new_node(
         key: String,
         value: &S,
+        is_weak: bool,
         marker: Option<M>,
         origin: String,
     ) -> DependencyNode<&S, M> {
@@ -517,6 +551,7 @@ where
         DependencyNode {
             key,
             value,
+            is_weak,
             marker,
             origin_nodes,
         }
@@ -546,6 +581,7 @@ mod test {
         dependencies: Vec<&str>,
         ordered_dependencies: Vec<&str>,
         inverse: Vec<&str>,
+        after: Vec<&str>,
     ) -> ModuleDefinition {
         ModuleDefinition {
             name: name.to_string(),
@@ -559,6 +595,7 @@ mod test {
                 None,
                 dependencies.iter().map(|s| s.to_string()).collect(),
                 ordered_dependencies.iter().map(|s| s.to_string()).collect(),
+                after.iter().map(|s| s.to_string()).collect(),
                 inverse.iter().map(|s| s.to_string()).collect(),
                 vec![],
                 None,
@@ -591,15 +628,15 @@ mod test {
 
     #[test]
     fn test_dependency_graph_sort() {
-        let m1 = make_module("m1", vec!["m3", "m6"], vec![], vec![]);
-        let m2 = make_module("m2", vec![], vec!["m4", "m5"], vec![]);
-        let m3 = make_module("m3", vec!["m7"], vec![], vec!["m9"]);
-        let m4 = make_module("m4", vec!["m7"], vec![], vec![]);
-        let m5 = make_module("m5", vec![], vec![], vec![]);
-        let m6 = make_module("m6", vec![], vec![], vec![]);
-        let m7 = make_module("m7", vec!["m8"], vec![], vec![]);
-        let m8 = make_module("m8", vec![], vec![], vec![]);
-        let m9 = make_module("m9", vec!["m8"], vec![], vec![]);
+        let m1 = make_module("m1", vec!["m3", "m6"], vec![], vec![], vec![]);
+        let m2 = make_module("m2", vec![], vec!["m4", "m5"], vec![], vec![]);
+        let m3 = make_module("m3", vec!["m7"], vec![], vec!["m9"], vec![]);
+        let m4 = make_module("m4", vec!["m7"], vec![], vec![], vec![]);
+        let m5 = make_module("m5", vec![], vec![], vec![], vec![]);
+        let m6 = make_module("m6", vec![], vec![], vec![], vec![]);
+        let m7 = make_module("m7", vec!["m8"], vec![], vec![], vec![]);
+        let m8 = make_module("m8", vec![], vec![], vec![], vec![]);
+        let m9 = make_module("m9", vec!["m8"], vec![], vec![], vec![]);
         let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8, m9];
         let selected =
             vec!["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"];
@@ -627,15 +664,15 @@ mod test {
 
     #[test]
     fn test_dependency_graph_group_sort() {
-        let m1 = make_module("m1", vec!["m3", "m6"], vec![], vec![]);
-        let m2 = make_module("m2", vec![], vec!["m4", "m5"], vec![]);
-        let m3 = make_module("m3", vec!["m7"], vec![], vec!["m9"]);
-        let m4 = make_module("m4", vec!["m7"], vec![], vec![]);
-        let m5 = make_module("m5", vec![], vec![], vec![]);
-        let m6 = make_module("m6", vec![], vec![], vec![]);
-        let m7 = make_module("m7", vec!["m8"], vec![], vec![]);
-        let m8 = make_module("m8", vec![], vec![], vec![]);
-        let m9 = make_module("m9", vec!["m8"], vec![], vec![]);
+        let m1 = make_module("m1", vec!["m3", "m6"], vec![], vec![], vec![]);
+        let m2 = make_module("m2", vec![], vec!["m4", "m5"], vec![], vec![]);
+        let m3 = make_module("m3", vec!["m7"], vec![], vec!["m9"], vec![]);
+        let m4 = make_module("m4", vec!["m7"], vec![], vec![], vec![]);
+        let m5 = make_module("m5", vec![], vec![], vec![], vec![]);
+        let m6 = make_module("m6", vec![], vec![], vec![], vec![]);
+        let m7 = make_module("m7", vec!["m8"], vec![], vec![], vec![]);
+        let m8 = make_module("m8", vec![], vec![], vec![], vec![]);
+        let m9 = make_module("m9", vec!["m8"], vec![], vec![], vec![]);
         let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8, m9];
         let selected =
             vec!["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9"];
@@ -662,17 +699,20 @@ mod test {
 
     #[test]
     fn test_partial_dependency_graph_sort() {
-        let m1 = make_module("m1", vec!["m3", "m6"], vec![], vec![]);
-        let m2 = make_module("m2", vec!["m4", "m5"], vec![], vec![]);
-        let m3 = make_module("m3", vec!["m7"], vec![], vec!["m9"]);
-        let m4 = make_module("m4", vec!["m7"], vec![], vec![]);
-        let m5 = make_module("m5", vec![], vec![], vec![]);
-        let m6 = make_module("m6", vec![], vec![], vec![]);
-        let m7 = make_module("m7", vec!["m8"], vec![], vec![]);
-        let m8 = make_module("m8", vec![], vec![], vec![]);
-        let m9 = make_module("m9", vec![], vec![], vec![]);
-        let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8, m9];
-        let selected = vec!["m3", "m2"];
+        let m1 = make_module("m1", vec!["m3", "m6"], vec![], vec![], vec![]);
+        let m2 = make_module("m2", vec!["m4", "m5"], vec![], vec![], vec![]);
+        let m3 = make_module("m3", vec!["m7"], vec![], vec!["m9"], vec![]);
+        let m4 = make_module("m4", vec!["m7"], vec![], vec![], vec![]);
+        let m5 = make_module("m5", vec![], vec![], vec![], vec![]);
+        let m6 = make_module("m6", vec![], vec![], vec![], vec![]);
+        let m7 = make_module("m7", vec!["m8"], vec![], vec![], vec![]);
+        let m8 = make_module("m8", vec![], vec![], vec![], vec!["m10"]);
+        let m9 = make_module("m9", vec![], vec![], vec![], vec![]);
+        let m10 = make_module("m10", vec![], vec![], vec![], vec!["m11"]);
+        let m11 = make_module("m11", vec![], vec![], vec![], vec![]);
+        let m12 = make_module("m12", vec![], vec![], vec![], vec!["m11"]);
+        let modules = vec![m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, m11, m12];
+        let selected = vec!["m3", "m2", "m10", "m11"];
 
         let graph = DependencyGraph::from(&modules, &selected);
         let result: Vec<&str> = graph
@@ -682,7 +722,8 @@ mod test {
             .map(|v| &v.value.name[..])
             .collect();
 
-        let expected_items = vec!["m3", "m7", "m8", "m4", "m2", "m5", "m9"];
+        let expected_items =
+            vec!["m3", "m7", "m8", "m4", "m2", "m5", "m9", "m10", "m11"];
         assert!(eq_lists(&result, &expected_items));
 
         assert!(is_before("m8", "m7", &result));
@@ -691,5 +732,7 @@ mod test {
         assert!(is_before("m4", "m2", &result));
         assert!(is_before("m5", "m2", &result));
         assert!(is_before("m3", "m9", &result));
+        assert!(is_before("m10", "m8", &result));
+        assert!(is_before("m11", "m10", &result));
     }
 }
