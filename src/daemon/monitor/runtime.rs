@@ -117,11 +117,11 @@ pub fn spawn_runtime(monitor_state: Arc<MonitorState>) -> MonitorHandle {
             .send(runtime.handle().clone())
             .expect("Unable to give runtime handle to main thread");
 
-        // Spawn the ticking thread for scanning of readiness monitors
+        // Spawn the ticking task for scanning of readiness monitors
         runtime.spawn(async move { readiness_poll_tickr(tx_readiness).await });
-        // Spawn the ticking thread for scanning of liveness monitors
+        // Spawn the ticking task for scanning of liveness monitors
         runtime.spawn(async move { liveness_poll_tickr(tx_liveness).await });
-        // Spawn the ticking thread for cleanup of idle monitors
+        // Spawn the ticking task for cleanup of idle monitors
         runtime.spawn(async move { cleanup_tickr(tx_cleanup).await });
 
         // Continue running until notified to shutdown

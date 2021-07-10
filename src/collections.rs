@@ -23,6 +23,7 @@ pub trait FromIndexContainer<V, R> {
 }
 
 pub trait FromOwnedIndexContainer<V, R> {
+    #[allow(clippy::wrong_self_convention)]
     fn from_index_backed(self, container: &[V]) -> R;
 }
 

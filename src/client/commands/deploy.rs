@@ -56,12 +56,12 @@ impl DeployOptions {
         let only_selected = opts.is_present("only_selected");
         Self {
             force_deploy,
-            skip_readiness_checks,
             skip_checks,
             only_selected,
+            skip_readiness_checks,
             active_envs,
-            wait,
             threads,
+            wait,
         }
     }
 }

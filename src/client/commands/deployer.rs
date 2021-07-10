@@ -55,6 +55,7 @@ impl Deployer {
         cfg: &ClientConfig,
         deploy_opts: &DeployOptions,
     ) -> Result<()> {
+        // Consume modules from the shared queue and deploy them.
         while !self.queue.is_empty() {
             if let Some(idx) = self.queue.pop() {
                 let module_to_deploy = &modules[idx];
@@ -276,10 +277,9 @@ impl Deployer {
     fn ask_to_apply_suggested_fix(
         check_def: &CheckDefinition,
         suggested_fix: &SuggestedFixDefinition,
-    ) -> () {
+    ) {
         tprint!(
-            "{} The {} check has failed\n\
-                    {}: {}\n",
+            "{} The {} check has failed\n {}: {}\n",
             cfail!("Error:"),
             cbold!(&check_def.about),
             cbold!("Message"),
@@ -287,8 +287,7 @@ impl Deployer {
         );
 
         tprint!(
-            "{} There is a suggested fix available. \n{} {}\n\n\
-                    {} (y/n)",
+            "{} There is a suggested fix available. \n {} {}\n\n {} (y/n)",
             YELLOW_NOTEBOOK,
             cbold!("Fix details:"),
             suggested_fix.message,

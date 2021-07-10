@@ -93,8 +93,8 @@ impl<T, M> PartialEq for DependencyNode<T, M> {
 impl<T, M> Eq for DependencyNode<T, M> {}
 
 enum MarkType {
-    PERMANENT,
-    TEMPORARY,
+    Permanent,
+    Temporary,
 }
 
 #[derive(Debug)]
@@ -282,20 +282,20 @@ where
 
                 if is_parent {
                     sorted.push(node);
-                    marked.entry(node).and_modify(|e| *e = MarkType::PERMANENT);
+                    marked.entry(node).and_modify(|e| *e = MarkType::Permanent);
                     continue;
                 }
 
                 if let Some(mark) = marked.get(node) {
                     match mark {
-                        MarkType::PERMANENT => continue,
-                        MarkType::TEMPORARY => {
+                        MarkType::Permanent => continue,
+                        MarkType::Temporary => {
                             bail!("The graph contains cycles")
                         }
                     }
                 }
 
-                marked.insert(node, MarkType::TEMPORARY);
+                marked.insert(node, MarkType::Temporary);
                 stack.push((true, node));
 
                 for edge in self.edge_map.get(&node.key).unwrap() {
@@ -336,7 +336,7 @@ where
                 if is_parent {
                     sorted.push(node);
                     marked.entry(node).and_modify(|e| {
-                        e.mark = MarkType::PERMANENT;
+                        e.mark = MarkType::Permanent;
                         e.level = level;
                     });
                     continue;
@@ -344,7 +344,7 @@ where
 
                 if let Some(meta) = marked.get_mut(node) {
                     match meta.mark {
-                        MarkType::PERMANENT => {
+                        MarkType::Permanent => {
                             if level > meta.level {
                                 meta.level = level;
 
@@ -355,13 +355,13 @@ where
                             }
                             continue;
                         }
-                        MarkType::TEMPORARY => {
+                        MarkType::Temporary => {
                             bail!("The graph contains cycles")
                         }
                     }
                 }
 
-                marked.insert(node, meta(MarkType::TEMPORARY, level));
+                marked.insert(node, meta(MarkType::Temporary, level));
                 stack.push((true, node, level));
 
                 for edge in edges {
@@ -514,11 +514,11 @@ where
         let node_list = selected_node_indices.iter().copied().collect();
 
         let graph_arena = Self {
-            source_array_index,
-            arena,
+            edge_map,
             node_map,
             node_list,
-            edge_map,
+            source_array_index,
+            arena,
         };
 
         (graph_arena, selected_node_indices)
@@ -551,9 +551,9 @@ where
         DependencyNode {
             key,
             value,
-            is_weak,
             marker,
             origin_nodes,
+            is_weak,
         }
     }
 }

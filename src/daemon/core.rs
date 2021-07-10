@@ -34,9 +34,17 @@ impl Core {
 /// Start the daemon
 pub fn start_daemon() -> Result<(), Box<dyn Error>> {
     let monitor = monitor::MonitorState::new();
+
+    // Create the Tokio async runtime and pass a handle to it so that it can be
+    // invoked from a sync context from within the API handlers.
     let monitor_handle = monitor::spawn_runtime(Arc::new(monitor));
     let core = Arc::new(Core::new(monitor_handle));
+
+    // Setup signal handlers to collect dead child processes.
     signal::setup_signal_handlers(Arc::clone(&core))?;
+
+    // Start the API.
     api::engine::start(&core);
+
     Ok(())
 }
