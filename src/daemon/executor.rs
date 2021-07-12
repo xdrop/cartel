@@ -211,7 +211,7 @@ impl Executor {
 
         module_entry.status = RunStatus::RUNNING;
         module_entry.pid = process.id();
-        module_entry.child = Option::Some(process);
+        module_entry.child = Some(process);
         module_entry.uptime = epoch_now();
         module_entry.module_definition = Arc::clone(&module);
         module_entry.monitor_key = liveness_probe;

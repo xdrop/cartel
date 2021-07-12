@@ -2,7 +2,7 @@
 
 > Local development workflow orchestrator
 
-`cartel` is an orchestration tool aimed at making local development easier for complex systems with multiple services. It allows for codifying the steps required to run some system locally, and providing an easy consistent interface for managing that system. It was heavily inspired by `docker-compose`, `k8s`, and `garden`, but aims to solve a different problem.
+`cartel` is an orchestration tool aimed at making local development easier for complex systems with multiple services. It allows for codifying the steps required to run some system locally, and providing an easy consistent interface for managing that system. It was heavily inspired by `docker-compose`, `k8s`, and `garden`, but instead works without containers, with both the benefits and drawbacks this approach entails.
 
 [![screencap](./img/screencap.png)](https://asciinema.org/a/PncJI8AS795r9zwXWLViXlTAb)
 
@@ -15,6 +15,7 @@
     - [Running tasks](#running-tasks)
     - [Viewing service status](#viewing-service-status)
     - [Stopping / restarting a service](#stopping--restarting-a-service)
+    - [Opening a REPL shell](#opening-a-repl-shell)
   - [Getting started configuration](#getting-started-configuration)
   - [Installation](#installation)
       - [macOS](#macos)
@@ -36,11 +37,11 @@
       - [Net probe](#net-probe)
       - [Executable probe](#executable-probe)
       - [Log line probe](#log-line-probe)
-  - [Suggested fix for checks](#suggested-fix-for-checks)
+    - [Suggested fix for checks](#suggested-fix-for-checks)
       
 
 ## Features
-While `cartel` is still in development it has a feature set rich enough to cover most use-cases.
+While `cartel` is still in development (see [CHANGELOG](../CHANGELOG.md)) it has a feature set rich enough to cover most use-cases.
 
 Some of the features included are:
 
@@ -48,6 +49,7 @@ Some of the features included are:
 - Tail and manage logs of services.
 - Monitor the health of services.
 - Running tasks ad-hoc.
+- Convienient access to REPL shells for services.
 - Perform checks to ensure a machine is set up in a correct state.
 
 `cartel` revolves around modules which are used to codify your local services setup. There are currently _five_ different kinds of modules which are:
@@ -87,23 +89,34 @@ $ cartel logs -a <name>
 ```
 
 ### Running tasks
+To run an ad-hoc task:
 
 ```
 $ cartel run <task-name>
 ```
 
 ### Viewing service status
+To view services and their status:
 
 ```
 $ cartel ps
 ```
 
 ### Stopping / restarting a service
+To start / stop a service:
+
 ```
 $ cartel stop <name>
 $ cartel restart <name>
 ```
 
+### Opening a REPL shell
+To open a REPL shell to some service. Since services can define multiple types of REPL shells `-t` can distinguish between them based on `type`.
+
+```
+$ cartel shell <service_name>
+$ cartel shell -t <type> <service_name>
+```
 
 ## Getting started configuration
 
@@ -266,7 +279,7 @@ Use `Shell` to define a shortcut for getting a REPL shell for some service.
 | service | The service this shell is for. This has to match the module name of a service and is **required**. It is what `cartel shell` uses to determine which shell to open. | String | `myservicename`
 | command | A command with which to launch the shell. This has to be an array of the path to the program and its arguments. This does not invoke a shell so things like pipes (`\|`) and other shell operators will not work unless explicitly run within a shell (eg. in `bash -c`). | String[] | `["bash", "-c", "echo hi"]`
 | shell | A shell command with which to launch the shell. Unlike `command` this is a cmd line string which is evaluated in a shell context (`bash`). Only **one of** `command`/`shell` must be present. | String | `python3 $(get-shell)`
-| shell_type | The type of the shell. Used to choose between multiple shell options for a service.| String | `ipython`
+| shell_type | The type of the shell. Used to choose between multiple shell options for a service when specifying the `-t` option (eg. `cartel shell -t ipython myservice`) | String | `ipython`
 | environment | The environment variables to pass to the shell. (Optional) | Map[String, String] | `HOST: localhost` <br/> `PORT: 8921`
 | working_dir | The working directory all commands and paths are relative to. Relative directories are allowed and they are relative to the location of the `cartel.yml` file. (Optional) | String | `./services/my-service`
 
@@ -425,7 +438,7 @@ readiness_probe:
 ```
 
 
-## Suggested fix for checks
+### Suggested fix for checks
 
 A **suggested fix** may be defined for a check that a user may optionally apply.
 

@@ -4,6 +4,7 @@ use std::hash::Hash;
 pub trait VecExt {
     type Item;
 
+    /// Insert an entry into the Vec and return its index.
     fn push_get_idx(&mut self, item: Self::Item) -> usize;
 }
 
@@ -19,25 +20,30 @@ impl<T> VecExt for Vec<T> {
 }
 
 pub trait FromIndexContainer<V, R> {
-    fn from_index_backed(&self, container: &[V]) -> R;
+    /// Construct a new container by replacing elements pointed by the indices
+    /// in `self` with the corresponding target elements in `container`.
+    fn replace_indices_from(&self, container: &[V]) -> R;
 }
 
 pub trait FromOwnedIndexContainer<V, R> {
-    #[allow(clippy::wrong_self_convention)]
-    fn from_index_backed(self, container: &[V]) -> R;
+    /// Construct a new container by replacing elements pointed by the indices
+    /// in `self` with the corresponding target elements in `container`.
+    fn replace_indices_from(self, container: &[V]) -> R;
 }
 
 impl<V: Clone> FromIndexContainer<V, Vec<V>> for Vec<usize> {
-    /// Rebuild a Vec of indices from its index backed container.
+    /// Contruct a new `Vec` with each index replaced by the item its pointing
+    /// to in `container`.
     ///
-    /// Rebuilds a `Vec<usize>` to a `Vec<V>` where `V` is the type of element in
-    /// the index backed container.
+    /// Rebuilds a `Vec<usize>` to `Vec<V>` where `V` is the type of the
+    /// elements in `container`. For every index `i`, the new Vec will contain
+    /// `container[i].clone()`.
     ///
     /// # Arguments:
-    /// * `vec` - A vector containing indices to the index backed container.
+    /// * `self` - A vector containing indices to the index backed container.
     /// * `container` - The container containing the elements pointed by the
     ///   indices in `vec`.
-    fn from_index_backed(&self, container: &[V]) -> Vec<V> {
+    fn replace_indices_from(&self, container: &[V]) -> Vec<V> {
         self.iter().map(|idx| container[*idx].clone()).collect()
     }
 }
@@ -48,18 +54,20 @@ where
     K: Eq + Hash,
     V: Clone,
 {
-    /// Rebuild a HashMap of indices from its index backed container.
+    /// Contruct a new `HashMap` with each index in the map values `Vec` replaced by
+    /// the item its pointing to in `container`
     ///
-    /// Rebuilds a `HashMap<K, usize>` to a `HashMap<K, V>` where `V` is the type
-    /// of element in the index backed container.
+    /// Rebuilds a `HashMap<K, Vec<usize>>` to a `HashMap<K, V>` where `V` is the type
+    /// of elements in `container`. For every index `i`, the new Vec will contain
+    /// `container[i].clone()`.
     ///
-    /// The map's keys are passed through as is.
+    /// The map's keys are consumed and moved as they are.
     ///
     /// # Arguments:
-    /// * `map` - A map containing indices to the index backed container.
+    /// * `self` - A map containing indices to the index backed container.
     /// * `container` - The container containing the elements pointed by the
     ///   indices in `vec`.
-    fn from_index_backed(self, container: &[V]) -> HashMap<K, Vec<V>> {
+    fn replace_indices_from(self, container: &[V]) -> HashMap<K, Vec<V>> {
         self.into_iter()
             .map(|(k, v)| {
                 (k, v.iter().map(|idx| container[*idx].clone()).collect())

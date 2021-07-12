@@ -533,8 +533,8 @@ where
         Vec<DependencyNode<&'a S, M>>,
     ) {
         // Convert the index backed map and list to the actual dependency nodes.
-        let edge_map = self.edge_map.from_index_backed(&self.arena);
-        let node_list = self.node_list.from_index_backed(&self.arena);
+        let edge_map = self.edge_map.replace_indices_from(&self.arena);
+        let node_list = self.node_list.replace_indices_from(&self.arena);
         (edge_map, node_list)
     }
 
