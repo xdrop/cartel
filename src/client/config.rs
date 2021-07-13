@@ -41,9 +41,29 @@ pub fn parse_from_yaml_str(
     path: &Path,
 ) -> Result<Vec<ModuleDefinition>> {
     let mut parsed: Vec<ModuleDefinition> = vec![];
-    for document in serde_yaml::Deserializer::from_str(source) {
+    for (idx, document) in
+        serde_yaml::Deserializer::from_str(source).enumerate()
+    {
         let value = Value::deserialize(document)?;
-        let module: ModuleDefinition = serde_yaml::from_value(value)?;
+
+        // Attempt to retrieve and clone the name in an attempt to provide a
+        // useful error message to the user.
+        let mod_name = if let Some(Value::String(mod_name)) = value.get("name")
+        {
+            Some(mod_name.clone())
+        } else {
+            None
+        };
+
+        let module: ModuleDefinition = serde_yaml::from_value(value)
+            .with_context(|| {
+                if let Some(name) = mod_name {
+                    format!("In module with name: {:?}", name)
+                } else {
+                    format!("In module with index: {}", idx)
+                }
+            })?;
+
         parsed.push(module);
     }
     for mut m in parsed.iter_mut() {
