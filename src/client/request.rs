@@ -41,7 +41,7 @@ pub enum LogInfoResponse {
 
 fn long_timeout_client() -> Client {
     reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(180))
+        .timeout(Duration::from_secs(300))
         .build()
         .unwrap()
 }

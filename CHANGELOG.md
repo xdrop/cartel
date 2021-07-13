@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed a bug that caused more detailed error messages to be supressed.
 
+### Changed
+- Bump task timeout to five minutes (up from three).
 
 ## [0.10.0-beta] - 2021-07-10
 ### Added
