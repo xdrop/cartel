@@ -1,6 +1,6 @@
 use crate::client::commands::*;
 use crate::client::config::{read_persisted_config, PersistedConfig};
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::env;
 
@@ -235,7 +235,8 @@ pub fn cli_app() -> Result<()> {
 
     let persisted_config = read_persisted_config()?;
     let cfg = cfg(&matches, persisted_config)?;
-    invoke_subcommand(&matches, &cfg)?;
+    invoke_subcommand(&matches, &cfg)
+        .map_err(|e| handle_daemon_offline(e, cfg.verbose > 0))?;
     Ok(())
 }
 
@@ -260,7 +261,7 @@ fn cfg(
         persisted_config.and_then(|mut cfg| cfg.default_dir.take());
 
     Ok(ClientConfig {
-        verbose: matches.occurrences_of("v"),
+        verbose: matches.occurrences_of("verbose"),
         module_file: matches.value_of("file").map(String::from),
         override_file: matches.value_of("override").map(String::from),
         default_pager_cmd,
@@ -354,4 +355,27 @@ fn invoke_subcommand(matches: &ArgMatches, cfg: &ClientConfig) -> Result<()> {
         _ => {}
     }
     Ok(())
+}
+
+fn handle_daemon_offline(e: Error, verbose: bool) -> Error {
+    let is_conn_err = if let Some(req_err) = e.downcast_ref::<reqwest::Error>()
+    {
+        req_err.is_connect()
+    } else {
+        false
+    };
+    if is_conn_err {
+        let msg = anyhow!(
+            "Could not connect to daemon. \
+                Is the daemon running? (try `cartel daemon restart`)",
+        );
+
+        if verbose {
+            e.context(msg)
+        } else {
+            anyhow!(msg)
+        }
+    } else {
+        e
+    }
 }

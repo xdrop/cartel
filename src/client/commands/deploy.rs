@@ -11,7 +11,7 @@ use crate::client::module::{
 };
 use crate::client::validation::validate_modules_selected;
 use crate::dependency::{DependencyGraph, DependencyNode};
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::ArgMatches;
 use crossbeam_queue::ArrayQueue;
 use crossbeam_utils::thread;
@@ -220,7 +220,7 @@ fn deploy(
     });
 
     if let Err(e) = result.unwrap() {
-        return Err(anyhow!(e));
+        return Err(*e);
     }
 
     Ok(())

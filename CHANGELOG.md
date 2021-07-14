@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Allow tasks to specify `timeout` individually rather than have a global one.
 
+### Changed
+- Improve error messages for common errors.
+- Error messages now print to `stderr`.
+
 ## [0.10.1-beta] - 2021-07-13
 ### Added
 - Provide additional context for some parsing errors.

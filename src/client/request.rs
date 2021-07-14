@@ -4,7 +4,7 @@ use crate::client::module::{
     ServiceOrTaskDefinition,
 };
 use crate::daemon::api::*;
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use reqwest::blocking::Client;
 use std::collections::HashMap;
 use std::time::Duration;

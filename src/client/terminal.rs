@@ -15,7 +15,7 @@ macro_rules! tiprint {
 #[macro_export]
 macro_rules! teprint {
     ( $x:expr ) => {
-        println!("{} {:}", console::style("Error:").bold().red(), $x);
+        eprintln!("{} {:}", console::style("Error:").bold().red(), $x);
     };
 }
 
@@ -30,7 +30,7 @@ macro_rules! texit {
 #[macro_export]
 macro_rules! teprinterr {
     ( $x:expr ) => {
-        println!("{} {:?}", console::style("Error:").bold().red(), $x);
+        eprintln!("{} {:?}", console::style("Error:").bold().red(), $x);
     };
 }
 
