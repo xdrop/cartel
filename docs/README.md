@@ -256,6 +256,7 @@ Use `Task` for short lived processes used to perform some temporary operation or
 | environment | The environment variables to pass to the task. (Optional) | Map[String, String] | `HOST: localhost` <br/> `PORT: 8921`
 | log_file_path | Path to the log file where stdout and stderr is written. (Optional) | String | `/tmp/my_service.log`
 | working_dir | The working directory all commands and paths are relative to.  Relative directories are allowed and they are relative to the location of the `cartel.yml` file. (Optional) | String | `./services/my-service`
+| timeout | Number of seconds without completion before the task is considered failed. If left unspecified this will default to `180` seconds. (Optional) | u64 | 180
 
 #### Example
 

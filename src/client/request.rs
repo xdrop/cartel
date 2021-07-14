@@ -39,9 +39,9 @@ pub enum LogInfoResponse {
     Err(ErrorResponse),
 }
 
-fn long_timeout_client() -> Client {
+fn client(timeout: &Option<u64>) -> Client {
     reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(300))
+        .timeout(Duration::from_secs(timeout.unwrap_or(180)))
         .build()
         .unwrap()
 }
@@ -175,13 +175,20 @@ pub fn deploy_task(
     deploy_opts: &DeployOptions,
     daemon_url: &str,
 ) -> Result<ApiTaskDeploymentResponse> {
-    let client = long_timeout_client();
+    let client = client(&task_definition.timeout);
     let command = build_task_deploy_command(task_definition, deploy_opts);
 
     let deployment_result: TaskDeploymentResponse = client
         .post(&(daemon_url.to_owned() + "/tasks/deploy"))
         .json(&command)
-        .send()?
+        .send()
+        .map_err(|e| {
+            if e.is_timeout() {
+                anyhow!(task_took_too_long_msg(&task_definition.name))
+            } else {
+                e.into()
+            }
+        })?
         .json()?;
 
     match deployment_result {
@@ -303,4 +310,16 @@ pub fn get_plan(
         .send()?
         .json()?;
     Ok(get_plan_result)
+}
+
+fn task_took_too_long_msg(task_name: &str) -> String {
+    return format!(
+        "Task \"{}\" took too long to finish. \
+        \nTry increasing the timeout or check the \
+        logs using `cartel logs {}`. \
+        \n{} The task may still be running.",
+        task_name,
+        task_name,
+        cbold!("Note:")
+    );
 }

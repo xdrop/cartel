@@ -136,6 +136,9 @@ pub struct ServiceOrTaskDefinition {
     pub readiness_probe: Option<Probe>,
     /// Definition of a liveness probe for the service.
     pub liveness_probe: Option<Probe>,
+    /// Duration in seconds before a task is considered as failed (currently
+    /// only for tasks).
+    pub timeout: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -270,6 +273,7 @@ impl ServiceOrTaskDefinition {
         always_await_readiness_probe: bool,
         readiness_probe: Option<Probe>,
         liveness_probe: Option<Probe>,
+        timeout: Option<u64>,
     ) -> ServiceOrTaskDefinition {
         ServiceOrTaskDefinition {
             name,
@@ -289,6 +293,7 @@ impl ServiceOrTaskDefinition {
             always_await_readiness_probe,
             readiness_probe,
             liveness_probe,
+            timeout,
         }
     }
 
