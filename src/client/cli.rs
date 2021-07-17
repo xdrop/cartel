@@ -357,13 +357,13 @@ fn invoke_subcommand(matches: &ArgMatches, cfg: &ClientConfig) -> Result<()> {
     Ok(())
 }
 
-fn handle_daemon_offline(e: Error, verbose: bool) -> Error {
-    let is_conn_err = if let Some(req_err) = e.downcast_ref::<reqwest::Error>()
-    {
-        req_err.is_connect()
-    } else {
-        false
-    };
+fn handle_daemon_offline(err: Error, verbose: bool) -> Error {
+    let is_conn_err =
+        if let Some(req_err) = err.downcast_ref::<reqwest::Error>() {
+            req_err.is_connect()
+        } else {
+            false
+        };
     if is_conn_err {
         let msg = anyhow!(
             "Could not connect to daemon. \
@@ -371,11 +371,11 @@ fn handle_daemon_offline(e: Error, verbose: bool) -> Error {
         );
 
         if verbose {
-            e.context(msg)
+            err.context(msg)
         } else {
             anyhow!(msg)
         }
     } else {
-        e
+        err
     }
 }
