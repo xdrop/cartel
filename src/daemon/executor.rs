@@ -1,3 +1,4 @@
+use crate::daemon::env_grabber::CurrentEnvHolder;
 use crate::daemon::error::DaemonError;
 use crate::daemon::logs::log_file_module;
 use crate::daemon::module::{ModuleDefinition, TermSignal};
@@ -8,6 +9,7 @@ use crate::process::Process;
 
 use anyhow::{Context, Result};
 use log::info;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::File;
@@ -17,7 +19,13 @@ use std::sync::Arc;
 
 pub struct Executor {
     module_map: HashMap<String, ModuleStatus>,
+    cfg: Arc<ExecutorConfig>,
     monitor_handle: MonitorHandle,
+    env_holder: Arc<CurrentEnvHolder>,
+}
+
+pub struct ExecutorConfig {
+    pub use_env_grabber_env: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -62,10 +70,16 @@ impl ModuleStatus {
 }
 
 impl Executor {
-    pub fn new(monitor_handle: MonitorHandle) -> Executor {
+    pub fn new(
+        monitor_handle: MonitorHandle,
+        env_holder: Arc<CurrentEnvHolder>,
+        cfg: Arc<ExecutorConfig>,
+    ) -> Executor {
         Executor {
             module_map: HashMap::new(),
             monitor_handle,
+            env_holder,
+            cfg,
         }
     }
 
@@ -190,6 +204,11 @@ impl Executor {
         let log_file_pathbuf = log_file_module(&module)?;
         let log_file_path = log_file_pathbuf.as_path();
         let liveness_probe = self.maybe_create_liveness_probe(&module);
+        let environment_variables = Self::environment_variables(
+            &module,
+            &self.env_holder,
+            self.cfg.use_env_grabber_env,
+        );
 
         let module_entry = self
             .module_map
@@ -202,7 +221,7 @@ impl Executor {
             Self::prepare_log_files(log_file_path)?;
         let process = Process::spawn(
             &module.command,
-            &module.environment,
+            &environment_variables,
             stdout_file,
             stderr_file,
             module.working_dir.as_deref(),
@@ -251,6 +270,30 @@ impl Executor {
         self.module_map
             .values_mut()
             .filter(|m| m.status == RunStatus::RUNNING)
+    }
+
+    fn merge_envs(
+        mut base_env: HashMap<String, String>,
+        env: &HashMap<String, String>,
+    ) -> HashMap<String, String> {
+        for (key, val) in env.iter() {
+            base_env.insert(key.clone(), val.clone());
+        }
+        base_env
+    }
+
+    fn environment_variables<'a>(
+        module: &'a ModuleDefinition,
+        env_holder: &CurrentEnvHolder,
+        use_env_grabber_env: bool,
+    ) -> Cow<'a, HashMap<String, String>> {
+        if use_env_grabber_env {
+            let merged_environment =
+                Self::merge_envs(env_holder.read(), &module.environment);
+            Cow::Owned(merged_environment)
+        } else {
+            Cow::Borrowed(&module.environment)
+        }
     }
 
     fn maybe_create_liveness_probe(
@@ -313,11 +356,14 @@ impl Executor {
 
 pub mod task_executor {
     use super::Executor;
+    use crate::daemon::env_grabber::CurrentEnvHolder;
     use crate::daemon::error::DaemonError;
+    use crate::daemon::executor::ExecutorConfig;
     use crate::daemon::logs::log_file_module;
     use crate::daemon::module::{ModuleDefinition, ModuleKind};
     use anyhow::{Context, Result};
     use std::process::ExitStatus;
+    use std::sync::Arc;
 
     /// Executes a task and waits for it until it is finished.
     ///
@@ -326,10 +372,17 @@ pub mod task_executor {
     /// Error is thrown.
     pub fn execute_task(
         task_definition: &ModuleDefinition,
+        cfg: &ExecutorConfig,
+        env_holder: Arc<CurrentEnvHolder>,
     ) -> Result<ExitStatus> {
         assert!(task_definition.kind == ModuleKind::Task);
         let log_file_pathbuf = log_file_module(task_definition)?;
         let log_file_path = log_file_pathbuf.as_path();
+        let environment_vars = Executor::environment_variables(
+            task_definition,
+            &env_holder,
+            cfg.use_env_grabber_env,
+        );
 
         let (stdout_file, stderr_file) =
             Executor::prepare_log_files(log_file_path)?;
@@ -340,7 +393,7 @@ pub mod task_executor {
             &task_definition.command[1..],
             stdout_file,
             stderr_file,
-            &task_definition.environment,
+            &environment_vars,
             task_definition.working_dir.as_deref(),
         )?;
 

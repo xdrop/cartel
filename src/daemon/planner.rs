@@ -1,6 +1,8 @@
+use crate::config::PersistedConfig;
+use crate::daemon::env_grabber::CurrentEnvHolder;
 use crate::daemon::error::DaemonError;
 use crate::daemon::executor::{
-    task_executor, Executor, ModuleStatus, RunStatus,
+    task_executor, Executor, ExecutorConfig, ModuleStatus, RunStatus,
 };
 use crate::daemon::logs::log_file_path;
 use crate::daemon::module::{ModuleDefinition, ModuleKind};
@@ -19,7 +21,14 @@ pub struct Planner {
     // expected to be contended. The complexity and overhead of other lock-free
     // implementations doesn't feel worth it here.
     executor: Mutex<Executor>,
+    // A cloneable handle with which we can interact with the tokio runtime and
+    // spawn new monitors.
     monitor_handle: MonitorHandle,
+    // A shared reference to the current environment variables held by the
+    // env-grabber. This is only used if env-grabber is enabled.
+    env_holder: Arc<CurrentEnvHolder>,
+    // A shared reference to the executors config.
+    executor_config: Arc<ExecutorConfig>,
 }
 
 pub struct PsStatus {
@@ -42,10 +51,23 @@ pub struct Plan {
 }
 
 impl Planner {
-    pub fn new(monitor_handle: MonitorHandle) -> Planner {
+    pub fn new(
+        monitor_handle: MonitorHandle,
+        env_holder: Arc<CurrentEnvHolder>,
+        cfg: &PersistedConfig,
+    ) -> Planner {
+        let executor_config = Arc::new(ExecutorConfig {
+            use_env_grabber_env: cfg.daemon.use_env_grabber.unwrap_or(false),
+        });
         Planner {
-            executor: Mutex::new(Executor::new(monitor_handle.clone())),
+            executor: Mutex::new(Executor::new(
+                monitor_handle.clone(),
+                Arc::clone(&env_holder),
+                Arc::clone(&executor_config),
+            )),
             monitor_handle,
+            env_holder,
+            executor_config,
         }
     }
 
@@ -112,9 +134,16 @@ impl Planner {
             .collect()
     }
 
-    pub fn deploy_task(task_definition: &ModuleDefinition) -> Result<i32> {
-        task_executor::execute_task(task_definition)
-            .map(|exit_status| exit_status.code().unwrap_or(-1))
+    pub fn deploy_task(
+        &self,
+        task_definition: &ModuleDefinition,
+    ) -> Result<i32> {
+        task_executor::execute_task(
+            task_definition,
+            &self.executor_config,
+            Arc::clone(&self.env_holder),
+        )
+        .map(|exit_status| exit_status.code().unwrap_or(-1))
     }
 
     /// Restarts an existing module.

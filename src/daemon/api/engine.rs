@@ -1,5 +1,6 @@
 use crate::daemon::api::handlers;
 use crate::daemon::Core;
+use log::info;
 use rocket::config::{Environment, LoggingLevel};
 use rocket::Config;
 use std::sync::Arc;
@@ -16,6 +17,7 @@ pub fn start(core: &Arc<Core>) {
         .workers(4)
         .unwrap();
 
+    info!("Starting API listener");
     rocket::custom(cfg)
         .manage(CoreState {
             core: Arc::clone(core),

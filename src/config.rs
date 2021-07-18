@@ -1,7 +1,8 @@
 use crate::constants::PROJECT_DIR;
 use anyhow::{bail, Context, Result};
 use phf::phf_map;
-use serde::Deserialize;
+use serde::de::{Error, Unexpected};
+use serde::{Deserialize, Deserializer};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -12,7 +13,28 @@ pub struct DaemonConfig {
     /// The port to reach the daemon at.
     pub port: Option<String>,
     /// Turn on the experimental env grabber.
-    pub use_env_grabber: Option<String>,
+    #[serde(deserialize_with = "bool_from_enabled_disabled")]
+    pub use_env_grabber: Option<bool>,
+}
+
+fn bool_from_enabled_disabled<'de, D>(
+    deserializer: D,
+) -> Result<Option<bool>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let deserialized = String::deserialize(deserializer)?;
+    let result = if deserialized == "enabled" {
+        true
+    } else if deserialized == "disabled" {
+        false
+    } else {
+        return Err(Error::invalid_value(
+            Unexpected::Str(&deserialized),
+            &"\"enabled\" or \"disabled\"",
+        ));
+    };
+    Ok(Some(result))
 }
 
 #[derive(Deserialize)]

@@ -2,7 +2,7 @@ use crate::daemon::api::convert::*;
 use crate::daemon::api::engine::CoreState;
 use crate::daemon::api::error::*;
 use crate::daemon::monitor::MonitorType;
-use crate::daemon::planner::{MonitorStatus, Planner};
+use crate::daemon::planner::MonitorStatus;
 use rocket::State;
 use rocket_contrib::json::Json;
 use serde::{Deserialize, Serialize};
@@ -207,11 +207,12 @@ pub(crate) fn deploy(
 #[post("/api/v1/tasks/deploy", data = "<task>")]
 pub(crate) fn deploy_task(
     task: Json<ApiTaskDeploymentCommand>,
-    _core_state: State<CoreState>,
+    core_state: State<CoreState>,
 ) -> ApiResult<ApiTaskDeploymentResponse> {
     let cmd = task.into_inner();
+    let planner = core_state.core.planner();
     let task = cmd.task_definition;
-    Planner::deploy_task(&from_task(task))?;
+    planner.deploy_task(&from_task(task))?;
     Ok(Json(ApiTaskDeploymentResponse { success: true }))
 }
 

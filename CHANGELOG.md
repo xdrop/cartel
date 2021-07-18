@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added a set of `config` cli options for controlling various global options.
+- Added a mechanism with which environment variables from the users shell configuration can be periodically refreshed. This eliminates the need for the user to need to perform a daemon restart whenever they need to reload some shell configuration (eg. a change in a `.zshrc` file). This feature is _experimental_ and is _disabled_ by default.
 
 ### Changed
 - The global configuration file has been switched from `YAML` to `TOML` (this is different from the module definitions file which will remain as YAML). This means that upon upgrading any existing config will be lost and will need to be migrated.
