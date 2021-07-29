@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - The global configuration file has been switched from `YAML` to `TOML` (this is different from the module definitions file which will remain as YAML). This means that upon upgrading any existing config will be lost and will need to be migrated.
+- Liveness status will now update correctly when a process exits.
 
 ## [0.10.2-beta] - 2021-07-14
 ### Added

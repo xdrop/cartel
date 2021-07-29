@@ -111,6 +111,8 @@ impl Executor {
     /// that indicates a process exited (or got killed). Any other status is
     /// mapped to `STOPPED` (i.e. stopped by the user).
     pub fn collect(&mut self) {
+        let mut expired_probes = vec![];
+
         for module in self.running_modules_mut() {
             if let Some(process) = &mut module.child {
                 if let Ok(Some(status)) = process.try_wait() {
@@ -120,7 +122,9 @@ impl Executor {
                         RunStatus::RUNNING => RunStatus::EXITED,
                         _ => RunStatus::STOPPED,
                     };
-
+                    if let Some(handle) = module.monitor_key.take() {
+                        expired_probes.push(handle);
+                    }
                     info!(
                         "Collecting dead process ({}) with exit-code {:#?}",
                         module.pid,
@@ -128,6 +132,12 @@ impl Executor {
                     );
                 }
             }
+        }
+
+        // Remove liveness probes
+        for handle in expired_probes.into_iter() {
+            self.monitor_handle
+                .remove_monitor(handle, MonitorType::Liveness);
         }
     }
 
