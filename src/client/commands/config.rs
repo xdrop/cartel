@@ -34,3 +34,18 @@ pub fn get_option(key: &str) -> Result<()> {
     }
     Ok(())
 }
+
+pub fn view_all_options() -> Result<()> {
+    let editable_cfg = config::read_persisted_config_as_editable()?;
+    for (key, val) in editable_cfg.get_all_options()? {
+        tprint!(
+            "{} => {}",
+            cbold!(key),
+            match val {
+                Some(v) => cbold!(v),
+                None => cbold!(String::from("None")),
+            }
+        )
+    }
+    Ok(())
+}

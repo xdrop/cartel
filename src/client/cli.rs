@@ -289,6 +289,10 @@ pub fn cli_app() -> Result<()> {
                                 .takes_value(true)
                                 .multiple(false),
                         ),
+                )
+                .subcommand(
+                    SubCommand::with_name("view")
+                        .about("View all currently set/unset configuration options")
                 ),
         )
         .get_matches();
@@ -429,6 +433,9 @@ fn invoke_subcommand(matches: &ArgMatches, cfg: &ClientConfig) -> Result<()> {
                 ("remove", Some(opts)) => {
                     let key = opts.value_of("key").unwrap();
                     remove_option(key)?;
+                }
+                ("view", _) => {
+                    view_all_options()?;
                 }
                 _ => {}
             }

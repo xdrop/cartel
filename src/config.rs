@@ -152,13 +152,32 @@ impl EditableConfig {
         Ok((namespace, key))
     }
 
-    pub fn get_option(&self, key: &str) -> Result<Option<String>> {
-        let (namespace, key) = Self::get_option_path(key)?;
+    fn read_option_raw(
+        &self,
+        namespace: &str,
+        key: &str,
+    ) -> Result<Option<String>> {
         match &self.raw_toml[namespace][key] {
             Item::None => Ok(None),
             Item::Value(Value::String(s)) => Ok(Some(s.value().to_string())),
             _ => bail!("Unsupported format for key '{}'. All options should be strings.", key),
         }
+    }
+
+    pub fn get_option(&self, key: &str) -> Result<Option<String>> {
+        let (namespace, key) = Self::get_option_path(key)?;
+        self.read_option_raw(namespace, key)
+    }
+
+    pub fn get_all_options(&self) -> Result<Vec<(String, Option<String>)>> {
+        let mut options = vec![];
+        for (flat_key, [namespace, key]) in KEY_TO_PATH.entries() {
+            options.push((
+                flat_key.to_string(),
+                self.read_option_raw(namespace, key)?,
+            ))
+        }
+        Ok(options)
     }
 
     pub fn set_option(&mut self, key: &str, new_val: String) -> Result<()> {
