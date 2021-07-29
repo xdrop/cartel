@@ -2,7 +2,7 @@ use crate::client::cli::ClientConfig;
 use crate::client::commands::deployer::{
     Deployer, ModuleDeploymentPlan, ModuleToDeploy,
 };
-use crate::client::config::read_module_definitions;
+use crate::client::definitions::read_module_definitions;
 use crate::client::emoji::{
     LINK, LOOKING_GLASS, SPIRAL_NOTEBOOK, SUCCESS, TEXTBOOK, VAN,
 };

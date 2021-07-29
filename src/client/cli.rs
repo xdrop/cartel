@@ -1,5 +1,5 @@
 use crate::client::commands::*;
-use crate::client::config::{read_persisted_config, PersistedConfig};
+use crate::client::definitions::{read_persisted_config, PersistedConfig};
 use anyhow::{anyhow, bail, Error, Result};
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::env;

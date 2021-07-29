@@ -1,5 +1,5 @@
 use crate::client::cli::ClientConfig;
-use crate::client::config::read_module_definitions;
+use crate::client::definitions::read_module_definitions;
 use crate::client::module::{shell_for_service, InnerDefinition};
 use crate::client::process::run_shell;
 use anyhow::{anyhow, bail, Result};

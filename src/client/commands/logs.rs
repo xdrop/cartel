@@ -1,5 +1,5 @@
 use crate::client::cli::ClientConfig;
-use crate::client::config::get_module_by_name;
+use crate::client::definitions::get_module_by_name;
 use crate::client::module::{InnerDefinition, ModuleKind};
 use crate::client::request;
 use anyhow::{bail, Result};
