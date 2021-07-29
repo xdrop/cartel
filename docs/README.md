@@ -172,10 +172,9 @@ Linux users will need to compile manually (ensure `Rust Nightly` is installed).
 $ git clone https://github.com/xdrop/cartel.git
 $ cd cartel
 $ cargo build --release --all
-$ mv target/bin/client /usr/local/bin/cartel
-$ mv target/bin/daemon /usr/local/bin/cartel-daemon
-$ chmod +x /usr/local/bin/cartel 
-$ chmod +x /usr/local/bin/cartel-daemon
+$ mv target/release/client /usr/local/bin/cartel
+$ mv target/release/daemon /usr/local/bin/cartel-daemon
+$ chmod +x /usr/local/bin/cartel*
 $ mkdir -p ~/.cartel
 $ cp launch-daemon.sh ~/.cartel
 ```
