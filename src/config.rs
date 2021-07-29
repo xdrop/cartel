@@ -13,6 +13,7 @@ pub struct DaemonConfig {
     /// The port to reach the daemon at.
     pub port: Option<String>,
     /// Turn on the experimental env grabber.
+    #[serde(default)]
     #[serde(deserialize_with = "bool_from_enabled_disabled")]
     pub use_env_grabber: Option<bool>,
 }
@@ -74,7 +75,7 @@ pub fn create_config_if_not_exists() -> Result<()> {
             Ok(())
         }
         Err(e) => {
-            // Already exists if fine, any other error is not
+            // Already exists is fine, any other error is not
             if e.kind() != io::ErrorKind::AlreadyExists {
                 return Err(e.into());
             }
