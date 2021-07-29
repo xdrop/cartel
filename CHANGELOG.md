@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added a set of `config` cli options for controlling various global options.
+
+### Changed
+- The global configuration file has been switched from `YAML` to `TOML` (this is different from the module definitions file which will remain as YAML). This means that upon upgrading any existing config will be lost and will need to be migrated.
 
 ## [0.10.2-beta] - 2021-07-14
 ### Added

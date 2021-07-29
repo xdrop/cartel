@@ -1,5 +1,6 @@
 use crate::client::commands::*;
-use crate::client::definitions::{read_persisted_config, PersistedConfig};
+use crate::config;
+use crate::config::PersistedConfig;
 use anyhow::{anyhow, bail, Error, Result};
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::env;
@@ -231,10 +232,70 @@ pub fn cli_app() -> Result<()> {
                         .about("Restart the daemon"),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("config")
+                .about("Update configuration")
+                .subcommand(
+                    SubCommand::with_name("set")
+                        .about("Sets a configuration option")
+                        .arg(
+                            Arg::with_name("key")
+                                .help("The setting key to set")
+                                .required(true)
+                                .takes_value(true)
+                                .multiple(false),
+                        )
+                        .arg(
+                            Arg::with_name("value")
+                                .help("The setting value to set")
+                                .required(true)
+                                .takes_value(true)
+                                .multiple(false),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("toggle")
+                        .about(
+                            "Toggles a (boolean) configuration option on/off",
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .help("The setting to toggle")
+                                .required(true)
+                                .takes_value(true)
+                                .multiple(false),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("remove")
+                        .about(
+                            "Removes a configuration option (resetting to the default)",
+                        )
+                        .arg(
+                            Arg::with_name("key")
+                                .help("The setting to remove")
+                                .required(true)
+                                .takes_value(true)
+                                .multiple(false),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("get")
+                        .about("Gets the value of a configuration option")
+                        .arg(
+                            Arg::with_name("key")
+                                .help("The setting to get the value of")
+                                .required(true)
+                                .takes_value(true)
+                                .multiple(false),
+                        ),
+                ),
+        )
         .get_matches();
 
-    let persisted_config = read_persisted_config()?;
-    let cfg = cfg(&matches, persisted_config)?;
+    config::create_config_if_not_exists()?;
+    let persisted_config = config::read_persisted_config()?;
+    let cfg = cfg(&matches, &persisted_config)?;
     invoke_subcommand(&matches, &cfg)
         .map_err(|e| handle_daemon_offline(e, cfg.verbose > 0))?;
     Ok(())
@@ -242,7 +303,7 @@ pub fn cli_app() -> Result<()> {
 
 fn cfg(
     matches: &ArgMatches,
-    persisted_config: Option<PersistedConfig>,
+    persisted_config: &PersistedConfig,
 ) -> Result<ClientConfig> {
     let full_pager_cmd = parse_cmd_from_env("CARTEL_FULL_LOG_PAGER", "less")?;
     let default_pager_cmd =
@@ -250,15 +311,13 @@ fn cfg(
     let follow_pager_cmd =
         parse_cmd_from_env("CARTEL_FOLLOW_LOG_PAGER", "less +F")?;
 
-    let daemon_url = match &persisted_config {
-        Some(client_conf) => client_conf
-            .daemon_port
-            .map(|port| format!("http://localhost:{}/api/v1", port)),
-        _ => None,
-    };
+    let daemon_url = persisted_config
+        .daemon
+        .port
+        .as_ref()
+        .map(|port| format!("http://localhost:{}/api/v1", port));
 
-    let default_dir =
-        persisted_config.and_then(|mut cfg| cfg.default_dir.take());
+    let default_dir = persisted_config.client.default_dir.clone();
 
     Ok(ClientConfig {
         verbose: matches.occurrences_of("verbose"),
@@ -351,6 +410,28 @@ fn invoke_subcommand(matches: &ArgMatches, cfg: &ClientConfig) -> Result<()> {
         }
         ("daemon", _) => {
             restart_daemon()?;
+        }
+        ("config", Some(config_cli_opts)) => {
+            match config_cli_opts.subcommand() {
+                ("set", Some(opts)) => {
+                    let key = opts.value_of("key").unwrap();
+                    let value = opts.value_of("value").unwrap();
+                    set_option(&key, &value)?;
+                }
+                ("toggle", Some(opts)) => {
+                    let key = opts.value_of("key").unwrap();
+                    toggle_option(key)?;
+                }
+                ("get", Some(opts)) => {
+                    let key = opts.value_of("key").unwrap();
+                    get_option(key)?;
+                }
+                ("remove", Some(opts)) => {
+                    let key = opts.value_of("key").unwrap();
+                    remove_option(key)?;
+                }
+                _ => {}
+            }
         }
         _ => {}
     }

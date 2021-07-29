@@ -16,17 +16,6 @@ use std::io::Read;
 use std::option::Option;
 use std::path::{Path, PathBuf};
 
-const PROJECT_DIR: &str = ".cartel";
-
-/// General persisted client configuration
-#[derive(Deserialize, Debug)]
-pub struct PersistedConfig {
-    /// The port to reach the daemon at.
-    pub daemon_port: Option<u16>,
-    /// The default directory to use when searching for module definitions.
-    pub default_dir: Option<String>,
-}
-
 /// Parse one or more modules from the given string.
 ///
 /// Parses module definitions in YAML format from the given string. One or more
@@ -357,23 +346,6 @@ pub fn read_module_definitions(
     }
 
     Ok(module_defs)
-}
-
-/// Reads the persistent client configuration from the filesystem.
-pub fn read_persisted_config() -> Result<Option<PersistedConfig>> {
-    let mut home_dir =
-        dirs::home_dir().expect("Failed to locate users home dir");
-    home_dir.push(PROJECT_DIR);
-    home_dir.push("config.yml");
-
-    if let Ok(mut file) = File::open(home_dir) {
-        let mut buffer = String::new();
-        file.read_to_string(&mut buffer)
-            .with_context(|| "While reading client config file.")?;
-        let config: PersistedConfig = serde_yaml::from_str(&buffer)?;
-        return Ok(Some(config));
-    }
-    Ok(None)
 }
 
 /// Retrieves a module definition by name.

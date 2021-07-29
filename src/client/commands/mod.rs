@@ -1,3 +1,4 @@
+mod config;
 mod convert;
 mod daemon;
 mod deploy;
@@ -10,6 +11,7 @@ mod run;
 mod shell;
 mod stop;
 
+pub use self::config::*;
 pub use self::daemon::*;
 pub use self::deploy::*;
 pub use self::down::*;

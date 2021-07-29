@@ -44,3 +44,6 @@ grep-matcher = "0.1.4"
 crossbeam-utils = "0.8.3"
 crossbeam-queue = "0.3"
 text_io = "0.1.8"
+toml_edit = "0.2.1"
+toml = "0.5"
+phf = { version = "0.9", features = ["macros"] }
