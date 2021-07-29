@@ -59,6 +59,11 @@ fn default_config_file_path() -> PathBuf {
 
 pub fn create_config_if_not_exists() -> Result<()> {
     let path = default_config_file_path();
+
+    // Ensure the main project directory exists, creating all path components if
+    // any are missing
+    fs::create_dir_all(path.parent().unwrap())?;
+
     let file = OpenOptions::new().write(true).create_new(true).open(path);
     match file {
         Ok(mut created) => {

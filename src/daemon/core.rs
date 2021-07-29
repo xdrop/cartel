@@ -40,6 +40,7 @@ impl Core {
 /// Start the daemon
 pub fn start_daemon() -> Result<(), Box<dyn Error>> {
     let monitor = monitor::MonitorState::new();
+    config::create_config_if_not_exists()?;
     let cfg = config::read_persisted_config()?;
 
     // Create the Tokio async runtime and pass a handle to it so that it can be
