@@ -4,7 +4,7 @@
 
 `cartel` is an orchestration tool aimed at making local development easier for complex systems with multiple services. It allows for codifying the steps required to run some system locally, and providing an easy consistent interface for managing that system. It was heavily inspired by `docker-compose`, `k8s`, and `garden`, but instead works without containers, with both the benefits and drawbacks this approach entails.
 
-[![screencap](./img/screencap.png)](https://asciinema.org/a/PncJI8AS795r9zwXWLViXlTAb)
+[![screencap](./img/screencap.png)](https://asciinema.org/a/bkdw92453mljdVJIcq8bm1LmW)
 
 ## Table of contents
 - [cartel](#cartel)
