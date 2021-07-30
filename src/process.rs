@@ -1,14 +1,17 @@
-pub use self::implementation::Process;
+pub use self::imp::Process;
 
 #[cfg(target_family = "unix")]
-mod implementation {
+mod imp {
+    use nix::errno::Errno;
+    use nix::libc::c_int;
+    use nix::sys::wait::{WaitPidFlag, WaitStatus};
     use nix::unistd::*;
     use nix::{self, libc, Error};
     use std::collections::HashMap;
     use std::convert::TryInto;
     use std::fs::File;
     use std::io::{self, Result};
-    use std::os::unix::process::CommandExt;
+    use std::os::unix::process::{CommandExt, ExitStatusExt};
     use std::path::Path;
     use std::process::{Child, Command, ExitStatus, Stdio};
 
@@ -97,18 +100,20 @@ mod implementation {
         ///
         /// This function blocks the calling thread and will only finish once
         /// the child has exited.
-        pub fn wait(&mut self) {
-            use nix::sys::wait::*;
-
+        pub fn wait(&mut self) -> nix::Result<ExitStatus> {
             loop {
                 match waitpid(
                     Pid::from_raw(-self.pgid),
                     Some(WaitPidFlag::WNOHANG),
                 ) {
-                    Ok(WaitStatus::Exited(_, _)) => break,
-                    Ok(WaitStatus::Signaled(_, _, _)) => break,
-                    Ok(_) => {}
-                    Err(_) => break,
+                    Ok((WaitStatus::Exited(_, _), status)) => {
+                        return Ok(ExitStatus::from_raw(status))
+                    }
+                    Ok((WaitStatus::Signaled(_, _, _), status)) => {
+                        return Ok(ExitStatus::from_raw(status))
+                    }
+                    Ok(_) => {} // continue
+                    Err(e) => return Err(e),
                 }
             }
         }
@@ -140,6 +145,36 @@ mod implementation {
         }
     }
 
+    /// Wrapper for `waitpid` libc syscall that additionally returns the raw
+    /// wait status.
+    ///
+    /// This is identical to [`nix::sys::wait::waitpid`] expect it also
+    /// includes the raw wait status `i32` as the second tuple argument.
+    fn waitpid<P: Into<Option<Pid>>>(
+        pid: P,
+        options: Option<WaitPidFlag>,
+    ) -> nix::Result<(WaitStatus, i32)> {
+        let mut status: i32 = 0;
+        let option_bits = match options {
+            Some(bits) => bits.bits(),
+            None => 0,
+        };
+
+        let res = unsafe {
+            libc::waitpid(
+                pid.into().unwrap_or_else(|| Pid::from_raw(-1)).into(),
+                &mut status as *mut c_int,
+                option_bits,
+            )
+        };
+
+        match Errno::result(res)? {
+            0 => Ok((WaitStatus::StillAlive, status)),
+            res => WaitStatus::from_raw(Pid::from_raw(res), status)
+                .map(|ws| (ws, status)),
+        }
+    }
+
     /// Convert a *nix error into io:Error.
     fn from_nix_error(err: nix::Error) -> io::Error {
         match err {
@@ -153,7 +188,7 @@ mod implementation {
 }
 
 #[cfg(target_family = "windows")]
-mod implementation {
+mod imp {
     use std::collections::HashMap;
     use std::fs::File;
     use std::io::{self, ExitStatus, Result};

@@ -193,7 +193,7 @@ impl Executor {
                         TermSignal::TERM => process.terminate(),
                         TermSignal::INT => process.interrupt(),
                     }
-                    process.wait();
+                    process.wait()?;
                 }
                 Ok(())
             }
@@ -229,6 +229,7 @@ impl Executor {
 
         let (stdout_file, stderr_file) =
             Self::prepare_log_files(log_file_path)?;
+
         let process = Process::spawn(
             &module.command,
             &environment_variables,
@@ -397,7 +398,6 @@ pub mod task_executor {
         let (stdout_file, stderr_file) =
             Executor::prepare_log_files(log_file_path)?;
 
-        // TODO: Unify the process implementations.
         let mut child = Executor::spawn_child(
             &task_definition.command[0],
             &task_definition.command[1..],
