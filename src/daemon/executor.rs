@@ -5,7 +5,7 @@ use crate::daemon::module::{ModuleDefinition, TermSignal};
 use crate::daemon::monitor::{monitor_key, MonitorType};
 use crate::daemon::planner::{Monitor, MonitorHandle};
 use crate::daemon::time::epoch_now;
-use crate::process::Process;
+use crate::process::{CommandExt, GroupChild, Process};
 
 use anyhow::{Context, Result};
 use log::info;
@@ -176,6 +176,11 @@ impl Executor {
         match self.module_map.get_mut(name) {
             Some(module) => {
                 if let Some(process) = &mut module.child {
+                    // Bail if already stopped
+                    if module.status != RunStatus::RUNNING {
+                        return Ok(());
+                    }
+
                     module.status = RunStatus::STOPPED;
                     module.exit_time = epoch_now();
 
@@ -187,12 +192,21 @@ impl Executor {
                         );
                     }
 
+                    let module_name = module.module_definition.name.clone();
+
                     // Signal child process to die
                     match module.module_definition.termination_signal {
                         TermSignal::KILL => process.kill(),
                         TermSignal::TERM => process.terminate(),
                         TermSignal::INT => process.interrupt(),
                     }
+                    .with_context(|| {
+                        format!(
+                            "Failed to signal process {} to stop",
+                            module_name
+                        )
+                    })?;
+
                     process.wait()?;
                 }
                 Ok(())
@@ -230,7 +244,7 @@ impl Executor {
         let (stdout_file, stderr_file) =
             Self::prepare_log_files(log_file_path)?;
 
-        let process = Process::spawn(
+        let child = Executor::group_spawn(
             &module.command,
             &environment_variables,
             stdout_file,
@@ -240,8 +254,8 @@ impl Executor {
         .with_context(|| format!("Failed to run service '{}'", module.name))?;
 
         module_entry.status = RunStatus::RUNNING;
-        module_entry.pid = process.id();
-        module_entry.child = Some(process);
+        module_entry.pid = child.id();
+        module_entry.child = Some(Process::groupped(child));
         module_entry.uptime = epoch_now();
         module_entry.module_definition = Arc::clone(&module);
         module_entry.monitor_key = liveness_probe;
@@ -330,27 +344,56 @@ impl Executor {
         monitor_key
     }
 
-    pub(super) fn spawn_child(
-        command: &str,
-        args: &[String],
+    pub(super) fn spawn(
+        cmd: &[String],
+        env: &HashMap<String, String>,
         stdout: File,
         stderr: File,
-        env: &HashMap<String, String>,
         work_dir: Option<&Path>,
     ) -> Result<Child> {
-        let mut cmd = Command::new(command);
+        let (head, tail) =
+            cmd.split_first().expect("Empty command in Executor::spawn");
 
-        cmd.args(args)
+        let mut command = Command::new(head);
+        command
+            .args(tail)
             .stdout(Stdio::from(stdout))
             .stderr(Stdio::from(stderr))
             .envs(env);
 
         if let Some(path) = work_dir {
-            cmd.current_dir(path);
+            command.current_dir(path);
         }
 
-        cmd.spawn()
-            .with_context(|| format!("Unable to start process '{}'", command))
+        command
+            .spawn()
+            .with_context(|| format!("Unable to start process '{}'", head))
+    }
+
+    pub(super) fn group_spawn(
+        cmd: &[String],
+        env: &HashMap<String, String>,
+        stdout: File,
+        stderr: File,
+        work_dir: Option<&Path>,
+    ) -> Result<GroupChild> {
+        let (head, tail) =
+            cmd.split_first().expect("Empty command in Executor::spawn");
+
+        let mut command = Command::new(head);
+        command
+            .args(tail)
+            .stdout(Stdio::from(stdout))
+            .stderr(Stdio::from(stderr))
+            .envs(env);
+
+        if let Some(path) = work_dir {
+            command.current_dir(path);
+        }
+
+        command
+            .group_spawn()
+            .with_context(|| format!("Unable to start process '{}'", head))
     }
 
     pub(super) fn prepare_log_files(
@@ -367,6 +410,7 @@ impl Executor {
 
 pub mod task_executor {
     use super::Executor;
+    use crate::command_builder::CommandBuilder;
     use crate::daemon::env_grabber::CurrentEnvHolder;
     use crate::daemon::error::DaemonError;
     use crate::daemon::executor::ExecutorConfig;
@@ -398,15 +442,13 @@ pub mod task_executor {
         let (stdout_file, stderr_file) =
             Executor::prepare_log_files(log_file_path)?;
 
-        let mut child = Executor::spawn_child(
-            &task_definition.command[0],
-            &task_definition.command[1..],
+        let mut child = Executor::spawn(
+            &task_definition.command,
+            &environment_vars,
             stdout_file,
             stderr_file,
-            &environment_vars,
             task_definition.working_dir.as_deref(),
         )?;
-
         let exit_status = child.wait().with_context(|| {
             format!("Task {} failed to execute", task_definition.name)
         })?;
