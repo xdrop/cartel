@@ -5,6 +5,7 @@ use crate::client::module::{
 };
 use crate::daemon::api::*;
 use anyhow::{anyhow, bail, Result};
+use core::convert::Into;
 use reqwest::blocking::Client;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -76,11 +77,11 @@ fn build_svc_module_definition(
         readiness_probe: module_definition
             .readiness_probe
             .as_ref()
-            .map(|p| p.into()),
+            .map(Into::into),
         liveness_probe: module_definition
             .liveness_probe
             .as_ref()
-            .map(|p| p.into()),
+            .map(Into::into),
     }
 }
 
@@ -132,9 +133,7 @@ fn build_get_plan_request(
             InnerDefinition::Service(svc) => {
                 build_svc_module_definition(svc, opts)
             }
-            _ => {
-                unreachable!()
-            }
+            _ => unreachable!(),
         })
         .collect();
     ApiGetPlanRequest { modules }

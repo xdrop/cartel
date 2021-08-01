@@ -6,11 +6,11 @@ mod imp {
     use nix::libc::c_int;
     use nix::sys::wait::{WaitPidFlag, WaitStatus};
     use nix::unistd::*;
-    use nix::{self, libc, Error};
+    use nix::{self, libc};
     use std::collections::HashMap;
     use std::convert::TryInto;
     use std::fs::File;
-    use std::io::{self, Result};
+    use std::io::{Error, Result};
     use std::os::unix::process::{CommandExt, ExitStatusExt};
     use std::path::Path;
     use std::process::{Child, Command, ExitStatus, Stdio};
@@ -66,8 +66,7 @@ mod imp {
                 // process group ID and session ID of the calling process are
                 // set to the PID of the calling process (and thus distinct from
                 // the daemon's pgid).
-                command
-                    .pre_exec(|| setsid().map_err(from_nix_error).map(|_| ()));
+                command.pre_exec(|| setsid().map(|_| ()).map_err(Error::from));
             }
 
             command.spawn().map(|p| {
@@ -100,7 +99,7 @@ mod imp {
         ///
         /// This function blocks the calling thread and will only finish once
         /// the child has exited.
-        pub fn wait(&mut self) -> nix::Result<ExitStatus> {
+        pub fn wait(&mut self) -> Result<ExitStatus> {
             loop {
                 match waitpid(
                     Pid::from_raw(-self.pgid),
@@ -129,7 +128,7 @@ mod imp {
         /// This function will not block the calling thread and will only check
         /// to see if the child process has exited or not.
         #[inline]
-        pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
+        pub fn try_wait(&mut self) -> Result<Option<ExitStatus>> {
             self.child.try_wait()
         }
 
@@ -153,7 +152,7 @@ mod imp {
     fn waitpid<P: Into<Option<Pid>>>(
         pid: P,
         options: Option<WaitPidFlag>,
-    ) -> nix::Result<(WaitStatus, i32)> {
+    ) -> Result<(WaitStatus, i32)> {
         let mut status: i32 = 0;
         let option_bits = match options {
             Some(bits) => bits.bits(),
@@ -171,18 +170,8 @@ mod imp {
         match Errno::result(res)? {
             0 => Ok((WaitStatus::StillAlive, status)),
             res => WaitStatus::from_raw(Pid::from_raw(res), status)
+                .map_err(Error::from)
                 .map(|ws| (ws, status)),
-        }
-    }
-
-    /// Convert a *nix error into io:Error.
-    fn from_nix_error(err: nix::Error) -> io::Error {
-        match err {
-            Error::Sys(errno) => io::Error::from_raw_os_error(errno as i32),
-            Error::InvalidPath => {
-                io::Error::new(io::ErrorKind::InvalidInput, err)
-            }
-            _ => io::Error::new(io::ErrorKind::Other, err),
         }
     }
 }
