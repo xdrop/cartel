@@ -101,6 +101,6 @@ macro_rules! cfail {
 
 macro_rules! cbold {
     ($message: expr) => {
-        console::style($message).white().bold()
+        console::style($message).bold()
     };
 }

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed misalignment in non-emoji supporting terminals.
+- Fixed white rendering as grey on light themed terminals.
 
 ## [0.10.2-beta] - 2021-07-14
 ### Added
