@@ -6,7 +6,9 @@ use crate::client::module::{
     ModuleMarker, ServiceOrTaskDefinition, SuggestedFixDefinition,
 };
 use crate::client::process::{apply_suggested_fix, run_check};
-use crate::client::progress::{SpinnerOptions, WaitResult, WaitUntil};
+use crate::client::progress::{
+    SpinnerOptions, WaitResult, WaitSpin, WaitUntil,
+};
 use crate::client::request;
 use crate::client::request::get_plan;
 use crate::daemon::api::{
@@ -221,12 +223,11 @@ impl Deployer {
 
     fn deploy_group(&self, module: &GroupDefinition) {
         let message = format!("Group {}", cbold!(&module.name));
-        tiprint!(
-            10, // indent level
-            "{} {}",
-            message,
-            csuccess!("(Done)")
-        );
+        let spin_opt = SpinnerOptions::new(message);
+
+        let pb = self.multiprogress.add(ProgressBar::new(std::u64::MAX));
+        let mut ws = WaitSpin::from(&spin_opt, pb);
+        ws.stop_with_status(csuccess!("(Done)").to_string());
     }
 
     fn should_deploy(&self, module_name: &str, force: bool) -> bool {

@@ -72,29 +72,28 @@ pub struct WaitSpin<'a> {
 
 impl<'a> WaitSpin<'a> {
     pub fn new(options: &'a SpinnerOptions) -> WaitSpin {
-        WaitSpin {
-            options,
-            pb: ProgressBar::new(std::u64::MAX),
-        }
+        Self::from(options, ProgressBar::new(std::u64::MAX))
     }
 
-    pub fn from(options: &'a SpinnerOptions, pb: ProgressBar) -> WaitSpin {
+    pub fn from(options: &'a SpinnerOptions, mut pb: ProgressBar) -> WaitSpin {
+        Self::init(&mut pb, options.clone());
         WaitSpin { options, pb }
+    }
+
+    fn init(pb: &mut ProgressBar, options: SpinnerOptions) {
+        pb.set_style(options.style);
+        if let Some((step, of)) = options.step {
+            pb.set_prefix(format!("[{}/{}]  ", step, of));
+        } else {
+            pb.set_prefix("     ");
+        };
+        pb.set_message(options.message);
     }
 
     /// Start the spinner.
     ///
     /// The spinner will keep spinning until `stop` is called.
     pub fn start(&mut self) {
-        let options = self.options.clone();
-
-        self.pb.set_style(options.style);
-        if let Some((step, of)) = options.step {
-            self.pb.set_prefix(format!("[{}/{}]  ", step, of));
-        } else {
-            self.pb.set_prefix("     ");
-        };
-        self.pb.set_message(options.message);
         self.pb.enable_steady_tick(100);
     }
 
