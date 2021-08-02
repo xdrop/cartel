@@ -10,6 +10,7 @@ use std::sync::Arc;
 /// Holds the core daemon state.
 pub struct Core {
     pub planner: Planner,
+    pub config: Arc<PersistedConfig>,
 }
 
 impl Core {
@@ -24,10 +25,11 @@ impl Core {
     pub fn new(
         monitor_handle: MonitorHandle,
         env_holder: Arc<CurrentEnvHolder>,
-        cfg: &PersistedConfig,
+        cfg: Arc<PersistedConfig>,
     ) -> Core {
         Core {
-            planner: Planner::new(monitor_handle, env_holder, cfg),
+            planner: Planner::new(monitor_handle, env_holder, Arc::clone(&cfg)),
+            config: cfg,
         }
     }
 
@@ -35,20 +37,28 @@ impl Core {
     pub fn planner(&self) -> &Planner {
         &self.planner
     }
+
+    /// Return a reference to the shared config.
+    pub fn config(&self) -> &PersistedConfig {
+        &self.config
+    }
 }
 
 /// Start the daemon
 pub fn start_daemon() -> Result<(), Box<dyn Error>> {
     let monitor = monitor::MonitorState::new();
     config::create_config_if_not_exists()?;
-    let cfg = config::read_persisted_config()?;
+    let cfg = Arc::new(config::read_persisted_config()?);
 
     // Create the Tokio async runtime and pass a handle to it so that it can be
     // invoked from a sync context from within the API handlers.
     let monitor_handle = monitor::spawn_runtime(Arc::new(monitor));
     let env_holder = Arc::new(env_grabber::CurrentEnvHolder::new());
-    let core = Core::new(monitor_handle, Arc::clone(&env_holder), &cfg);
-    let core = Arc::new(core);
+    let core = Arc::new(Core::new(
+        monitor_handle,
+        Arc::clone(&env_holder),
+        Arc::clone(&cfg),
+    ));
 
     // Setup signal handlers to collect dead child processes.
     signal::setup_signal_handlers(Arc::clone(&core))?;

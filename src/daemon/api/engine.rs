@@ -10,9 +10,17 @@ pub struct CoreState {
 }
 
 pub fn start(core: &Arc<Core>) {
+    let config = core.config();
+    let port: u16 = config
+        .daemon
+        .port
+        .as_ref()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(13754);
+
     let cfg = Config::build(Environment::Production)
         .address("127.0.0.1")
-        .port(13754)
+        .port(port)
         .log_level(LoggingLevel::Normal)
         .workers(4)
         .unwrap();

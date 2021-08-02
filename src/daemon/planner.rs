@@ -54,7 +54,7 @@ impl Planner {
     pub fn new(
         monitor_handle: MonitorHandle,
         env_holder: Arc<CurrentEnvHolder>,
-        cfg: &PersistedConfig,
+        cfg: Arc<PersistedConfig>,
     ) -> Planner {
         let executor_config = Arc::new(ExecutorConfig {
             use_env_grabber_env: cfg.daemon.use_env_grabber.unwrap_or(false),
