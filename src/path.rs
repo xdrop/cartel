@@ -22,20 +22,13 @@ pub fn expand_tilde<P: AsRef<Path>>(path: P) -> Option<PathBuf> {
     })
 }
 
-/// Construct a [PathBuf] from the given `&str`.
-///
-/// Convert the given path string onto a [PathBuf] expanding all tilde to the
-/// users directory.
-pub fn from_user_str(path: &str) -> Option<PathBuf> {
-    expand_tilde(PathBuf::from(path))
-}
-
-/// Construct a [PathBuf] from the given `String`.
-///
-/// Convert the given path string onto a [PathBuf] expanding all tilde to the
-/// users directory.
-pub fn from_user_string(path: String) -> Option<PathBuf> {
-    expand_tilde(PathBuf::from(path))
+/// Construct a [PathBuf] from the given string while expanding all tilde to the
+/// users home directory.
+pub fn from_user_str<P>(path: P) -> Option<PathBuf>
+where
+    P: AsRef<str>,
+{
+    expand_tilde(PathBuf::from(path.as_ref()))
 }
 
 /// Canonicalize a user provided path from the given `&str`.

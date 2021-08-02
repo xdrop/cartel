@@ -18,7 +18,7 @@ pub fn from_task(src: ApiModuleDefinition) -> ModuleDefinition {
         src.environment,
         src.log_file_path,
         src.dependencies,
-        src.working_dir.and_then(path::from_user_string),
+        src.working_dir.and_then(path::from_user_str),
         TermSignal::KILL,
         None,
     )
@@ -37,7 +37,7 @@ pub fn from_service_with_monitor(
         src.environment,
         src.log_file_path,
         src.dependencies,
-        src.working_dir.and_then(path::from_user_string),
+        src.working_dir.and_then(path::from_user_str),
         src.termination_signal.into(),
         None, // assigned below
     );
@@ -63,7 +63,7 @@ pub fn from_task_or_service(src: ApiModuleDefinition) -> ModuleDefinition {
         src.environment,
         src.log_file_path,
         src.dependencies,
-        src.working_dir.and_then(path::from_user_string),
+        src.working_dir.and_then(path::from_user_str),
         src.termination_signal.into(),
         None, // assumed not needed in any code using this
     )
