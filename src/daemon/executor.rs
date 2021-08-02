@@ -5,8 +5,9 @@ use crate::daemon::module::{ModuleDefinition, TermSignal};
 use crate::daemon::monitor::{monitor_key, MonitorType};
 use crate::daemon::planner::{Monitor, MonitorHandle};
 use crate::daemon::time::epoch_now;
-use crate::process::{CommandExt, GroupChild, Process};
+use crate::process::{CommandExt, Process};
 
+use crate::command_builder::CommandBuilder;
 use anyhow::{Context, Result};
 use log::info;
 use std::borrow::Cow;
@@ -14,7 +15,7 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs::File;
 use std::path::Path;
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::ExitStatus;
 use std::sync::Arc;
 
 pub struct Executor {
@@ -244,14 +245,15 @@ impl Executor {
         let (stdout_file, stderr_file) =
             Self::prepare_log_files(log_file_path)?;
 
-        let child = Executor::group_spawn(
-            &module.command,
-            &environment_variables,
-            stdout_file,
-            stderr_file,
-            module.working_dir.as_deref(),
-        )
-        .with_context(|| format!("Failed to run service '{}'", module.name))?;
+        let mut cmd = CommandBuilder::new(&module.command);
+        cmd.env(&environment_variables)
+            .stdout_file(stdout_file)
+            .stderr_file(stderr_file)
+            .work_dir(module.working_dir.as_deref());
+
+        let child = cmd.build().group_spawn().with_context(|| {
+            format!("Failed to run service '{}'", module.name)
+        })?;
 
         module_entry.status = RunStatus::RUNNING;
         module_entry.pid = child.id();
@@ -344,58 +346,6 @@ impl Executor {
         monitor_key
     }
 
-    pub(super) fn spawn(
-        cmd: &[String],
-        env: &HashMap<String, String>,
-        stdout: File,
-        stderr: File,
-        work_dir: Option<&Path>,
-    ) -> Result<Child> {
-        let (head, tail) =
-            cmd.split_first().expect("Empty command in Executor::spawn");
-
-        let mut command = Command::new(head);
-        command
-            .args(tail)
-            .stdout(Stdio::from(stdout))
-            .stderr(Stdio::from(stderr))
-            .envs(env);
-
-        if let Some(path) = work_dir {
-            command.current_dir(path);
-        }
-
-        command
-            .spawn()
-            .with_context(|| format!("Unable to start process '{}'", head))
-    }
-
-    pub(super) fn group_spawn(
-        cmd: &[String],
-        env: &HashMap<String, String>,
-        stdout: File,
-        stderr: File,
-        work_dir: Option<&Path>,
-    ) -> Result<GroupChild> {
-        let (head, tail) =
-            cmd.split_first().expect("Empty command in Executor::spawn");
-
-        let mut command = Command::new(head);
-        command
-            .args(tail)
-            .stdout(Stdio::from(stdout))
-            .stderr(Stdio::from(stderr))
-            .envs(env);
-
-        if let Some(path) = work_dir {
-            command.current_dir(path);
-        }
-
-        command
-            .group_spawn()
-            .with_context(|| format!("Unable to start process '{}'", head))
-    }
-
     pub(super) fn prepare_log_files(
         log_file_path: &Path,
     ) -> Result<(File, File)> {
@@ -442,16 +392,25 @@ pub mod task_executor {
         let (stdout_file, stderr_file) =
             Executor::prepare_log_files(log_file_path)?;
 
-        let mut child = Executor::spawn(
-            &task_definition.command,
-            &environment_vars,
-            stdout_file,
-            stderr_file,
-            task_definition.working_dir.as_deref(),
-        )?;
-        let exit_status = child.wait().with_context(|| {
-            format!("Task {} failed to execute", task_definition.name)
-        })?;
+        let mut cmd = CommandBuilder::new(&task_definition.command);
+        cmd.env(&environment_vars)
+            .stdout_file(stdout_file)
+            .stderr_file(stderr_file)
+            .work_dir(task_definition.working_dir.as_deref());
+
+        let exit_status = cmd
+            .build()
+            .spawn()
+            .with_context(|| {
+                format!(
+                    "Failed to start task {}",
+                    &task_definition.command.join(" ")
+                )
+            })?
+            .wait()
+            .with_context(|| {
+                format!("Task {} failed to execute", task_definition.name)
+            })?;
 
         if !exit_status.success() {
             return Err(DaemonError::TaskFailed {
