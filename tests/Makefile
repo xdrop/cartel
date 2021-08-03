@@ -1,4 +1,5 @@
 PYTHON = poetry run python
+CARGO = cargo
 
 .PHONY = run format help
 
@@ -11,6 +12,7 @@ help:
 	@echo "------------------------------------"
 
 run:
+	cd execshim && ${CARGO} build --release
 	${PYTHON} -m pytest -vv
 	
 format:

@@ -40,8 +40,8 @@ def test_checks_run_for_single_service(daemon):
     client_cmd(["deploy", "my-module"], defs=definitions_file)
 
     # THEN
-    assert check1.ran()
-    assert check2.ran()
+    assert check1.ran_once()
+    assert check2.ran_once()
     assert not check3.ran()
 
 
@@ -83,8 +83,8 @@ def test_check_failing_check_will_prevent_deploy(daemon):
     out = client_cmd(["deploy", "my-module"], defs=definitions_file)
 
     # THEN
-    assert check1.ran()
-    assert check2.ran()
+    assert check1.ran_once()
+    assert check2.ran_once()
     assert not check3.ran()
 
     assert "The about check-2 check has failed" in out
@@ -128,6 +128,5 @@ def test_check_only_run_once(daemon):
     client_cmd(["deploy", "svc1", "svc2"], defs=definitions_file)
 
     # THEN
-    # implied: This fails if shim is executed more than once
-    assert check1.ran()
-    assert check2.ran()
+    assert check1.ran_once()
+    assert check2.ran_once()

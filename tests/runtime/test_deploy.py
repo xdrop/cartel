@@ -19,7 +19,7 @@ def test_deploy_single_service(daemon):
 
     # THEN
     assert 'Deployed modules: ["my-module"]' in out
-    assert svc.ran()
+    assert svc.ran_once()
 
 
 def test_deploy_tasks_before_service(daemon):
@@ -54,19 +54,15 @@ def test_deploy_tasks_before_service(daemon):
     client_cmd(["deploy", "my-module"], defs=definitions_file)
 
     # THEN
-    svc1_time = svc1.ran()
-    assert svc1_time
-    tsk1_time = tsk1.ran()
-    assert tsk1_time
-    tsk2_time = tsk2.ran()
-    assert tsk2_time
-    tsk3_time = tsk3.ran()
-    assert tsk3_time
+    assert svc1.ran_once()
+    assert tsk1.ran_once()
+    assert tsk2.ran_once()
+    assert tsk3.ran_once()
 
     # assert service ran before all three tasks
-    assert svc1_time > tsk1_time
-    assert svc1_time > tsk2_time
-    assert svc1_time > tsk3_time
+    assert svc1.last_ran > tsk1.last_ran
+    assert svc1.last_ran > tsk2.last_ran
+    assert svc1.last_ran > tsk3.last_ran
 
 
 def test_group_deploys_all_members(daemon):
@@ -105,19 +101,15 @@ def test_group_deploys_all_members(daemon):
     client_cmd(["deploy", "group-1"], defs=definitions_file)
 
     # THEN
-    svc1_time = svc1.ran()
-    assert svc1_time
-    tsk1_time = tsk1.ran()
-    assert tsk1_time
-    tsk2_time = tsk2.ran()
-    assert tsk2_time
-    tsk3_time = tsk3.ran()
-    assert tsk3_time
+    assert svc1.ran_once()
+    assert tsk1.ran_once()
+    assert tsk2.ran_once()
+    assert tsk3.ran_once()
 
     # assert service ran before all three tasks
-    assert svc1_time > tsk1_time
-    assert svc1_time > tsk2_time
-    assert svc1_time > tsk3_time
+    assert svc1.last_ran > tsk1.last_ran
+    assert svc1.last_ran > tsk2.last_ran
+    assert svc1.last_ran > tsk3.last_ran
 
 
 def test_deploys_multiple_services_and_groups(daemon):
@@ -175,9 +167,9 @@ def test_deploys_multiple_services_and_groups(daemon):
     )
 
     # THEN
-    assert svc1.ran()
-    assert svc2.ran()
-    assert svc3.ran()
-    assert tsk1.ran()
-    assert tsk2.ran()
+    assert svc1.ran_once()
+    assert svc2.ran_once()
+    assert svc3.ran_once()
+    assert tsk1.ran_once()
+    assert tsk2.ran_once()
     assert not tsk3.ran()

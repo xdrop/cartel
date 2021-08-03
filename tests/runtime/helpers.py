@@ -3,6 +3,7 @@ import tempfile
 import textwrap
 from contextlib import nullcontext
 from pathlib import Path
+from time import sleep
 
 import psutil
 
@@ -57,7 +58,7 @@ def debug_binaries_path():
     return target_dir.joinpath("debug")
 
 
-def client_cmd(args, defs=None, blocking=False):
+def client_cmd(args, defs=None, blocking=False, delay=0.05):
     debug_binaries = debug_binaries_path()
     client_path = debug_binaries.joinpath("client")
     definitions_file_arg = []
@@ -76,6 +77,9 @@ def client_cmd(args, defs=None, blocking=False):
             )
         except subprocess.TimeoutExpired as err:
             return err.output.decode("utf-8")
+
+    # add sufficient delay for any operations to complete
+    sleep(delay)
 
     return p.stdout.decode("utf-8")
 
