@@ -1,4 +1,7 @@
 /target
+__pycache__
+.pytest_cache
+.vscode
 .excluded
 bottle.sh
 cartel.yaml
