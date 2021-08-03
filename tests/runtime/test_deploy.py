@@ -118,3 +118,66 @@ def test_group_deploys_all_members(daemon):
     assert svc1_time > tsk1_time
     assert svc1_time > tsk2_time
     assert svc1_time > tsk3_time
+
+
+def test_deploys_multiple_services_and_groups(daemon):
+    # GIVEN
+    svc1 = service_shim()
+    svc2 = service_shim()
+    svc3 = service_shim()
+    tsk1 = task_shim()
+    tsk2 = task_shim()
+    tsk3 = task_shim()
+
+    definitions_file = definition(
+        f"""
+        kind: Service
+        name: svc-1
+        shell: {svc1.shell}
+        dependencies: [task-1, task-2]
+        ---
+        kind: Service
+        name: svc-2
+        shell: {svc2.shell}
+        dependencies: [task-2]
+        ---
+        kind: Service
+        name: svc-3
+        shell: {svc3.shell}
+        dependencies: [task-1]
+        ---
+        kind: Task
+        name: task-1
+        shell: {tsk1.shell}
+        ---
+        kind: Task
+        name: task-2
+        shell: {tsk2.shell}
+        ---
+        kind: Task
+        name: task-3
+        shell: {tsk3.shell}
+        ---
+        kind: Group
+        name: group-1
+        dependencies: [svc-3, task-1, task-2]
+        ---
+        kind: Group
+        name: group-2
+        dependencies: [svc-2, svc-3]
+        """
+    )
+
+    # WHEN
+    client_cmd(
+        ["deploy", "group-1", "group-2", "svc-1", "svc-2", "svc-3"],
+        defs=definitions_file,
+    )
+
+    # THEN
+    assert svc1.ran()
+    assert svc2.ran()
+    assert svc3.ran()
+    assert tsk1.ran()
+    assert tsk2.ran()
+    assert not tsk3.ran()

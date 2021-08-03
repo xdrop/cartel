@@ -37,7 +37,7 @@ def test_checks_run_for_single_service(daemon):
     )
 
     # WHEN
-    out = client_cmd(["deploy", "my-module"], defs=definitions_file)
+    client_cmd(["deploy", "my-module"], defs=definitions_file)
 
     # THEN
     assert check1.ran()
