@@ -9,16 +9,17 @@ def test_deploy_single_service(daemon):
     definitions_file = definition(
         f"""
         kind: Service
-        name: my-module
+        name: svc
         shell: {svc.shell}
         """
     )
 
     # WHEN
-    out = client_cmd(["deploy", "my-module"], defs=definitions_file)
+    out = client_cmd(["deploy", "svc"], defs=definitions_file)
 
     # THEN
-    assert 'Deployed modules: ["my-module"]' in out
+    assert "Deploying svc (Deployed)" in out
+    assert 'Deployed modules: ["svc"]' in out
     assert svc.ran_once()
 
 
@@ -32,7 +33,7 @@ def test_deploy_tasks_before_service(daemon):
     definitions_file = definition(
         f"""
         kind: Service
-        name: my-module
+        name: svc-1
         shell: {svc1.shell}
         dependencies: [task-1, task-2, task-3]
         ---
@@ -51,9 +52,14 @@ def test_deploy_tasks_before_service(daemon):
     )
 
     # WHEN
-    client_cmd(["deploy", "my-module"], defs=definitions_file)
+    out = client_cmd(["deploy", "svc-1"], defs=definitions_file)
 
     # THEN
+    assert "Deploying svc-1 (Deployed)" in out
+    assert "Running task task-1 (Done)" in out
+    assert "Running task task-2 (Done)" in out
+    assert "Running task task-3 (Done)" in out
+
     assert svc1.ran_once()
     assert tsk1.ran_once()
     assert tsk2.ran_once()
@@ -75,7 +81,7 @@ def test_group_deploys_all_members(daemon):
     definitions_file = definition(
         f"""
         kind: Service
-        name: my-module
+        name: svc-1
         shell: {svc1.shell}
         dependencies: [task-1, task-2, task-3]
         ---
@@ -93,14 +99,20 @@ def test_group_deploys_all_members(daemon):
         ---
         kind: Group
         name: group-1
-        dependencies: [my-module, task-1, task-2, task-3]
+        dependencies: [svc-1, task-1, task-2, task-3]
         """
     )
 
     # WHEN
-    client_cmd(["deploy", "group-1"], defs=definitions_file)
+    out = client_cmd(["deploy", "group-1"], defs=definitions_file)
 
     # THEN
+    assert "Deploying svc-1 (Deployed)" in out
+    assert "Group group-1 (Done)" in out
+    assert "Running task task-1 (Done)" in out
+    assert "Running task task-2 (Done)" in out
+    assert "Running task task-3 (Done)" in out
+
     assert svc1.ran_once()
     assert tsk1.ran_once()
     assert tsk2.ran_once()
@@ -161,12 +173,20 @@ def test_deploys_multiple_services_and_groups(daemon):
     )
 
     # WHEN
-    client_cmd(
+    out = client_cmd(
         ["deploy", "group-1", "group-2", "svc-1", "svc-2", "svc-3"],
         defs=definitions_file,
     )
 
     # THEN
+    assert "Deploying svc-1 (Deployed)" in out
+    assert "Deploying svc-2 (Deployed)" in out
+    assert "Deploying svc-3 (Deployed)" in out
+    assert "Group group-1 (Done)" in out
+    assert "Group group-2 (Done)" in out
+    assert "Running task task-1 (Done)" in out
+    assert "Running task task-2 (Done)" in out
+
     assert svc1.ran_once()
     assert svc2.ran_once()
     assert svc3.ran_once()
