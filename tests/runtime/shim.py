@@ -2,6 +2,17 @@ import tempfile
 from pathlib import Path
 
 
+@cache
+def shim_exe_path():
+    cwd = Path(__file__).resolve()
+    return (
+        cwd.parent.parent.joinpath("execshim")
+        .joinpath("target")
+        .joinpath("release")
+        .joinpath("execshim")
+    )
+
+
 class SimpleShim:
     def __init__(self, cmd_fn):
         self.tf = tempfile.NamedTemporaryFile()

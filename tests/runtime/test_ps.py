@@ -1,5 +1,4 @@
 import re
-from time import sleep
 
 from runtime.helpers import client_cmd, run_service, stop_service
 

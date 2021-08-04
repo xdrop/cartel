@@ -16,3 +16,4 @@ run:
 format:
 	${PYTHON} -m black .
 	${PYTHON} -m isort .
+	${PYTHON} -m flake8 .

@@ -1,6 +1,4 @@
-import time
-
-from runtime.helpers import client_cmd, definition, run_service, run_task
+from runtime.helpers import client_cmd, definition, run_service
 from runtime.shim import task_shim
 
 
