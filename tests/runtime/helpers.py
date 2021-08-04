@@ -23,19 +23,21 @@ def run_service(name, exit_code=0):
         """
     )
     client_cmd(["deploy", "-f", name], defs=definitions_file)
+    return svc
 
 
 def run_task(name, exit_code=0):
-    svc = task_shim(exit_code=exit_code)
+    task = task_shim(exit_code=exit_code)
 
     definitions_file = definition(
         f"""
         kind: Task
         name: {name}
-        shell: {svc.shell}
+        shell: {task.shell}
         """
     )
     client_cmd(["deploy", "-f", name], defs=definitions_file)
+    return task
 
 
 def stop_service(name):
@@ -154,6 +156,24 @@ def process_running(process_name):
         ):
             pass
     return False
+
+
+def find_pid(process_name, pid=None):
+    for proc in psutil.process_iter():
+        try:
+            # Check if process name contains the given name string.
+            if process_name.lower() in proc.name().lower():
+                if pid and proc.pid == pid:
+                    return proc.pid
+                else:
+                    return proc.pid
+        except (
+            psutil.NoSuchProcess,
+            psutil.AccessDenied,
+            psutil.ZombieProcess,
+        ):
+            pass
+    return None
 
 
 def definition(definitions_file):

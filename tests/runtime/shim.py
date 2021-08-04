@@ -26,6 +26,10 @@ class SimpleShim:
         self._signal = None
 
     @property
+    def process_name(self):
+        return shim_exe_path().name
+
+    @property
     def path(self):
         return self.tf.name
 

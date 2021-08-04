@@ -11,4 +11,4 @@ def daemon():
     daemon_path = debug_binaries.joinpath("daemon")
     with subprocess.Popen([str(daemon_path)]) as proc:
         yield
-        proc.kill()
+        proc.terminate()
