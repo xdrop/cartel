@@ -32,8 +32,8 @@ Scenarios and fields covered: ✅
 - ~~checks (tested) ✅~~
 - ~~dependencies (tested) ✅~~
 - ~~termination_signal (tested) ✅~~
-- command (untested)
-- environment (untested)
+- ~~command (tested) ✅~~
+- ~~environment (tested) ✅~~
 - environment_sets (untested)
 - log_file_path (untested)
 - working_dir (untested)

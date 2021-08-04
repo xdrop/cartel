@@ -102,6 +102,39 @@ class SimpleShim:
         return self._counter == 1
 
 
+class EnvVarShim:
+    def __init__(self):
+        self.tf = tempfile.NamedTemporaryFile()
+        self._read = False
+        self._environment_vars = None
+
+    def _update(self):
+        path = Path(self.tf.name)
+        data = path.read_text().splitlines()
+        env = {}
+        for line in data:
+            parts = line.split("=")
+            key, val = parts[0], parts[1]
+            env[key] = val
+        self._read = True
+        self._environment_vars = env
+        self.tf.close()
+
+    @property
+    def environment_vars(self):
+        if not self._read:
+            self._update()
+        return self._environment_vars
+
+    @property
+    def shell(self):
+        return f"printenv > {self.tf.name}"
+
+    @property
+    def cmd(self):
+        return ["bash", "-c", self.shell]
+
+
 def _exit_cmd(exit_code):
     def _exit(*args):
         return f"echo exiting; exit {exit_code}"
@@ -113,6 +146,10 @@ def service_shim(exit_code=0):
     if exit_code != 0:
         return SimpleShim(cmd_fn=_exit_cmd(exit_code))
     return SimpleShim(block=True, msg="pass")
+
+
+def env_shim():
+    return EnvVarShim()
 
 
 def task_shim(exit_code=0):
