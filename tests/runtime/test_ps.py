@@ -8,7 +8,10 @@ def test_ps_with_nothing_running(daemon):
     out = client_cmd(["ps"])
 
     # THEN
-    assert out == "pid       name      liveness  status    since\n"
+    assert (
+        out.replace("\n", "").replace("\r", "")
+        == "pid       name      liveness  status    since"
+    )
 
 
 def test_ps_prints_service_running(daemon):
