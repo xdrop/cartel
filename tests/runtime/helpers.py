@@ -108,12 +108,10 @@ def client_cmd_tty(args, defs=None, delay=0.05, timeout=1, strip_ansi=True):
     out = bytearray()
 
     with ctx:
-        p = pexpect.spawn(client_path, client_args)
-        while True:
-            try:
-                out.extend(p.read_nonblocking(size=1024, timeout=timeout))
-            except pexpect.EOF:
-                break
+        p = pexpect.spawn(client_path, client_args, timeout=timeout)
+        # This speeds up the tests, consider removing if it causes any issues
+        p.ptyproc.delayafterclose = 0.05
+        out = p.read()
 
     # add sufficient delay for any operations to complete
     sleep(delay)
