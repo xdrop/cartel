@@ -1,5 +1,5 @@
 from runtime.helpers import client_cmd, definition
-from runtime.shim import env_shim, service_shim, task_shim
+from runtime.shim import service_shim, task_shim
 
 
 def test_deploy_single_service(daemon):
@@ -21,50 +21,6 @@ def test_deploy_single_service(daemon):
     assert "Deploying svc (Deployed)" in out
     assert 'Deployed modules: ["svc"]' in out
     assert svc.ran_once()
-
-
-def test_command_single_service(daemon):
-    # GIVEN
-    svc = service_shim()
-
-    definitions_file = definition(
-        f"""
-        kind: Service
-        name: svc
-        command: {svc.cmd}
-        """
-    )
-
-    # WHEN
-    client_cmd(["deploy", "svc"], defs=definitions_file)
-
-    # THEN
-    assert svc.ran_once()
-
-
-def test_environment_variables_get_set(daemon):
-    # GIVEN
-    svc = env_shim()
-
-    definitions_file = definition(
-        f"""
-        kind: Service
-        name: svc
-        shell: {svc.shell}
-        environment:
-            var1: "foo"
-            var2: "bar"
-        """
-    )
-
-    # WHEN
-    client_cmd(["deploy", "svc"], defs=definitions_file)
-
-    # THEN
-    assert "var1" in svc.environment_vars
-    assert "var2" in svc.environment_vars
-    assert svc.environment_vars["var1"] == "foo"
-    assert svc.environment_vars["var2"] == "bar"
 
 
 def test_deploy_tasks_before_service(daemon):
@@ -113,6 +69,47 @@ def test_deploy_tasks_before_service(daemon):
     assert svc1.last_ran > tsk1.last_ran
     assert svc1.last_ran > tsk2.last_ran
     assert svc1.last_ran > tsk3.last_ran
+
+
+def test_deploy_ordered_dependencies_in_order(daemon):
+    # GIVEN
+    svc1 = service_shim()
+    tsk1 = task_shim()
+    tsk2 = task_shim()
+    tsk3 = task_shim()
+
+    definitions_file = definition(
+        f"""
+        kind: Service
+        name: svc-1
+        shell: {svc1.shell}
+        ordered_dependencies: [task-1, task-2, task-3]
+        ---
+        kind: Task
+        name: task-1
+        shell: {tsk1.shell}
+        ---
+        kind: Task
+        name: task-2
+        shell: {tsk2.shell}
+        ---
+        kind: Task
+        name: task-3
+        shell: {tsk3.shell}
+        """
+    )
+
+    # WHEN
+    client_cmd(["deploy", "svc-1"], defs=definitions_file)
+
+    # THEN
+    assert svc1.last_ran > tsk1.last_ran
+    assert svc1.last_ran > tsk2.last_ran
+    assert svc1.last_ran > tsk3.last_ran
+    # assert ordered dependencies run in order
+    assert tsk3.last_ran > tsk1.last_ran
+    assert tsk3.last_ran > tsk2.last_ran
+    assert tsk2.last_ran > tsk1.last_ran
 
 
 def test_group_deploys_all_members(daemon):

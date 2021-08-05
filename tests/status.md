@@ -35,9 +35,9 @@ Scenarios and fields covered: ✅
 - ~~command (tested) ✅~~
 - ~~environment (tested) ✅~~
 - environment_sets (untested)
-- log_file_path (untested)
-- working_dir (untested)
-- ordered_dependencies (untested)
+- ~~log_file_path (tested) ✅~~
+- ~~working_dir (tested) ✅~~
+- ~~ordered_dependencies (tested) ✅~~
 - readiness_probe (untested)
 - liveness_probe (untested)
 - post_up (untested)
@@ -48,9 +48,11 @@ Scenarios and fields covered: ✅
 - ~~name (tested) ✅~~
 - ~~checks (tested) ✅~~
 - ~~shell (tested) ✅~~
-- environment (untested)
-- working_dir (untested)
-- timeout (untested)
+- ~~command (tested) ✅~~
+- ~~working_dir (tested) ✅~~
+- ~~environment (tested) ✅~~
+- ~~log_file_path (tested) ✅~~
+- ~~timeout (tested) ✅~~
 
 ## Shell
 - name (untested)

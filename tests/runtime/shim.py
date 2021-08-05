@@ -1,5 +1,6 @@
 import tempfile
 from functools import cache
+from os.path import realpath
 from pathlib import Path
 
 
@@ -135,11 +136,84 @@ class EnvVarShim:
         return ["bash", "-c", self.shell]
 
 
+class LogFileShim:
+    def __init__(self):
+        self.tf = tempfile.NamedTemporaryFile()
+        self._read = False
+        self._log_file_content = None
+
+    def _update(self):
+        path = Path(self.tf.name)
+        self._read = True
+        self._log_file_content = path.read_text().replace("\n", "")
+        self.tf.close()
+
+    @property
+    def log_file_path(self):
+        return self.tf.name
+
+    @property
+    def written_to_log_file(self):
+        if not self._read:
+            self._update()
+        return self._log_file_content == "pass"
+
+    @property
+    def shell(self):
+        return f"echo pass > {self.log_file_path}"
+
+    @property
+    def cmd(self):
+        return ["bash", "-c", self.shell]
+
+
+class WorkingDirShim:
+    def __init__(self):
+        self.tf = tempfile.NamedTemporaryFile()
+        self.td = tempfile.TemporaryDirectory()
+        self._read = False
+        self._workdir = None
+
+    def _update(self):
+        path = Path(self.tf.name)
+        self._read = True
+        self._workdir = path.read_text().replace("\n", "")
+        self.tf.close()
+        self.td.cleanup()
+
+    @property
+    def working_dir(self):
+        return self.td.name
+
+    @property
+    def ran_in_workdir(self):
+        if not self._read:
+            self._update()
+        return realpath(self._workdir) == realpath(self.td.name)
+
+    @property
+    def shell(self):
+        return f"pwd > {self.tf.name}"
+
+    @property
+    def cmd(self):
+        return ["bash", "-c", self.shell]
+
+
 def _exit_cmd(exit_code):
     def _exit(*args):
         return f"echo exiting; exit {exit_code}"
 
     return _exit
+
+
+def _timeout_cmd(seconds, exit_code=0):
+    def _timeout(*args):
+        if exit_code != 0:
+            return f"sleep {seconds}; exit {exit_code}"
+        return f"sleep {seconds}"
+
+    return _timeout
 
 
 def service_shim(exit_code=0):
@@ -152,7 +226,17 @@ def env_shim():
     return EnvVarShim()
 
 
-def task_shim(exit_code=0):
+def log_file_shim():
+    return LogFileShim()
+
+
+def working_dir_shim():
+    return WorkingDirShim()
+
+
+def task_shim(exit_code=0, timeout=None):
+    if timeout:
+        return SimpleShim(cmd_fn=_timeout_cmd(timeout, exit_code=exit_code))
     if exit_code != 0:
         return SimpleShim(cmd_fn=_exit_cmd(exit_code))
     return SimpleShim(msg="pass")
