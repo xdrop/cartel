@@ -243,6 +243,28 @@ class EventualExitShim:
         ]
 
 
+class ExitToggleShim:
+    def __init__(self):
+        self.tf = tempfile.NamedTemporaryFile()
+        self.exit_code = 1
+        self.tf.write("1".encode("utf-8"))
+        self.tf.flush()
+
+    def toggle(self):
+        self.exit_code = 0 if self.exit_code == 1 else 1
+        self.tf.truncate(0)
+        self.tf.write(str(self.exit_code).encode("utf-8"))
+        self.tf.flush()
+
+    @property
+    def shell(self):
+        return f"exit $(cat {self.tf.name})"
+
+    @property
+    def command(self):
+        return ["bash", "-c", self.shell]
+
+
 def _exit_cmd(exit_code):
     def _exit(*args):
         return f"echo exiting; exit {exit_code}"
@@ -287,6 +309,10 @@ def working_dir_shim():
 
 def eventual_exit_shim(delay=0):
     return EventualExitShim(delay=delay)
+
+
+def exit_toggle_shim():
+    return ExitToggleShim()
 
 
 def task_shim(exit_code=0, delay=None, msg="pass"):

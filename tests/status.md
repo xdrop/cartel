@@ -42,7 +42,7 @@ Scenarios and fields covered: ✅
 - ~~working_dir (tested) ✅~~
 - ~~ordered_dependencies (tested) ✅~~
 - ~~readiness_probe (tested) ✅~~
-- liveness_probe (untested)
+- ~~liveness_probe (tested) ✅~~
 - post_up (untested)
 - post (untested)
 - after (untested)

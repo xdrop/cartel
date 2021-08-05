@@ -1,3 +1,6 @@
+import re
+from time import sleep
+
 import pytest
 from attr import set_run_validators
 
@@ -5,6 +8,7 @@ from runtime.client import client_cmd, client_cmd_tty
 from runtime.helpers import definition
 from runtime.shim import (
     eventual_exit_shim,
+    exit_toggle_shim,
     net_listener_service_shim,
     service_shim,
     task_shim,
@@ -409,3 +413,44 @@ def test_wait_for_log_line_readiness_exceed_retries(daemon):
         " probe checks in time." in out
     )
     assert "Check the logs for more details." in out
+
+
+@pytest.mark.slow
+def test_liveness_probe(daemon):
+    # GIVEN
+    svc = service_shim()
+    probe = exit_toggle_shim()
+
+    definitions_file = definition(
+        f"""
+        kind: Service
+        name: svc-1
+        shell: {svc.shell}
+        liveness_probe:
+            type: exec
+            shell: {probe.shell}
+        """
+    )
+
+    # WHEN
+    client_cmd(["deploy", "svc-1"], defs=definitions_file)
+
+    # THEN
+    ps_output = client_cmd(["ps"])
+    assert re.findall(r"^\d+\s+svc-1\s+-\s+running\s+.*", ps_output, re.M)
+
+    # WHEN
+    probe.toggle()
+    sleep(6)
+
+    # THEN
+    ps_output = client_cmd(["ps"])
+    assert re.findall(r"^\d+\s+svc-1\s+healthy\s+running\s+.*", ps_output, re.M)
+
+    # WHEN
+    probe.toggle()
+    sleep(6)
+
+    # THEN
+    ps_output = client_cmd(["ps"])
+    assert re.findall(r"^\d+\s+svc-1\s+failing\s+running\s+.*", ps_output, re.M)
