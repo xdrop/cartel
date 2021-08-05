@@ -1,3 +1,4 @@
+use crate::daemon::error::DaemonError;
 use crate::daemon::monitor::commands::*;
 use crate::daemon::monitor::state::{MonitorState, MonitorStatus};
 use crate::daemon::time::epoch_now;
@@ -256,8 +257,12 @@ async fn poll_exe_monitor(exe_monitor: &ExecMonitor) -> Result<bool> {
         .stderr(Stdio::null())
         .spawn()?;
 
-    let status = child.wait().await?;
-    Ok(status.success())
+    let child_wait_fut = child.wait();
+    match timeout(Duration::from_millis(2000), child_wait_fut).await {
+        Ok(Ok(exit_status)) => Ok(exit_status.success()),
+        Ok(Err(e)) => Err(e.into()),
+        Err(_) => Err(DaemonError::ExecProbeTimeout.into()),
+    }
 }
 
 async fn poll_log_line_monitor(

@@ -20,6 +20,11 @@ pub enum DaemonError {
     #[error("Module not found")]
     SubsetNotFound,
 
+    /// Represents the case where the command in an executable probe took more
+    /// than a certain amount of time to complete.
+    #[error("Executable probe command timed out")]
+    ExecProbeTimeout,
+
     #[error("Task {task_name:?} failed with exit code {code:?}. Use \"cartel logs {task_name}\" \
      or view {log_file:?} for more details.")]
     TaskFailed {
