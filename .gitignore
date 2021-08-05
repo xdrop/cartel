@@ -1,5 +1,6 @@
 target
 __pycache__
+*.swp
 .pytest_cache
 .vscode
 .excluded
