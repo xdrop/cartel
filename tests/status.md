@@ -9,6 +9,9 @@ Scenarios and fields covered: ✅
 - ~~Perform `stop` for single service ✅~~
 - ~~Perform `stop` multiple services ✅~~
 - ~~Perform `restart` service ✅~~
+- Deploy won't redeploy healthy services
+- Deploy won't redeploy tasks if all their services are healthy
+- Deploy will always redeploy if `--force` is on
 - Flag `--only-selected` for `deploy`
 - Flag `--serial` for `deploy`
 - Flag `--no-checks` for `deploy`
@@ -38,7 +41,7 @@ Scenarios and fields covered: ✅
 - ~~log_file_path (tested) ✅~~
 - ~~working_dir (tested) ✅~~
 - ~~ordered_dependencies (tested) ✅~~
-- readiness_probe (untested)
+- ~~readiness_probe (tested) ✅~~
 - liveness_probe (untested)
 - post_up (untested)
 - post (untested)
@@ -79,16 +82,16 @@ Scenarios and fields covered: ✅
 ## Probe
 
 ### Net
-- host (untested)
-- port (untested)
-- retries (untested)
+- ~~host (tested) ✅~~
+- ~~port (tested) ✅~~
+- ~~retries (tested) ✅~~
 
 ### Exec
-- command (untested)
-- shell (untested)
-- working_dir (untested)
-- retries (untested)
+- ~~command (tested) ✅~~
+- ~~shell (tested) ✅~~
+- ~~working_dir (tested) ✅~~
+- ~~retries (tested) ✅~~
 
 ### Log line
-- line_regex (untested)
-- retries (untested)
+- ~~line_regex (tested) ✅~~
+- ~~retries (tested) ✅~~

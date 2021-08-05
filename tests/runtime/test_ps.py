@@ -1,6 +1,7 @@
 import re
 
-from runtime.helpers import client_cmd, run_service, stop_service
+from runtime.client import client_cmd
+from runtime.helpers import run_service, stop_service
 
 
 def test_ps_with_nothing_running(daemon):

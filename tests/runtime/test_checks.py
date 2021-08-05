@@ -1,4 +1,5 @@
-from runtime.helpers import client_cmd, definition
+from runtime.client import client_cmd
+from runtime.helpers import definition
 from runtime.shim import check_shim, service_shim
 
 

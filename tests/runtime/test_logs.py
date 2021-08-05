@@ -1,4 +1,5 @@
-from runtime.helpers import client_cmd_tty_expect, definition, run_service
+from runtime.client import client_cmd_tty
+from runtime.helpers import definition, run_service
 from runtime.shim import task_shim
 
 
@@ -7,7 +8,8 @@ def test_prints_logs_for_service(daemon):
     run_service("logs-1")
 
     # WHEN/THEN
-    assert client_cmd_tty_expect(["logs", "logs-1"], pattern="pass")
+    with client_cmd_tty(["logs", "logs-1"]) as tty:
+        assert tty.expect(pattern="pass")
 
 
 def test_prints_logs_for_task(daemon):
@@ -23,6 +25,5 @@ def test_prints_logs_for_task(daemon):
     )
 
     # WHEN/THEN
-    assert client_cmd_tty_expect(
-        ["logs", "logs-2"], pattern="pass", defs=definitions_file
-    )
+    with client_cmd_tty(["logs", "logs-2"], defs=definitions_file) as tty:
+        assert tty.expect(pattern="pass")

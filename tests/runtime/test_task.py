@@ -1,4 +1,5 @@
-from runtime.helpers import client_cmd, definition
+from runtime.client import client_cmd
+from runtime.helpers import definition
 from runtime.shim import env_shim, log_file_shim, task_shim, working_dir_shim
 
 
@@ -10,7 +11,7 @@ def test_command_works_for_task(daemon):
         f"""
         kind: Task
         name: tsk
-        command: {tsk.cmd}
+        command: {tsk.command}
         """
     )
 
@@ -88,7 +89,7 @@ def test_logs_are_written_to_given_file(daemon):
 
 def test_task_timeout_exceed(daemon):
     # GIVEN
-    tsk = task_shim(timeout=5)
+    tsk = task_shim(delay=5)
 
     print(tsk.shell)
     definitions_file = definition(
@@ -114,7 +115,7 @@ def test_task_timeout_exceed(daemon):
 
 def test_task_timeout_not_exceed(daemon):
     # GIVEN
-    tsk = task_shim(timeout=1)
+    tsk = task_shim(delay=1)
 
     definitions_file = definition(
         f"""

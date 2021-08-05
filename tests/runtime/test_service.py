@@ -1,16 +1,21 @@
-from runtime.helpers import client_cmd, definition
+import pytest
+
+from runtime.client import client_cmd
+from runtime.helpers import definition
 from runtime.shim import env_shim, log_file_shim, service_shim, working_dir_shim
 
 
-def test_command_works_for_service(daemon):
+@pytest.mark.parametrize("cmd_line_type", [("shell"), ("command")])
+def test_cmd_works_for_service(cmd_line_type, daemon):
     # GIVEN
     svc = service_shim()
 
+    cmd_line = getattr(svc, cmd_line_type)
     definitions_file = definition(
         f"""
         kind: Service
         name: svc
-        command: {svc.cmd}
+        {cmd_line_type}: {cmd_line}
         """
     )
 

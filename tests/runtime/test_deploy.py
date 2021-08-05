@@ -1,5 +1,14 @@
-from runtime.helpers import client_cmd, definition
-from runtime.shim import service_shim, task_shim
+import pytest
+from attr import set_run_validators
+
+from runtime.client import client_cmd, client_cmd_tty
+from runtime.helpers import definition
+from runtime.shim import (
+    eventual_exit_shim,
+    net_listener_service_shim,
+    service_shim,
+    task_shim,
+)
 
 
 def test_deploy_single_service(daemon):
@@ -234,3 +243,169 @@ def test_deploys_multiple_services_and_groups(daemon):
     assert tsk1.ran_once()
     assert tsk2.ran_once()
     assert not tsk3.ran()
+
+
+@pytest.mark.slow
+def test_wait_for_network_readiness_probe(daemon):
+    # GIVEN
+    svc1 = net_listener_service_shim(delay=6)
+
+    definitions_file = definition(
+        f"""
+        kind: Service
+        name: svc-1
+        shell: {svc1.shell}
+        readiness_probe:
+            type: net
+            host: localhost
+            port: {svc1.port}
+            retries: 2
+        """
+    )
+
+    # WHEN/THEN
+    with client_cmd_tty(["deploy", "svc-1"], defs=definitions_file) as tty:
+        # should not be ready before <5 seconds
+        assert not tty.expect(pattern="Deployed modules", timeout=5)
+        # should be ready by 10 seconds
+        assert tty.expect(pattern="Deployed modules", timeout=5)
+
+
+@pytest.mark.slow
+def test_wait_for_network_readiness_probe_exceeds_retries(daemon):
+    # GIVEN
+    svc1 = net_listener_service_shim(delay=20)
+
+    definitions_file = definition(
+        f"""
+        kind: Service
+        name: svc-1
+        shell: {svc1.shell}
+        readiness_probe:
+            type: net
+            host: localhost
+            port: {svc1.port}
+            retries: 1
+        """
+    )
+
+    # WHEN
+    out = client_cmd(["deploy", "svc-1"], defs=definitions_file, timeout=5)
+
+    # THEN
+    assert (
+        "Error: The service did not complete its readiness"
+        " probe checks in time." in out
+    )
+    assert "Check the logs for more details." in out
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("cmd_line_type", [("shell"), ("command")])
+def test_wait_for_exec_readiness_probe(cmd_line_type, daemon):
+    # GIVEN
+    svc = service_shim()
+    probe = eventual_exit_shim(delay=6)
+
+    cmd_line = getattr(probe, cmd_line_type)
+
+    definitions_file = definition(
+        f"""
+        kind: Service
+        name: svc-1
+        shell: {svc.shell}
+        readiness_probe:
+            type: exec
+            {cmd_line_type}: {cmd_line}
+            retries: 2
+        """
+    )
+
+    # # WHEN/THEN
+    with client_cmd_tty(["deploy", "svc-1"], defs=definitions_file) as tty:
+        # should not be ready before <5 seconds
+        assert not tty.expect(pattern="Deployed modules", timeout=5)
+        # should be ready by 10 seconds
+        assert tty.expect(pattern="Deployed modules", timeout=5)
+
+
+@pytest.mark.slow
+def test_wait_for_exec_readiness_exceed_retries(daemon):
+    # GIVEN
+    svc = service_shim()
+    probe = eventual_exit_shim(delay=20)
+
+    definitions_file = definition(
+        f"""
+        kind: Service
+        name: svc-1
+        shell: {svc.shell}
+        readiness_probe:
+            type: exec
+            command: {probe.command}
+            retries: 1
+        """
+    )
+
+    # WHEN
+    out = client_cmd(["deploy", "svc-1"], defs=definitions_file, timeout=5)
+
+    # THEN
+    assert (
+        "Error: The service did not complete its readiness"
+        " probe checks in time." in out
+    )
+    assert "Check the logs for more details." in out
+
+
+@pytest.mark.slow
+def test_wait_for_log_line_readiness_probe(daemon):
+    # GIVEN
+    svc = service_shim(delay=6, msg="pass")
+
+    definitions_file = definition(
+        f"""
+        kind: Service
+        name: svc-1
+        shell: {svc.shell}
+        readiness_probe:
+            type: log_line
+            line_regex: pass
+            retries: 2
+        """
+    )
+
+    # # WHEN/THEN
+    with client_cmd_tty(["deploy", "svc-1"], defs=definitions_file) as tty:
+        # should not be ready before <5 seconds
+        assert not tty.expect(pattern="Deployed modules", timeout=5)
+        # should be ready by 10 seconds
+        assert tty.expect(pattern="Deployed modules", timeout=5)
+
+
+@pytest.mark.slow
+def test_wait_for_log_line_readiness_exceed_retries(daemon):
+    # GIVEN
+    svc = service_shim(delay=6, msg="pass")
+
+    definitions_file = definition(
+        f"""
+        kind: Service
+        name: svc-1
+        shell: {svc.shell}
+        readiness_probe:
+            type: log_line
+            line_regex: pass
+            retries: 1
+        """
+    )
+
+    # WHEN
+    out = client_cmd(["deploy", "svc-1"], defs=definitions_file, timeout=5)
+
+    # THEN
+    assert (
+        "Error: The service did not complete its readiness"
+        " probe checks in time." in out
+    )
+    assert "Check the logs for more details." in out

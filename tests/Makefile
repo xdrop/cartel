@@ -13,7 +13,11 @@ help:
 
 run:
 	cd execshim && ${CARGO} build --release
-	${PYTHON} -m pytest -vv
+	${PYTHON} -m pytest -vvx runtime
+
+all:
+	cd execshim && ${CARGO} build --release
+	${PYTHON} -m pytest --runslow -vv runtime
 	
 format:
 	${PYTHON} -m black .

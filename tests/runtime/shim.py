@@ -1,4 +1,6 @@
+import calendar
 import tempfile
+import time
 from functools import cache
 from os.path import realpath
 from pathlib import Path
@@ -16,9 +18,12 @@ def shim_exe_path():
 
 
 class SimpleShim:
-    def __init__(self, cmd_fn=None, block=False, msg="pass"):
+    def __init__(
+        self, pre_cmd_fn=None, post_cmd_fn=None, block=False, msg="pass"
+    ):
         self.tf = tempfile.NamedTemporaryFile()
-        self.cmd_fn = cmd_fn
+        self.pre_cmd_fn = pre_cmd_fn
+        self.post_cmd_fn = post_cmd_fn
         self.msg = msg
         self.read = False
         self.block = block
@@ -36,16 +41,18 @@ class SimpleShim:
 
     @property
     def shell(self):
-        cmd = self.cmd_fn(self.path) if self.cmd_fn else ""
+        pre_cmd = f"{self.pre_cmd_fn(self.path)};" if self.pre_cmd_fn else ""
+        post_cmd = self.post_cmd_fn(self.path) if self.post_cmd_fn else ""
         path = self.path
         msg = self.msg
         block = "blocked" if self.block else "unblocked"
+
         # Checks if file is empty, if it is it writes 1 to it, otherwise
         # increments and stores the incremented number
-        return f"{shim_exe_path()} {block} {path} {msg}; {cmd}"
+        return f"{pre_cmd}{shim_exe_path()} {block} {path} {msg}; {post_cmd}"
 
     @property
-    def cmd(self):
+    def command(self):
         return ["bash", "-c", self.shell]
 
     def _update(self):
@@ -163,7 +170,7 @@ class LogFileShim:
         return f"echo pass > {self.log_file_path}"
 
     @property
-    def cmd(self):
+    def command(self):
         return ["bash", "-c", self.shell]
 
 
@@ -196,8 +203,44 @@ class WorkingDirShim:
         return f"pwd > {self.tf.name}"
 
     @property
-    def cmd(self):
+    def command(self):
         return ["bash", "-c", self.shell]
+
+
+class NetListenerShim:
+    def __init__(self, port, delay=0):
+        self.port = port
+        self.delay = delay
+
+    @property
+    def shell(self):
+        return f"sleep {self.delay}; {shim_exe_path()} http {self.port}"
+
+    @property
+    def command(self):
+        return ["bash", "-c", self.shell]
+
+
+class EventualExitShim:
+    def __init__(self, delay=0):
+        self.delay = delay
+        self.tf = tempfile.NamedTemporaryFile()
+        epoch = calendar.timegm(time.gmtime())
+        self.tf.write(str(epoch).encode("utf-8"))
+        self.tf.flush()
+
+    @property
+    def shell(self):
+        return f"{shim_exe_path()} eventual_exit {self.tf.name} {self.delay}"
+
+    @property
+    def command(self):
+        return [
+            str(shim_exe_path()),
+            "eventual_exit",
+            self.tf.name,
+            str(self.delay),
+        ]
 
 
 def _exit_cmd(exit_code):
@@ -207,19 +250,27 @@ def _exit_cmd(exit_code):
     return _exit
 
 
-def _timeout_cmd(seconds, exit_code=0):
-    def _timeout(*args):
+def _delay_cmd(seconds, exit_code=0):
+    def _delay(*args):
         if exit_code != 0:
             return f"sleep {seconds}; exit {exit_code}"
         return f"sleep {seconds}"
 
-    return _timeout
+    return _delay
 
 
-def service_shim(exit_code=0):
+def service_shim(exit_code=0, delay=None, msg="pass"):
+    if delay:
+        return SimpleShim(
+            pre_cmd_fn=_delay_cmd(delay, exit_code=exit_code), msg=msg
+        )
     if exit_code != 0:
-        return SimpleShim(cmd_fn=_exit_cmd(exit_code))
-    return SimpleShim(block=True, msg="pass")
+        return SimpleShim(pre_cmd_fn=_exit_cmd(exit_code), msg=msg)
+    return SimpleShim(block=True, msg=msg)
+
+
+def net_listener_service_shim(delay=0, port=23781):
+    return NetListenerShim(port=port, delay=delay)
 
 
 def env_shim():
@@ -234,13 +285,19 @@ def working_dir_shim():
     return WorkingDirShim()
 
 
-def task_shim(exit_code=0, timeout=None):
-    if timeout:
-        return SimpleShim(cmd_fn=_timeout_cmd(timeout, exit_code=exit_code))
-    if exit_code != 0:
-        return SimpleShim(cmd_fn=_exit_cmd(exit_code))
-    return SimpleShim(msg="pass")
+def eventual_exit_shim(delay=0):
+    return EventualExitShim(delay=delay)
+
+
+def task_shim(exit_code=0, delay=None, msg="pass"):
+    if delay:
+        return SimpleShim(
+            pre_cmd_fn=_delay_cmd(delay, exit_code=exit_code), msg=msg
+        )
+    if exit_code is not None:
+        return SimpleShim(post_cmd_fn=_exit_cmd(exit_code), msg=msg)
+    return SimpleShim(msg=msg)
 
 
 def check_shim(exit_code=0):
-    return SimpleShim(cmd_fn=_exit_cmd(exit_code))
+    return SimpleShim(post_cmd_fn=_exit_cmd(exit_code))

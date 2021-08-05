@@ -1,4 +1,5 @@
-from runtime.helpers import client_cmd, definition, find_pid, run_service
+from runtime.client import client_cmd
+from runtime.helpers import definition, find_pid, run_service
 from runtime.shim import service_shim
 
 
