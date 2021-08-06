@@ -43,9 +43,9 @@ Scenarios and fields covered: ✅
 - ~~ordered_dependencies (tested) ✅~~
 - ~~readiness_probe (tested) ✅~~
 - ~~liveness_probe (tested) ✅~~
-- post_up (untested)
-- post (untested)
-- after (untested)
+- ~~after (tested) ✅~~
+- ~~post_up (tested) ✅~~
+- ~~post (tested) ✅~~
 
 ## Task
 - ~~name (tested) ✅~~

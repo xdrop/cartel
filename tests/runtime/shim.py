@@ -55,7 +55,7 @@ class SimpleShim:
     def command(self):
         return ["bash", "-c", self.shell]
 
-    def _update(self):
+    def update(self):
         path = Path(self.path)
         mtime = path.stat().st_mtime
         data = path.read_text().split("|")
@@ -74,38 +74,38 @@ class SimpleShim:
         self._signal = signal
         self._mtime = mtime
         self.read = True
-        self.tf.close()
 
     @property
     def last_ran(self):
         if not self.read:
-            self._update()
+            self.update()
 
+        assert self.ran(), "Shim was not run, yet last_ran is being checked!"
         return self._mtime
 
     @property
     def times_ran(self):
         if not self.read:
-            self._update()
+            self.update()
 
         return self._counter
 
     @property
     def signal(self):
         if not self.read:
-            self._update()
+            self.update()
 
         return self._signal
 
-    def ran(self):
-        if not self.read:
-            self._update()
+    def ran(self, force_update=False):
+        if not self.read or force_update:
+            self.update()
 
         return self._counter > 0
 
-    def ran_once(self):
-        if not self.read:
-            self._update()
+    def ran_once(self, force_update=False):
+        if not self.read or force_update:
+            self.update()
 
         return self._counter == 1
 

@@ -33,10 +33,15 @@ class CartelTestHelper:
         self.definitions_file = tempfile.NamedTemporaryFile()
 
     def definitions(self, definitions):
+        self._definitions_file_content = textwrap.dedent(definitions)
         self.definitions_file.write(
-            textwrap.dedent(definitions).encode("utf-8")
+            self._definitions_file_content.encode("utf-8")
         )
         self.definitions_file.flush()
+
+    @property
+    def definitions_file_content(self):
+        return self._definitions_file_content
 
     @property
     def definition_file_path(self):

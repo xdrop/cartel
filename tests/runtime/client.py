@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from functools import cache
 from time import sleep
 
@@ -39,7 +40,9 @@ class ClientTty:
         pass
 
     def spawn(self):
-        self.p = pexpect.spawn(self.client_path, self.client_args)
+        self.p = pexpect.spawn(
+            self.client_path, self.client_args, logfile=sys.stdout.buffer
+        )
 
     def expect(self, pattern=pexpect.EOF, timeout=-1):
         try:
@@ -61,7 +64,9 @@ def client_cmd_run_tty(args, delay=0.05, timeout=1, strip_ansi=True):
     client_path = get_client_path()
     out = bytearray()
 
-    p = pexpect.spawn(client_path, args, timeout=timeout)
+    p = pexpect.spawn(
+        client_path, args, timeout=timeout, logfile=sys.stdout.buffer
+    )
     # This speeds up the tests, consider removing if it causes any issues
     p.ptyproc.delayafterclose = 0.05
     out = p.read()
