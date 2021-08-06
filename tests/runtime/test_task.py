@@ -129,3 +129,22 @@ def test_task_timeout_not_exceed(cartel):
 
     # THEN
     assert "Running task tsk (Done)" in out
+
+
+def test_task_run_direct(cartel):
+    # GIVEN
+    tsk = task_shim()
+
+    cartel.definitions(
+        f"""
+        kind: Task
+        name: tsk
+        shell: {tsk.shell}
+        """
+    )
+
+    # WHEN
+    out = cartel.client_cmd(["run", "tsk"])
+
+    # THEN
+    assert "pass" in out

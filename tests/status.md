@@ -17,7 +17,7 @@ Scenarios and fields covered: ✅
 - ~~Flag `--no-readiness` for `deploy` ✅~~
 - ~~Flag `--env` for `deploy` ✅~~
 - Flag `--serial` for `deploy`
-- Perform `run` for single task running
+- ~~Perform `run` for single task running ✅~~
 - ~~View `logs` (standard mode) ✅~~
 - View `logs` (full mode)
 - Start `shell` for service
