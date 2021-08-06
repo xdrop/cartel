@@ -1,18 +1,11 @@
 import subprocess
-from pathlib import Path
+import tempfile
+import textwrap
 
 import pytest
 
-
-def target_dir_path():
-    cwd = Path(__file__).resolve()
-    target_dir = cwd.parent.parent.parent.joinpath("target")
-    return target_dir
-
-
-def debug_binaries_path():
-    target_dir = target_dir_path()
-    return target_dir.joinpath("debug")
+from runtime.client import client_cmd, client_cmd_tty
+from runtime.paths import debug_binaries_path
 
 
 def pytest_addoption(parser):
@@ -34,10 +27,39 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_slow)
 
 
+class CartelTestHelper:
+    def __init__(self, proc):
+        self.proc = proc
+        self.definitions_file = tempfile.NamedTemporaryFile()
+
+    def definitions(self, definitions):
+        self.definitions_file.write(
+            textwrap.dedent(definitions).encode("utf-8")
+        )
+        self.definitions_file.flush()
+
+    @property
+    def definition_file_path(self):
+        return str(self.definitions_file.name)
+
+    def client_cmd(self, args, *rargs, **kwargs):
+        args = ["-f", self.definition_file_path, *args]
+        return client_cmd(args, *rargs, **kwargs)
+
+    def client_cmd_tty(self, args):
+        args = ["-f", self.definition_file_path, *args]
+        return client_cmd_tty(args)
+
+    def cleanup(self):
+        self.definitions_file.close()
+
+
 @pytest.fixture
-def daemon():
+def cartel():
     debug_binaries = debug_binaries_path()
     daemon_path = debug_binaries.joinpath("daemon")
     with subprocess.Popen([str(daemon_path)]) as proc:
-        yield
+        cartel = CartelTestHelper(proc)
+        yield cartel
         proc.terminate()
+        cartel.cleanup()

@@ -10,40 +10,43 @@ from runtime.shim import service_shim, task_shim
 def run_service(name, exit_code=0):
     svc = service_shim(exit_code=exit_code)
 
-    definitions_file = definition(
+    definitions_file = definitions(
         f"""
         kind: Service
         name: {name}
         shell: {svc.shell}
         """
     )
-    client_cmd(["deploy", "-f", name], defs=definitions_file)
+    with definitions_file as df:
+        client_cmd(["-f", df.name, "deploy", "-f", name])
     return svc
 
 
 def run_task(name, exit_code=0):
     task = task_shim(exit_code=exit_code)
 
-    definitions_file = definition(
+    definitions_file = definitions(
         f"""
         kind: Task
         name: {name}
         shell: {task.shell}
         """
     )
-    client_cmd(["deploy", "-f", name], defs=definitions_file)
+    with definitions_file as df:
+        client_cmd(["-f", df.name, "deploy", "-f", name])
     return task
 
 
 def stop_service(name):
-    definitions_file = definition(
+    definitions_file = definitions(
         f"""
         kind: Service
         name: {name}
         shell: irrelevant
         """
     )
-    client_cmd(["stop", name], defs=definitions_file)
+    with definitions_file as df:
+        client_cmd(["-f", df.name, "stop", name])
 
 
 def process_running(process_name):
@@ -79,7 +82,7 @@ def find_pid(process_name, pid=None):
     return None
 
 
-def definition(definitions_file):
+def definitions(definitions_file):
     tf = tempfile.NamedTemporaryFile()
     tf.write(textwrap.dedent(definitions_file).encode("utf-8"))
     tf.flush()

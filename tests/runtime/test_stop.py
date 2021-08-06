@@ -1,9 +1,8 @@
-from runtime.client import client_cmd
-from runtime.helpers import definition, find_pid, run_service
+from runtime.helpers import find_pid, run_service
 from runtime.shim import service_shim
 
 
-def test_stops_single_service(daemon):
+def test_stops_single_service(cartel):
     # GIVEN
     svc = run_service("stop-test-1")
 
@@ -11,7 +10,7 @@ def test_stops_single_service(daemon):
 
     # WHEN
     assert pid
-    out = client_cmd(["stop", "stop-test-1"])
+    out = cartel.client_cmd(["stop", "stop-test-1"])
 
     # THEN
 
@@ -19,7 +18,7 @@ def test_stops_single_service(daemon):
     assert not find_pid(svc.process_name, pid=pid)
 
 
-def test_stops_multiple_services(daemon):
+def test_stops_multiple_services(cartel):
     # GIVEN
     svc1 = run_service("stop-test-1")
     svc2 = run_service("stop-test-2")
@@ -30,7 +29,7 @@ def test_stops_multiple_services(daemon):
     # WHEN
     assert pid1
     assert pid2
-    out = client_cmd(["stop", "stop-test-1", "stop-test-2"])
+    out = cartel.client_cmd(["stop", "stop-test-1", "stop-test-2"])
 
     # THEN
     assert "Stopping stop-test-1 (Stopped)" in out
@@ -39,11 +38,11 @@ def test_stops_multiple_services(daemon):
     assert not find_pid(svc2.process_name, pid=pid2)
 
 
-def test_stops_with_sigterm_if_specified(daemon):
+def test_stops_with_sigterm_if_specified(cartel):
     # GIVEN
     svc = service_shim()
 
-    definitions_file = definition(
+    cartel.definitions(
         f"""
         kind: Service
         name: stop-test-sigterm-1
@@ -51,13 +50,13 @@ def test_stops_with_sigterm_if_specified(daemon):
         termination_signal: TERM
         """
     )
-    client_cmd(["deploy", "-f", "stop-test-sigterm-1"], defs=definitions_file)
+    cartel.client_cmd(["deploy", "-f", "stop-test-sigterm-1"])
 
     pid = find_pid(svc.process_name)
 
     # WHEN
     assert pid
-    out = client_cmd(["stop", "stop-test-sigterm-1"])
+    out = cartel.client_cmd(["stop", "stop-test-sigterm-1"])
 
     # THEN
 
@@ -66,11 +65,11 @@ def test_stops_with_sigterm_if_specified(daemon):
     assert svc.signal == "SIGTERM"
 
 
-def test_stops_with_sigint_if_specified(daemon):
+def test_stops_with_sigint_if_specified(cartel):
     # GIVEN
     svc = service_shim()
 
-    definitions_file = definition(
+    cartel.definitions(
         f"""
         kind: Service
         name: stop-test-sigint-1
@@ -78,13 +77,13 @@ def test_stops_with_sigint_if_specified(daemon):
         termination_signal: INT
         """
     )
-    client_cmd(["deploy", "-f", "stop-test-sigint-1"], defs=definitions_file)
+    cartel.client_cmd(["deploy", "-f", "stop-test-sigint-1"])
 
     pid = find_pid(svc.process_name)
 
     # WHEN
     assert pid
-    out = client_cmd(["stop", "stop-test-sigint-1"])
+    out = cartel.client_cmd(["stop", "stop-test-sigint-1"])
 
     # THEN
 

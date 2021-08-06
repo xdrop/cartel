@@ -1,13 +1,11 @@
-from runtime.client import client_cmd
-from runtime.helpers import definition
 from runtime.shim import env_shim, log_file_shim, task_shim, working_dir_shim
 
 
-def test_command_works_for_task(daemon):
+def test_command_works_for_task(cartel):
     # GIVEN
     tsk = task_shim()
 
-    definitions_file = definition(
+    cartel.definitions(
         f"""
         kind: Task
         name: tsk
@@ -16,17 +14,17 @@ def test_command_works_for_task(daemon):
     )
 
     # WHEN
-    client_cmd(["deploy", "tsk"], defs=definitions_file)
+    cartel.client_cmd(["deploy", "tsk"])
 
     # THEN
     assert tsk.ran_once()
 
 
-def test_environment_variables_get_set_for_task(daemon):
+def test_environment_variables_get_set_for_task(cartel):
     # GIVEN
     tsk = env_shim()
 
-    definitions_file = definition(
+    cartel.definitions(
         f"""
         kind: Task
         name: tsk
@@ -38,7 +36,7 @@ def test_environment_variables_get_set_for_task(daemon):
     )
 
     # WHEN
-    client_cmd(["deploy", "tsk"], defs=definitions_file)
+    cartel.client_cmd(["deploy", "tsk"])
 
     # THEN
     assert "var1" in tsk.environment_vars
@@ -47,11 +45,11 @@ def test_environment_variables_get_set_for_task(daemon):
     assert tsk.environment_vars["var2"] == "bar"
 
 
-def test_task_deployed_in_working_dir(daemon):
+def test_task_deployed_in_working_dir(cartel):
     # GIVEN
     tsk = working_dir_shim()
 
-    definitions_file = definition(
+    cartel.definitions(
         f"""
         kind: Task
         name: tsk
@@ -61,17 +59,17 @@ def test_task_deployed_in_working_dir(daemon):
     )
 
     # WHEN
-    client_cmd(["deploy", "tsk"], defs=definitions_file)
+    cartel.client_cmd(["deploy", "tsk"])
 
     # THEN
     assert tsk.ran_in_workdir
 
 
-def test_logs_are_written_to_given_file(daemon):
+def test_logs_are_written_to_given_file(cartel):
     # GIVEN
     tsk = log_file_shim()
 
-    definitions_file = definition(
+    cartel.definitions(
         f"""
         kind: Task
         name: tsk
@@ -81,18 +79,18 @@ def test_logs_are_written_to_given_file(daemon):
     )
 
     # WHEN
-    client_cmd(["deploy", "tsk"], defs=definitions_file)
+    cartel.client_cmd(["deploy", "tsk"])
 
     # THEN
     assert tsk.written_to_log_file
 
 
-def test_task_timeout_exceed(daemon):
+def test_task_timeout_exceed(cartel):
     # GIVEN
     tsk = task_shim(delay=5)
 
     print(tsk.shell)
-    definitions_file = definition(
+    cartel.definitions(
         f"""
         kind: Task
         name: tsk
@@ -102,7 +100,7 @@ def test_task_timeout_exceed(daemon):
     )
 
     # WHEN
-    out = client_cmd(["deploy", "tsk"], timeout=3, defs=definitions_file)
+    out = cartel.client_cmd(["deploy", "tsk"], timeout=3)
 
     # THEN
     assert 'Error: Task "tsk" took too long to finish.' in out
@@ -113,11 +111,11 @@ def test_task_timeout_exceed(daemon):
     assert "Note: The task may still be running." in out
 
 
-def test_task_timeout_not_exceed(daemon):
+def test_task_timeout_not_exceed(cartel):
     # GIVEN
     tsk = task_shim(delay=1)
 
-    definitions_file = definition(
+    cartel.definitions(
         f"""
         kind: Task
         name: tsk
@@ -127,7 +125,7 @@ def test_task_timeout_not_exceed(daemon):
     )
 
     # WHEN
-    out = client_cmd(["deploy", "tsk"], timeout=2, defs=definitions_file)
+    out = cartel.client_cmd(["deploy", "tsk"], timeout=2)
 
     # THEN
     assert "Running task tsk (Done)" in out

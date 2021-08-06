@@ -1,12 +1,11 @@
 import re
 
-from runtime.client import client_cmd
 from runtime.helpers import run_service, stop_service
 
 
-def test_ps_with_nothing_running(daemon):
+def test_ps_with_nothing_running(cartel):
     # GIVEN
-    out = client_cmd(["ps"])
+    out = cartel.client_cmd(["ps"])
 
     # THEN
     assert (
@@ -15,12 +14,12 @@ def test_ps_with_nothing_running(daemon):
     )
 
 
-def test_ps_prints_service_running(daemon):
+def test_ps_prints_service_running(cartel):
     # GIVEN
     run_service("ps-1")
 
     # WHEN
-    out = client_cmd(["ps"]).splitlines()
+    out = cartel.client_cmd(["ps"]).splitlines()
 
     # THEN
     assert out[0] == "pid       name      liveness  status    since"
@@ -28,14 +27,14 @@ def test_ps_prints_service_running(daemon):
     assert re.match(r"\d+\s+ps-1\s+-\s+running\s+.*", out[1])
 
 
-def test_ps_prints_multiple_services_running(daemon):
+def test_ps_prints_multiple_services_running(cartel):
     # GIVEN
     run_service("ps-1")
     run_service("ps-2")
     run_service("ps-3")
 
     # WHEN
-    out = client_cmd(["ps"])
+    out = cartel.client_cmd(["ps"])
 
     # THEN
     assert re.match(r"pid       name      liveness  status    since", out)
@@ -44,7 +43,7 @@ def test_ps_prints_multiple_services_running(daemon):
     assert re.findall(r"^\d+\s+ps-3\s+-\s+running\s+.*", out, re.M)
 
 
-def test_ps_prints_correct_run_status_for_multiple_services(daemon):
+def test_ps_prints_correct_run_status_for_multiple_services(cartel):
     # GIVEN
     run_service("ps-1")
     run_service("ps-2")
@@ -52,7 +51,7 @@ def test_ps_prints_correct_run_status_for_multiple_services(daemon):
     run_service("ps-3", exit_code=1)
 
     # WHEN
-    out = client_cmd(["ps"])
+    out = cartel.client_cmd(["ps"])
 
     # THEN
     assert re.match(r"pid       name      liveness  status    since", out)

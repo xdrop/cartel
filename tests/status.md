@@ -9,14 +9,14 @@ Scenarios and fields covered: ✅
 - ~~Perform `stop` for single service ✅~~
 - ~~Perform `stop` multiple services ✅~~
 - ~~Perform `restart` service ✅~~
-- Deploy won't redeploy healthy services
-- Deploy won't redeploy tasks if all their services are healthy
-- Deploy will always redeploy if `--force` is on
-- Flag `--only-selected` for `deploy`
-- Flag `--serial` for `deploy`
-- Flag `--no-checks` for `deploy`
+- ~~Deploy won't redeploy healthy services ✅~~
+- ~~Deploy won't redeploy tasks if all their services are healthy ✅~~
+- ~~Deploy will always redeploy if `--force` is on ✅~~
+- ~~Flag `--no-checks` for `deploy` ✅~~
+- ~~Flag `--only-selected` for `deploy` ✅~~
 - Flag `--no-readiness` for `deploy`
 - Flag `--env` for `deploy`
+- Flag `--serial` for `deploy`
 - Perform `run` for single task running
 - ~~View `logs` (standard mode) ✅~~
 - View `logs` (full mode)

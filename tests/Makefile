@@ -12,10 +12,12 @@ help:
 	@echo "------------------------------------"
 
 run:
+	cd ../ && ${CARGO} build --all
 	cd execshim && ${CARGO} build --release
 	${PYTHON} -m pytest -vvx runtime
 
 all:
+	cd ../ && ${CARGO} build --all
 	cd execshim && ${CARGO} build --release
 	${PYTHON} -m pytest --runslow -vv runtime
 	
