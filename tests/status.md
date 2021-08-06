@@ -14,8 +14,8 @@ Scenarios and fields covered: ✅
 - ~~Deploy will always redeploy if `--force` is on ✅~~
 - ~~Flag `--no-checks` for `deploy` ✅~~
 - ~~Flag `--only-selected` for `deploy` ✅~~
-- Flag `--no-readiness` for `deploy`
-- Flag `--env` for `deploy`
+- ~~Flag `--no-readiness` for `deploy` ✅~~
+- ~~Flag `--env` for `deploy` ✅~~
 - Flag `--serial` for `deploy`
 - Perform `run` for single task running
 - ~~View `logs` (standard mode) ✅~~
@@ -37,7 +37,7 @@ Scenarios and fields covered: ✅
 - ~~termination_signal (tested) ✅~~
 - ~~command (tested) ✅~~
 - ~~environment (tested) ✅~~
-- environment_sets (untested)
+- ~~environment_sets (tested) ✅~~
 - ~~log_file_path (tested) ✅~~
 - ~~working_dir (tested) ✅~~
 - ~~ordered_dependencies (tested) ✅~~
