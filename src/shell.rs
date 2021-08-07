@@ -20,11 +20,11 @@ pub fn active_shell_path() -> Option<String> {
     };
 
     if current_shell.contains("zsh") {
-        Some(String::from("/bin/zsh"))
+        Some(current_shell)
     } else if current_shell.contains("bash") {
-        Some(String::from("/bin/bash"))
+        Some(current_shell)
     } else if current_shell.contains("fish") {
-        Some(String::from("/bin/fish"))
+        Some(current_shell)
     } else {
         None
     }
@@ -35,7 +35,7 @@ pub fn active_shell_path() -> Option<String> {
 /// This function attempts to infer the currently running shell using the
 /// `SHELL` environment variable, and constructs a list of command line
 /// arguments with which the shell can be invoked in login + interactive mode.
-pub fn interactive_shell_cmd_line() -> Result<Vec<String>> {
+pub fn interactive_shell_cmd_line(login: bool) -> Result<Vec<String>> {
     let current_shell = active_shell()?;
     let shell_path = active_shell_path().expect("Unexpected shell");
     let mut cmd_line = vec![shell_path];
@@ -44,7 +44,9 @@ pub fn interactive_shell_cmd_line() -> Result<Vec<String>> {
         || current_shell.contains("bash")
         || current_shell.contains("fish")
     {
-        cmd_line.push("--login".to_string());
+        if login {
+            cmd_line.push("--login".to_string());
+        }
         cmd_line.push("-i".to_string());
     }
 

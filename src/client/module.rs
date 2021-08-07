@@ -1,4 +1,4 @@
-use crate::client::cmd::shell_to_cmd;
+use crate::client::cmd::{shell_to_cmd, shell_to_cmd_interactive};
 use crate::dependency::{
     DependencyEdge, DependencyNode, EdgeDirection, WithDependencies, WithKey,
 };
@@ -139,6 +139,9 @@ pub struct ServiceOrTaskDefinition {
     /// Duration in seconds before a task is considered as failed (currently
     /// only for tasks).
     pub timeout: Option<u64>,
+    /// If enabled and a `shell` command is given, the process will be spawned
+    /// in an interactive shell based on the one the client is running on.
+    pub interactive_shell: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -274,6 +277,7 @@ impl ServiceOrTaskDefinition {
         readiness_probe: Option<Probe>,
         liveness_probe: Option<Probe>,
         timeout: Option<u64>,
+        interactive_shell: Option<bool>,
     ) -> ServiceOrTaskDefinition {
         ServiceOrTaskDefinition {
             name,
@@ -294,6 +298,7 @@ impl ServiceOrTaskDefinition {
             readiness_probe,
             liveness_probe,
             timeout,
+            interactive_shell,
         }
     }
 
@@ -303,7 +308,11 @@ impl ServiceOrTaskDefinition {
     /// appropriate command line that invokes a shell.
     pub fn cmd_line(&self) -> Vec<String> {
         if self.command.is_empty() {
-            shell_to_cmd(self.shell.as_ref().unwrap())
+            if self.interactive_shell.unwrap_or(false) {
+                shell_to_cmd_interactive(self.shell.as_ref().unwrap())
+            } else {
+                shell_to_cmd(self.shell.as_ref().unwrap())
+            }
         } else {
             self.command.clone()
         }

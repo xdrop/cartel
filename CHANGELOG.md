@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a mechanism with which environment variables from the users shell configuration can be periodically refreshed. This eliminates the need for the user to need to perform a daemon restart whenever they need to reload some shell configuration (eg. a change in a `.zshrc` file). This feature is _experimental_ and is _disabled_ by default.
 - Added a `view` command to view values for all options.
 - Daemon port can now be configured via the `daemon.port` option in `config.toml`.
+- Add experimental `interactive_shell` option that when enabled and a `shell` command is given, the process will be spawned in an interactive shell based on the one the client is running on.
 
 ### Changed
 - The global configuration file has been switched from `YAML` to `TOML` (this is different from the module definitions file which will remain as YAML). This means that upon upgrading any existing config will be lost and will need to be migrated.

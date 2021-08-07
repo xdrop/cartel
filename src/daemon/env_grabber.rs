@@ -34,7 +34,7 @@ impl CurrentEnvHolder {
 }
 
 pub fn grab_env() -> Result<HashMap<String, String>> {
-    let cmd = interactive_shell_cmd_line()?;
+    let cmd = interactive_shell_cmd_line(false)?;
     let (head, tail) = cmd.split_first().expect("Empty command in grab_env");
     let print_env = vec!["-c", "printenv; exit 0"];
     let output = Command::new(head).args(tail).args(print_env).output()?;
