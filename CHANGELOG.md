@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The global configuration file has been switched from `YAML` to `TOML` (this is different from the module definitions file which will remain as YAML). This means that upon upgrading any existing config will be lost and will need to be migrated.
 - Liveness status will now update correctly when a process exits.
 - Probes of type `exec` will now timeout if their command takes more than 2 seconds.
+- Daemon will now be dissasociated from its controlling terminal by default.
 
 ### Fixed
 - Fixed misalignment in non-emoji supporting terminals.

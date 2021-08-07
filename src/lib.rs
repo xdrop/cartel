@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 #![feature(proc_macro_hygiene, decl_macro)]
+#![feature(panic_always_abort)]
 
 #[macro_use]
 extern crate rocket;
@@ -14,5 +15,6 @@ pub mod daemon;
 pub mod dependency;
 pub mod path;
 pub mod process;
+pub mod detach;
 pub mod shell;
 pub mod thread_control;
