@@ -24,7 +24,7 @@ pub fn detach_tty(args: Args, wait_child: bool) {
             .into_os_string()
             .as_bytes(),
     )
-    .expect("Failed to get Cstr");
+    .unwrap();
 
     unsafe {
         if getpgrp() == getpid() {

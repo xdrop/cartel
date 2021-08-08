@@ -141,7 +141,8 @@ pub struct ServiceOrTaskDefinition {
     pub timeout: Option<u64>,
     /// If enabled and a `shell` command is given, the process will be spawned
     /// in an interactive shell based on the one the client is running on.
-    pub interactive_shell: Option<bool>,
+    #[serde(default = "default_interactive_shell")]
+    pub interactive_shell: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -277,7 +278,7 @@ impl ServiceOrTaskDefinition {
         readiness_probe: Option<Probe>,
         liveness_probe: Option<Probe>,
         timeout: Option<u64>,
-        interactive_shell: Option<bool>,
+        interactive_shell: bool,
     ) -> ServiceOrTaskDefinition {
         ServiceOrTaskDefinition {
             name,
@@ -308,7 +309,7 @@ impl ServiceOrTaskDefinition {
     /// appropriate command line that invokes a shell.
     pub fn cmd_line(&self) -> Vec<String> {
         if self.command.is_empty() {
-            if self.interactive_shell.unwrap_or(false) {
+            if self.interactive_shell {
                 shell_to_cmd_interactive(self.shell.as_ref().unwrap())
             } else {
                 shell_to_cmd(self.shell.as_ref().unwrap())
@@ -553,6 +554,10 @@ fn default_probe_retries() -> u32 {
 
 fn default_always_await_readiness_probe() -> bool {
     true
+}
+
+fn default_interactive_shell() -> bool {
+    false
 }
 
 pub fn module_names(modules: &[ModuleDefinition]) -> Vec<&str> {
