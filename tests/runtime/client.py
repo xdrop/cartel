@@ -9,7 +9,7 @@ from strip_ansi import strip_ansi as strip_ansi_fn
 from runtime.paths import debug_binaries_path
 
 
-def client_cmd(args, delay=0.05, timeout=1, non_tty=False, strip_ansi=True):
+def client_cmd(args, delay=0.05, timeout=2, non_tty=False, strip_ansi=True):
     if non_tty:
         return client_cmd_run_nontty(args=args, timeout=timeout, delay=delay)
     else:
