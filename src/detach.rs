@@ -32,7 +32,7 @@ pub fn detach_tty(args: Args, wait_child: bool) {
 
             let pid = fork();
 
-            match fork() {
+            match pid {
                 -1 => panic!("failed during fork"),
                 0 => { /* child */ }
                 _ => {
