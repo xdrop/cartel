@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.11.0-beta] - 2021-08-22
 ### Added
 - Added a set of `config` cli commands (`get`, `set`, `toggle`, `remove`) for editing config file options.
 - Added a mechanism with which environment variables from the users shell configuration can be periodically refreshed. This eliminates the need for the user to need to perform a daemon restart whenever they need to reload some shell configuration (eg. a change in a `.zshrc` file). This feature is _experimental_ and is _disabled_ by default.
