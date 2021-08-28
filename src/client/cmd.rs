@@ -1,10 +1,21 @@
-use crate::shell::interactive_shell_cmd_line;
+use crate::config;
+use crate::shell::{active_shell_path, interactive_shell_cmd_line};
 
 /// Prepare a command list for executing the given shell line.
 ///
 /// This will always call out to bash.
 pub fn shell_to_cmd(shell_cmd: &str) -> Vec<String> {
-    vec!["/bin/bash", "-c", shell_cmd]
+    let shell_path = if config::PERSISTED_CONFIG
+        .client
+        .use_current_shell
+        .unwrap_or(false)
+    {
+        active_shell_path().expect("Unabled to locate current shell path")
+    } else {
+        String::from("/bin/bash")
+    };
+
+    vec![shell_path.as_str(), "-c", shell_cmd]
         .into_iter()
         .map(String::from)
         .collect()

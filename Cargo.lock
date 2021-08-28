@@ -248,6 +248,7 @@ dependencies = [
  "grep-regex",
  "grep-searcher",
  "indicatif",
+ "lazy_static",
  "log 0.4.11",
  "nix",
  "parking_lot",

@@ -1,5 +1,6 @@
 use crate::constants::PROJECT_DIR;
 use anyhow::{bail, Context, Result};
+use lazy_static::lazy_static;
 use phf::phf_map;
 use serde::de::{Error, Unexpected};
 use serde::{Deserialize, Deserializer};
@@ -7,6 +8,10 @@ use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use toml_edit::{value, Document, Item, Value};
+
+lazy_static! {
+    pub static ref PERSISTED_CONFIG: PersistedConfig = PersistedConfig::new();
+}
 
 #[derive(Deserialize)]
 pub struct DaemonConfig {
@@ -55,6 +60,18 @@ pub struct PersistedConfig {
     pub daemon: DaemonConfig,
 }
 
+impl PersistedConfig {
+    pub fn new() -> PersistedConfig {
+        if let Err(e) = create_config_if_not_exists() {
+            texiterr!(e);
+        }
+        match read_persisted_config() {
+            Ok(cfg) => cfg,
+            Err(e) => texiterr!(e),
+        }
+    }
+}
+
 fn default_config_file_path() -> PathBuf {
     let mut config_path =
         dirs::home_dir().expect("Failed to locate users home dir");
@@ -96,7 +113,8 @@ pub fn create_config_if_not_exists() -> Result<()> {
 pub fn read_persisted_config_from_path(path: &Path) -> Result<PersistedConfig> {
     let toml_content = fs::read_to_string(path)
         .with_context(|| "Failed to read config file")?;
-    let document = toml::from_str::<PersistedConfig>(&toml_content)?;
+    let document = toml::from_str::<PersistedConfig>(&toml_content)
+        .with_context(|| "Failed to parse TOML config file")?;
     Ok(document)
 }
 
@@ -145,6 +163,7 @@ static KEY_TO_PATH: phf::Map<&'static str, [&'static str; 2]> = phf_map! {
     "daemon.port" => ["daemon", "port"],
     "daemon.use_env_grabber" => ["daemon", "use_env_grabber"],
     "client.default_dir" => ["client", "default_dir"],
+    "client.use_current_shell" => ["client", "use_current_shell"],
 };
 
 impl EditableConfig {
