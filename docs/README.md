@@ -16,6 +16,7 @@
     - [Viewing service status](#viewing-service-status)
     - [Stopping / restarting a service](#stopping--restarting-a-service)
     - [Opening a REPL shell](#opening-a-repl-shell)
+    - [Executing a command within a service folder](#executing-a-command-within-a-service-folder)
   - [Getting started configuration](#getting-started-configuration)
   - [Installation](#installation)
       - [macOS](#macos)
@@ -116,6 +117,13 @@ To open a REPL shell to some service. Since services can define multiple types o
 ```
 $ cartel shell <service_name>
 $ cartel shell -t <type> <service_name>
+```
+
+### Executing a command within a service folder
+To execute a command within a service's folder use:
+
+```
+$ cartel exec <service_name> -- <cmd>
 ```
 
 ## Getting started configuration

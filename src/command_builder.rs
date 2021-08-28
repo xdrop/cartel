@@ -81,7 +81,10 @@ impl CommandBuilder {
     }
 
     /// Set the process's working directory.
-    pub fn work_dir<'c>(&'c mut self, work_dir: Option<&Path>) -> &'c mut Self {
+    pub fn work_dir<'c, P>(&'c mut self, work_dir: Option<P>) -> &'c mut Self
+    where
+        P: AsRef<Path>,
+    {
         if let Some(path) = work_dir {
             self.command.current_dir(path);
         }

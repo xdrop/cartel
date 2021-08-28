@@ -42,6 +42,11 @@ where
 pub struct ClientConfig {
     /// The default directory to use when searching for module definitions.
     pub default_dir: Option<String>,
+    /// When enabled the client will attempt to use the current shell when
+    /// invoking shell commands as opposed to always using bash.
+    #[serde(default)]
+    #[serde(deserialize_with = "bool_from_enabled_disabled")]
+    pub use_current_shell: Option<bool>,
 }
 
 #[derive(Deserialize)]

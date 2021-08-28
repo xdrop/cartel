@@ -233,6 +233,24 @@ pub fn cli_app() -> Result<()> {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("exec")
+                .about("Execute a command within a services directory")
+                .arg(
+                    Arg::with_name("service")
+                        .help("The service in which to execute in")
+                        .required(true)
+                        .takes_value(true)
+                        .multiple(false),
+                )
+                .arg(
+                    Arg::with_name("command")
+                        .help("The command to run")
+                        .required(true)
+                        .takes_value(true)
+                        .multiple(true),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("config")
                 .about("Update configuration")
                 .subcommand(
@@ -269,7 +287,8 @@ pub fn cli_app() -> Result<()> {
                 .subcommand(
                     SubCommand::with_name("remove")
                         .about(
-                            "Removes a configuration option (resetting to the default)",
+                            "Removes a configuration option \
+                            (resetting to the default)",
                         )
                         .arg(
                             Arg::with_name("key")
@@ -290,10 +309,9 @@ pub fn cli_app() -> Result<()> {
                                 .multiple(false),
                         ),
                 )
-                .subcommand(
-                    SubCommand::with_name("view")
-                        .about("View all currently set/unset configuration options")
-                ),
+                .subcommand(SubCommand::with_name("view").about(
+                    "View all currently set/unset configuration options",
+                )),
         )
         .get_matches();
 
@@ -414,6 +432,15 @@ fn invoke_subcommand(matches: &ArgMatches, cfg: &ClientConfig) -> Result<()> {
         }
         ("daemon", _) => {
             restart_daemon()?;
+        }
+        ("exec", Some(exec_cli_opts)) => {
+            let service = exec_cli_opts.value_of("service").unwrap();
+            let command: Vec<_> = exec_cli_opts
+                .values_of("command")
+                .ok_or_else(|| anyhow!("Expected at least one command"))?
+                .collect();
+
+            exec_cmd(service, &command, cfg)?;
         }
         ("config", Some(config_cli_opts)) => {
             match config_cli_opts.subcommand() {

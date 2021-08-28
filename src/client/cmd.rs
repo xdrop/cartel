@@ -10,6 +10,14 @@ pub fn shell_to_cmd(shell_cmd: &str) -> Vec<String> {
         .collect()
 }
 
+/// Prepare a command list to be run in a shell.
+///
+/// This will always call out to bash.
+pub fn cmd_in_shell(cmd: &[&str]) -> Vec<String> {
+    let joined = cmd.join(" ");
+    shell_to_cmd(&joined)
+}
+
 /// Prepare a command list for executing the given shell line in an interactive
 /// login shell.
 pub fn shell_to_cmd_interactive(shell_cmd: &str) -> Vec<String> {
