@@ -1,5 +1,4 @@
 pub mod api;
-pub mod bootstrap;
 pub mod cli;
 pub mod core;
 pub mod env_grabber;
