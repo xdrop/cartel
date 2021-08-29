@@ -19,11 +19,10 @@ pub fn active_shell_path() -> Option<String> {
         Err(_) => return None,
     };
 
-    if current_shell.contains("zsh") {
-        Some(current_shell)
-    } else if current_shell.contains("bash") {
-        Some(current_shell)
-    } else if current_shell.contains("fish") {
+    if current_shell.contains("zsh")
+        || current_shell.contains("bash")
+        || current_shell.contains("fish")
+    {
         Some(current_shell)
     } else {
         None
