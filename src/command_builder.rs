@@ -81,7 +81,7 @@ impl CommandBuilder {
     }
 
     /// Set the process's working directory.
-    pub fn work_dir<'c, P>(&'c mut self, work_dir: Option<P>) -> &'c mut Self
+    pub fn work_dir<P>(&mut self, work_dir: Option<P>) -> &mut Self
     where
         P: AsRef<Path>,
     {
