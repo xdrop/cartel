@@ -22,6 +22,7 @@ Scenarios and fields covered: ✅
 - View `logs` (full mode)
 - Start `shell` for service
 - ~~View `ps` status ✅~~
+- ~~Run `exec` for service ✅~~
 - Perform `down` for stopping all services
 - Perform `config get` for getting config
 - Perform `config set` for setting config
