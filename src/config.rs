@@ -72,6 +72,12 @@ impl PersistedConfig {
     }
 }
 
+impl Default for PersistedConfig {
+    fn default() -> Self {
+        PersistedConfig::new()
+    }
+}
+
 fn default_config_file_path() -> PathBuf {
     let mut config_path =
         dirs::home_dir().expect("Failed to locate users home dir");
