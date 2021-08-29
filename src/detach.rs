@@ -7,6 +7,8 @@ use std::ffi::CString;
 use std::os::unix::ffi::OsStrExt;
 use std::panic;
 
+/// Detaches the daemon from its controlling terminal and also daemonizes it by
+/// forking and exiting the parent leaving a child to be inherited by pid 1.
 pub fn detach_tty(args: Args, wait_child: bool) {
     // Don't undwind or run the panic hook. Since we fork() it isn't safe on
     // many platforms to call the allocator.
@@ -28,8 +30,6 @@ pub fn detach_tty(args: Args, wait_child: bool) {
 
     unsafe {
         if getpgrp() == getpid() {
-            let mut wstatus: i32 = 0;
-
             let pid = fork();
 
             match pid {
@@ -40,13 +40,18 @@ pub fn detach_tty(args: Args, wait_child: bool) {
                     if !wait_child {
                         exit(0);
                     }
+
+                    let mut wstatus: i32 = 0;
+
                     if wait(&mut wstatus as *mut c_int) != pid {
                         panic!("failed to wait child")
                     }
+
                     if WIFEXITED(wstatus) {
                         exit(WEXITSTATUS(wstatus));
                     }
-                    panic!("child did not exit normally")
+
+                    panic!("child {} did not exit normally", pid)
                 }
             }
         }
