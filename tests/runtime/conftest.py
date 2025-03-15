@@ -6,6 +6,7 @@ import pytest
 
 from runtime.client import client_cmd, client_cmd_tty
 from runtime.paths import debug_binaries_path
+from runtime.helpers import kill_all_shims
 
 
 def pytest_addoption(parser):
@@ -68,3 +69,9 @@ def cartel():
         yield cartel
         proc.terminate()
         cartel.cleanup()
+
+
+@pytest.fixture(autouse=True)
+def cleanup():
+    yield
+    kill_all_shims()

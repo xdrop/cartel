@@ -64,6 +64,19 @@ def process_running(process_name):
     return False
 
 
+def kill_all_shims():
+    for proc in psutil.process_iter():
+        try:
+            if "execshim" in proc.name().lower():
+                proc.kill()
+        except (
+            psutil.NoSuchProcess,
+            psutil.AccessDenied,
+            psutil.ZombieProcess,
+        ):
+            pass
+
+
 def find_pid(process_name, pid=None):
     for proc in psutil.process_iter():
         try:
