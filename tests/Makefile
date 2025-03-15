@@ -11,17 +11,20 @@ help:
 	@echo "To format the tests type make format"
 	@echo "------------------------------------"
 
-run:
+install:
+	poetry install
+
+run: install
 	cd ../ && ${CARGO} build --all
 	cd execshim && ${CARGO} build --release
 	${PYTHON} -m pytest -vvx runtime
 
-all:
+all: install
 	cd ../ && ${CARGO} build --all
 	cd execshim && ${CARGO} build --release
 	${PYTHON} -m pytest --runslow -vv runtime
-	
-format:
+
+format: install
 	${PYTHON} -m black .
 	${PYTHON} -m isort .
 	${PYTHON} -m flake8 .
