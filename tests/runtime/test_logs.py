@@ -1,5 +1,4 @@
-from runtime.client import client_cmd_tty
-from runtime.helpers import run_service
+from runtime.helpers import run_service, run_task
 from runtime.shim import task_shim
 
 
@@ -23,6 +22,7 @@ def test_prints_logs_for_task(cartel):
         shell: {tsk.shell}
         """
     )
+    run_task("logs-2")
 
     # WHEN/THEN
     with cartel.client_cmd_tty(["logs", "logs-2"]) as tty:
