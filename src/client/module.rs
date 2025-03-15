@@ -467,34 +467,29 @@ impl EdgeList for ServiceOrTaskDefinition {
                 direction: EdgeDirection::To,
                 marker: ModuleMarker::WaitProbe,
             })
-            .chain(
-                self.ordered_dependencies
-                    .windows(2)
-                    .map(|window| {
-                        // this sets up an edge to enforce a sequential order
-                        // between dependencies
-                        let in_between = DependencyEdge {
-                            edge_src: window[1].clone(),
-                            edge_dst: window[0].clone(),
-                            is_weak: false,
-                            direction: EdgeDirection::To,
-                            marker: ModuleMarker::WaitProbe,
-                        };
-                        // this sets up the edge between the main task to the
-                        // dependencies
-                        window
-                            .iter()
-                            .map(|w| DependencyEdge {
-                                edge_src: self.key(),
-                                edge_dst: w.clone(),
-                                is_weak: false,
-                                direction: EdgeDirection::To,
-                                marker: ModuleMarker::WaitProbe,
-                            })
-                            .chain(iter::once(in_between))
+            .chain(self.ordered_dependencies.windows(2).flat_map(|window| {
+                // this sets up an edge to enforce a sequential order
+                // between dependencies
+                let in_between = DependencyEdge {
+                    edge_src: window[1].clone(),
+                    edge_dst: window[0].clone(),
+                    is_weak: false,
+                    direction: EdgeDirection::To,
+                    marker: ModuleMarker::WaitProbe,
+                };
+                // this sets up the edge between the main task to the
+                // dependencies
+                window
+                    .iter()
+                    .map(|w| DependencyEdge {
+                        edge_src: self.key(),
+                        edge_dst: w.clone(),
+                        is_weak: false,
+                        direction: EdgeDirection::To,
+                        marker: ModuleMarker::WaitProbe,
                     })
-                    .flatten(),
-            )
+                    .chain(iter::once(in_between))
+            }))
             .chain(self.after.iter().map(|key| DependencyEdge {
                 edge_src: self.key(),
                 edge_dst: key.clone(),

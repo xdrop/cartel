@@ -154,8 +154,7 @@ where
             .map(|idx| StackEntry::new(*idx))
             .collect();
 
-        while !node_stack.is_empty() {
-            let node_stack_entry = node_stack.pop().unwrap();
+        while let Some(node_stack_entry) = node_stack.pop() {
             let node_idx = node_stack_entry.node_idx;
             let mut origin_node_idx = node_stack_entry.origin_node_idx;
 
@@ -235,8 +234,8 @@ where
     }
 
     /// Split nodes into groups by their level.
-    fn split_by_level<'l, 's, R: Eq + Hash>(
-        level_info: HashMap<&'l R, NodeMeta>,
+    fn split_by_level<'s, R: Eq + Hash>(
+        level_info: HashMap<&R, NodeMeta>,
         sorted_nodes: Vec<&'s R>,
     ) -> SortedDeps<'s, R> {
         let mut groups = Vec::new();
@@ -268,13 +267,10 @@ where
         let mut unmarked: Vec<_> = self.node_list.iter().collect();
 
         // While we have still nodes unmarked
-        while !unmarked.is_empty() {
-            let to_mark = unmarked.pop().unwrap();
+        while let Some(to_mark) = unmarked.pop() {
             stack.push((false, to_mark));
 
-            while !stack.is_empty() {
-                let (is_parent, node) = stack.pop().unwrap();
-
+            while let Some((is_parent, node)) = stack.pop() {
                 if node.is_weak {
                     // Weak nodes are not to be included in the final output.
                     continue;
@@ -319,13 +315,10 @@ where
         let mut unmarked: Vec<_> = self.node_list.iter().collect();
 
         // While we have still nodes unmarked
-        while !unmarked.is_empty() {
-            let to_mark = unmarked.pop().unwrap();
+        while let Some(to_mark) = unmarked.pop() {
             stack.push((false, to_mark, 0));
 
-            while !stack.is_empty() {
-                let (is_parent, node, level) = stack.pop().unwrap();
-
+            while let Some((is_parent, node, level)) = stack.pop() {
                 if node.is_weak {
                     // Weak nodes are not to be included in the final output.
                     continue;
@@ -511,7 +504,7 @@ where
             })
             .collect();
 
-        let node_list = selected_node_indices.iter().copied().collect();
+        let node_list = selected_node_indices.to_vec();
 
         let graph_arena = Self {
             edge_map,

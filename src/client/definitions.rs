@@ -307,9 +307,7 @@ fn merge_module_definitions(
         module_map.insert(m.name.clone(), idx);
     }
 
-    while !overriden.is_empty() {
-        let m = overriden.pop().unwrap();
-
+    while let Some(m) = overriden.pop() {
         if let Some(idx) = module_map.get(&m.name) {
             merged[*idx] = m;
         } else {

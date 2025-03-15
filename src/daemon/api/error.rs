@@ -26,7 +26,7 @@ impl<'r> Responder<'r, 'r> for ApiError {
         let message = match self {
             ApiError::DeploymentError(error) => {
                 if error.chain().len() > 1 {
-                    format!("{}: {}", error.to_string(), error.root_cause())
+                    format!("{}: {}", error, error.root_cause())
                 } else {
                     error.to_string()
                 }

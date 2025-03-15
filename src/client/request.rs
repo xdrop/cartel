@@ -312,7 +312,7 @@ pub fn get_plan(
 }
 
 fn task_took_too_long_msg(task_name: &str) -> String {
-    return format!(
+    format!(
         "Task \"{}\" took too long to finish. \
         \nTry increasing the timeout or check the \
         logs using `cartel logs {}`. \
@@ -320,5 +320,5 @@ fn task_took_too_long_msg(task_name: &str) -> String {
         task_name,
         task_name,
         cbold!("Note:")
-    );
+    )
 }

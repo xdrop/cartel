@@ -6,7 +6,7 @@ use std::error::Error;
 use std::sync::Arc;
 
 pub fn setup_signal_handlers(core: Arc<Core>) -> Result<(), Box<dyn Error>> {
-    let signals = Signals::new(&[SIGCHLD, SIGTERM, SIGINT])?;
+    let signals = Signals::new([SIGCHLD, SIGTERM, SIGINT])?;
 
     std::thread::spawn(move || {
         for sig in signals.forever() {

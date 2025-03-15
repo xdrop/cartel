@@ -287,7 +287,6 @@ impl Executor {
     fn running_modules(&self) -> impl Iterator<Item = &ModuleStatus> {
         self.module_map
             .values()
-            .into_iter()
             .filter(|m| m.status == RunStatus::RUNNING)
     }
 

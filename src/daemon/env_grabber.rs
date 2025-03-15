@@ -44,10 +44,10 @@ pub fn grab_env() -> Result<HashMap<String, String>> {
 fn parse_printenv_output(output: &[u8]) -> HashMap<String, String> {
     let reader = BufReader::new(output);
     let mut env = HashMap::new();
-    for env_line in reader.lines().flatten() {
-        let (key, val) = env_line
-            .split_once("=")
-            .expect("Unexpected printenv output");
+    let lines = reader.lines().map_while(Result::ok);
+    for line in lines {
+        let (key, val) =
+            line.split_once('=').expect("Unexpected printenv output");
         env.insert(key.to_owned(), val.to_owned());
     }
     env

@@ -12,13 +12,13 @@ pub fn restart_daemon() -> Result<()> {
     };
 
     tprintstep!("Restarting daemon...", 1, 2, HOUR_GLASS);
-    let cmd_line = vec![
+    let cmd_line = [
         active_shell.as_str(),
         "-c",
         "pkill -i cartel-daemon; cartel-daemon &",
     ];
 
-    let mut cmd = Command::new(&cmd_line[0]);
+    let mut cmd = Command::new(cmd_line[0]);
     let status = cmd.args(&cmd_line[1..]).spawn()?.wait()?;
     if !status.success() {
         bail!(

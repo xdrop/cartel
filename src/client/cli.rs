@@ -441,7 +441,7 @@ fn invoke_subcommand(matches: &ArgMatches, cfg: &ClientConfig) -> Result<()> {
                 ("set", Some(opts)) => {
                     let key = opts.value_of("key").unwrap();
                     let value = opts.value_of("value").unwrap();
-                    set_option(&key, &value)?;
+                    set_option(key, value)?;
                 }
                 ("toggle", Some(opts)) => {
                     let key = opts.value_of("key").unwrap();
