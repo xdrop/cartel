@@ -10,10 +10,6 @@ use std::panic;
 /// Detaches the daemon from its controlling terminal and also daemonizes it by
 /// forking and exiting the parent leaving a child to be inherited by pid 1.
 pub fn detach_tty(args: Args, wait_child: bool) {
-    // Don't undwind or run the panic hook. Since we fork() it isn't safe on
-    // many platforms to call the allocator.
-    panic::always_abort();
-
     let argv = args
         .skip(1)
         .filter(|arg| arg != "--detach" && arg != "-d")

@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-#![feature(proc_macro_hygiene, decl_macro)]
-#![feature(panic_always_abort)]
 
 #[macro_use]
 extern crate rocket;

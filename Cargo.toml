@@ -22,8 +22,7 @@ env_logger = "0.8.2"
 chrono = "0.4.19"
 timeago = "0.2.1"
 signal-hook = "0.2.2"
-rocket = "0.4.10"
-rocket_contrib = "0.4.6"
+rocket = { version = "0.5.1", features = ["json"] }
 serde = { version = "1.0.118", features = ["derive"]}
 serde_yaml = "0.8.17"
 clap = "2.33.3"

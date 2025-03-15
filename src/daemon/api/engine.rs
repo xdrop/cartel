@@ -1,7 +1,7 @@
 use crate::daemon::api::handlers;
 use crate::daemon::Core;
 use log::info;
-use rocket::config::{Environment, LoggingLevel};
+use rocket::config::LogLevel;
 use rocket::Config;
 use std::sync::Arc;
 
@@ -9,7 +9,7 @@ pub struct CoreState {
     pub core: Arc<Core>,
 }
 
-pub fn start(core: &Arc<Core>) {
+pub fn build(core: &Arc<Core>) -> rocket::Rocket<rocket::Build> {
     let config = core.config();
     let port: u16 = config
         .daemon
@@ -18,12 +18,11 @@ pub fn start(core: &Arc<Core>) {
         .and_then(|p| p.parse::<u16>().ok())
         .unwrap_or(13754);
 
-    let cfg = Config::build(Environment::Production)
-        .address("127.0.0.1")
-        .port(port)
-        .log_level(LoggingLevel::Normal)
-        .workers(4)
-        .unwrap();
+    let cfg = Config::figment()
+        .merge(("address", "127.0.0.1"))
+        .merge(("port", port))
+        .merge(("log_level", LogLevel::Normal))
+        .merge(("workers", 4));
 
     info!("Starting API listener");
     rocket::custom(cfg)
@@ -44,5 +43,4 @@ pub fn start(core: &Arc<Core>) {
                 handlers::get_plan
             ],
         )
-        .launch();
 }

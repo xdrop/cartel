@@ -3,9 +3,9 @@ use crate::daemon::api::engine::CoreState;
 use crate::daemon::api::error::*;
 use crate::daemon::monitor::MonitorType;
 use crate::daemon::planner::MonitorStatus;
+use rocket::serde::json::Json;
+use rocket::serde::{Deserialize, Serialize};
 use rocket::State;
-use rocket_contrib::json::Json;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ffi::OsString;
 
@@ -175,7 +175,7 @@ pub struct ApiGetPlanResponse {
 #[post("/api/v1/deploy", data = "<command>")]
 pub(crate) fn deploy(
     command: Json<ApiDeploymentCommand>,
-    core_state: State<CoreState>,
+    core_state: &State<CoreState>,
 ) -> ApiResult<ApiDeploymentResponse> {
     let planner = core_state.core.planner();
     let command = command.into_inner();
@@ -207,7 +207,7 @@ pub(crate) fn deploy(
 #[post("/api/v1/tasks/deploy", data = "<task>")]
 pub(crate) fn deploy_task(
     task: Json<ApiTaskDeploymentCommand>,
-    core_state: State<CoreState>,
+    core_state: &State<CoreState>,
 ) -> ApiResult<ApiTaskDeploymentResponse> {
     let cmd = task.into_inner();
     let planner = core_state.core.planner();
@@ -219,7 +219,7 @@ pub(crate) fn deploy_task(
 #[post("/api/v1/operation", data = "<module>")]
 pub(crate) fn module_operation(
     module: Json<ApiOperationCommand>,
-    core_state: State<CoreState>,
+    core_state: &State<CoreState>,
 ) -> ApiResult<ApiOperationResponse> {
     let module = module.into_inner();
     let planner = core_state.core.planner();
@@ -237,7 +237,7 @@ pub(crate) fn module_operation(
 
 #[post("/api/v1/stop_all")]
 pub(crate) fn stop_all(
-    core_state: State<CoreState>,
+    core_state: &State<CoreState>,
 ) -> ApiResult<ApiOperationResponse> {
     let planner = core_state.core.planner();
     planner.stop_all()?;
@@ -248,7 +248,7 @@ pub(crate) fn stop_all(
 #[allow(clippy::unnecessary_wraps)]
 #[get("/api/v1/status")]
 pub(crate) fn status(
-    core_state: State<CoreState>,
+    core_state: &State<CoreState>,
 ) -> ApiResult<ApiModuleStatusResponse> {
     let planner = core_state.core.planner();
     let status = planner
@@ -270,7 +270,7 @@ pub(crate) fn status(
 #[post("/api/v1/log_file", data = "<request>")]
 pub(crate) fn log_file(
     request: Json<ApiLogFileRequest>,
-    core_state: State<CoreState>,
+    core_state: &State<CoreState>,
 ) -> ApiResult<ApiLogResponse> {
     let request = request.into_inner();
     let log_file_path = core_state
@@ -284,7 +284,7 @@ pub(crate) fn log_file(
 #[get("/api/v1/health/<monitor_key>")]
 pub(crate) fn health(
     monitor_key: String,
-    core_state: State<CoreState>,
+    core_state: &State<CoreState>,
 ) -> Json<ApiHealthResponse> {
     let status = core_state
         .core
@@ -308,7 +308,7 @@ pub(crate) fn health(
 #[post("/api/v1/get_plan", data = "<request>")]
 pub(crate) fn get_plan(
     request: Json<ApiGetPlanRequest>,
-    core_state: State<CoreState>,
+    core_state: &State<CoreState>,
 ) -> Json<ApiGetPlanResponse> {
     let planner = core_state.core.planner();
     let mut request = request.into_inner();

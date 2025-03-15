@@ -1,8 +1,8 @@
 use anyhow::Error;
 use rocket::http::Status;
 use rocket::response::{Responder, Response};
-use rocket_contrib::json::Json;
-use serde::{Deserialize, Serialize};
+use rocket::serde::json::Json;
+use rocket::serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum ApiError {
@@ -18,10 +18,10 @@ pub struct ErrorResponse {
 
 pub type ApiResult<T> = Result<Json<T>, ApiError>;
 
-impl<'r> Responder<'r> for ApiError {
+impl<'r> Responder<'r, 'r> for ApiError {
     fn respond_to(
         self,
-        req: &rocket::Request<'_>,
+        req: &'r rocket::Request,
     ) -> Result<Response<'r>, Status> {
         let message = match self {
             ApiError::DeploymentError(error) => {

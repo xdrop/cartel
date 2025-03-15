@@ -45,7 +45,8 @@ impl Core {
 }
 
 /// Start the daemon
-pub fn start_daemon() -> Result<(), Box<dyn Error>> {
+#[rocket::main]
+pub async fn start_daemon() -> Result<(), Box<dyn Error>> {
     let monitor = monitor::MonitorState::new();
     config::create_config_if_not_exists()?;
     let cfg = Arc::new(config::read_persisted_config()?);
@@ -73,7 +74,7 @@ pub fn start_daemon() -> Result<(), Box<dyn Error>> {
     }
 
     // Start the API.
-    api::engine::start(&core);
-
+    let engine = api::engine::build(&core);
+    engine.launch().await?;
     Ok(())
 }

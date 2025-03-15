@@ -55,7 +55,7 @@ pub fn parse_from_yaml_str(
 
         parsed.push(module);
     }
-    for mut m in parsed.iter_mut() {
+    for m in parsed.iter_mut() {
         match &mut m.inner {
             InnerDefinition::Service(ref mut def) => {
                 m.kind = ModuleKind::Service;
