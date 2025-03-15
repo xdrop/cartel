@@ -1,0 +1,82 @@
+name: Master Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "master"
+
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get current version
+      id: version
+      run: echo "CURRENT_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+    - name: Install rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: stable
+        components: rustfmt, clippy
+    - uses: Swatinem/rust-cache@v1
+    - name: Add intel-based macOS target
+      run: rustup target add x86_64-apple-darwin
+    - name: Add arm-based macOS target
+      run: rustup target add aarch64-apple-darwin
+    - name: Build for intel-based macOS
+      run: cargo build --release --all --target x86_64-apple-darwin
+    - name: Build for arm-based macOS
+      run: cargo build --release --all --target aarch64-apple-darwin
+    - name: Upload artifacts for intel-based macOS (daemon)
+      uses: actions/upload-artifact@v4
+      with:
+        name: cartel-daemon-${{ env.CURRENT_VERSION }}.darwin.amd64
+        path: target/x86_64-apple-darwin/release/daemon
+    - name: Upload artifacts for intel-based macOS  (client)
+      uses: actions/upload-artifact@v4
+      with:
+        name: cartel-${{ env.CURRENT_VERSION }}.darwin.amd64
+        path: target/x86_64-apple-darwin/release/client
+    - name: Upload artifacts for arm-based macOS (daemon)
+      uses: actions/upload-artifact@v4
+      with:
+        name: cartel-daemon-${{ env.CURRENT_VERSION }}.darwin.arm64
+        path: target/aarch64-apple-darwin/release/daemon
+    - name: Upload artifacts for arm-based macOS (client)
+      uses: actions/upload-artifact@v4
+      with:
+        name: cartel-${{ env.CURRENT_VERSION }}.darwin.arm64
+        path: target/aarch64-apple-darwin/release/client
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get current version
+      id: version
+      run: echo "CURRENT_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+    - name: Install rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: stable
+        components: rustfmt, clippy
+    - uses: Swatinem/rust-cache@v1
+    - name: Build
+      run: cargo build --release --all
+    - name: Upload artifacts (daemon)
+      uses: actions/upload-artifact@v4
+      with:
+        name: cartel-daemon-${{ env.CURRENT_VERSION }}.linux.amd64
+        path: target/release/daemon
+    - name: Upload artifacts (client)
+      uses: actions/upload-artifact@v4
+      with:
+        name: cartel-${{ env.CURRENT_VERSION }}.linux.amd64
+        path: target/release/client
