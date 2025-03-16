@@ -23,18 +23,18 @@ chrono = "0.4.19"
 timeago = "0.2.1"
 signal-hook = "0.2.2"
 rocket = { version = "0.5.1", features = ["json"] }
-serde = { version = "1.0.118", features = ["derive"]}
+serde = { version = "1.0.219", features = ["derive"]}
 serde_yaml = "0.8.17"
 clap = "2.33.3"
 reqwest = { version = "0.12.14", features = ["blocking", "json", "charset"], default-features=false  }
-anyhow = "1.0.40"
+anyhow = "1.0.97"
 thiserror = "1.0"
 indicatif = "0.16.2"
 console = "0.13.0"
 dirs = "3.0.1"
 tabwriter = { version = "1.2.1", features = ["ansi_formatting"] }
 nix = "0.22.0"
-tokio = { version = "1.0.1", features = ["full"]}
+tokio = { version = "1.43.0", features = ["full"]}
 parking_lot = "0.11.1"
 uuid = {version = "0.8.1", features =  ["v4"]}
 grep-searcher = "0.1.7"
