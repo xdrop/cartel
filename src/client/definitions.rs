@@ -37,19 +37,21 @@ pub fn parse_from_yaml_str(
 
         // Attempt to retrieve and clone the name in an attempt to provide a
         // useful error message to the user.
-        let mod_name = if let Some(Value::String(mod_name)) = value.get("name")
-        {
-            Some(mod_name.clone())
-        } else {
-            None
-        };
+        let mod_name =
+            value.get("name").and_then(|v| v.as_str()).map(String::from);
+        let mod_kind =
+            value.get("kind").and_then(|v| v.as_str()).map(String::from);
 
         let module: ModuleDefinition = serde_yaml::from_value(value)
             .with_context(|| {
                 if let Some(name) = mod_name {
-                    format!("In module with name: {:?}", name)
+                    format!(
+                        "Couldn't parse {} definition with name: {}",
+                        mod_kind.unwrap_or("module".to_string()).to_lowercase(),
+                        name
+                    )
                 } else {
-                    format!("In module with index: {}", idx)
+                    format!("Couldn't parse module at position: {}", idx)
                 }
             })?;
 
