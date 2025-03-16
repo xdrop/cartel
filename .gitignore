@@ -6,6 +6,7 @@ __pycache__
 .vscode
 .excluded
 .env
+.release
 bottle.sh
 cartel.yaml
 cartel.yml
