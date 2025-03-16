@@ -71,11 +71,14 @@ pub struct WaitSpin<'a> {
 }
 
 impl<'a> WaitSpin<'a> {
-    pub fn new(options: &'a SpinnerOptions) -> WaitSpin {
+    pub fn new(options: &'a SpinnerOptions) -> WaitSpin<'a> {
         Self::from(options, ProgressBar::new(std::u64::MAX))
     }
 
-    pub fn from(options: &'a SpinnerOptions, mut pb: ProgressBar) -> WaitSpin {
+    pub fn from(
+        options: &'a SpinnerOptions,
+        mut pb: ProgressBar,
+    ) -> WaitSpin<'a> {
         Self::init(&mut pb, options.clone());
         WaitSpin { options, pb }
     }
@@ -157,13 +160,13 @@ impl<'a> WaitUntil<'a> {
     pub fn new_multi(
         options: &'a SpinnerOptions,
         progress_bar: ProgressBar,
-    ) -> WaitUntil {
+    ) -> WaitUntil<'a> {
         WaitUntil {
             wait_spin: WaitSpin::from(options, progress_bar),
         }
     }
 
-    pub fn new(options: &'a SpinnerOptions) -> WaitUntil {
+    pub fn new(options: &'a SpinnerOptions) -> WaitUntil<'a> {
         WaitUntil {
             wait_spin: WaitSpin::from(options, ProgressBar::new(std::u64::MAX)),
         }
