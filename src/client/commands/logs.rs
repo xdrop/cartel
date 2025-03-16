@@ -68,7 +68,7 @@ pub fn print_logs(
 
     #[cfg(unix)]
     {
-        Command::new(&pager_cmd[0])
+        let _ = Command::new(&pager_cmd[0])
             .args(&pager_cmd[1..])
             .arg(unix_path)
             .exec(); // Note: The process ends here; subsequent code won't run.

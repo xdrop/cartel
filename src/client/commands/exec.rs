@@ -35,7 +35,7 @@ pub fn exec_cmd(
 
     #[cfg(unix)]
     {
-        cmd.build().exec(); // The process ends here
+        let _ = cmd.build().exec(); // The process ends here
     }
 
     #[cfg(windows)]
