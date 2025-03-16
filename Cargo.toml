@@ -26,7 +26,7 @@ rocket = { version = "0.5.1", features = ["json"] }
 serde = { version = "1.0.118", features = ["derive"]}
 serde_yaml = "0.8.17"
 clap = "2.33.3"
-reqwest = { version = "0.10", features = ["blocking", "json"] }
+reqwest = { version = "0.12.14", features = ["blocking", "json", "charset"], default-features=false  }
 anyhow = "1.0.40"
 thiserror = "1.0"
 indicatif = "0.16.2"
