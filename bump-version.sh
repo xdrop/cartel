@@ -22,7 +22,7 @@ echo "Updating VERSION"
 echo $NEW_VERSION > VERSION
 
 echo "Updating CHANGELOG.md..."
-sed_cmd -i'' -e "s;## \[Unreleased\];## [Unreleased]\n\n## [$NEW_VERSION-beta] - $(date "+%Y-%m-%d");g" CHANGELOG.md
+sed_cmd -i'' -e "s;## \[Unreleased\];## [Unreleased]\n\n## [$NEW_VERSION] - $(date "+%Y-%m-%d");g" CHANGELOG.md
 
 echo "Updating Cargo.toml..."
 sed_cmd -i'' -e "s/^version = \"$OLD_VERSION\"/version = \"$NEW_VERSION\"/g" Cargo.toml
@@ -32,8 +32,8 @@ touch src/client/cli.rs && cargo check
 
 echo "Committing.."
 git add 'Cargo.toml' 'Cargo.lock' 'CHANGELOG.md' 'VERSION'
-git commit -m "Bump to $NEW_VERSION (beta)"
+git commit -m "Bump to $NEW_VERSION"
 
 echo "Performing git tag..."
-git tag -f $NEW_VERSION-beta
+git tag -f $NEW_VERSION
 
