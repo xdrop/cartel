@@ -1,9 +1,11 @@
 target
+.DS_Store
 __pycache__
 *.swp
 .pytest_cache
 .vscode
 .excluded
+.env
 bottle.sh
 cartel.yaml
 cartel.yml
