@@ -24,7 +24,7 @@ jobs:
       with:
         toolchain: stable
         components: rustfmt, clippy
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
     - name: Add intel-based macOS target
       run: rustup target add x86_64-apple-darwin
     - name: Add arm-based macOS target
@@ -67,7 +67,7 @@ jobs:
       with:
         toolchain: stable
         components: rustfmt, clippy
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
     - name: Build
       run: cargo build --release --all
     - name: Upload artifacts (daemon)
