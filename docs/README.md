@@ -180,7 +180,7 @@ brew install xdrop/tap/cartel
 and add the following to `~/.zshrc` or `~/.bashrc`:
 
 ```
-[ -f /usr/local/opt/cartel/launch-daemon.sh ] && . /usr/local/opt/cartel/launch-daemon.sh
+[ -f $(brew --prefix cartel)/launch-daemon.sh ] && . $(brew --prefix cartel)/launch-daemon.sh
 ```
 
 #### Linux
